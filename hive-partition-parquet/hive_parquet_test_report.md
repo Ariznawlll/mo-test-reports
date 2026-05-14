@@ -335,6 +335,7 @@ SELECT DISTINCT year, month FROM test_multilevel ORDER BY year, month;
 -- DDL-1: hive_partitioning=true 但缺少 hive_partition_columns
 CREATE EXTERNAL TABLE err (...) INFILE{..., 'hive_partitioning'='true'};
 -- ERROR 20300: hive_partition_columns is required when hive_partitioning is enabled ✅
+-- 说明: 当前版本采用显式分区列模式；不声明分区列并自动推断 schema 是后续 enhancement (#24390)
 
 -- DDL-2: 有 hive_partition_columns 但没有 hive_partitioning=true
 CREATE EXTERNAL TABLE err (...) INFILE{..., 'hive_partition_columns'='part_id'};
@@ -1183,6 +1184,7 @@ SELECT COUNT(*) FROM edge_list_call_s3 WHERE year = 1 AND month = 1;  -- 22 ✅
 | #24374 | [Bug]: CREATE INDEX/UNIQUE on external table causes panic | s0 | Open |
 | #24375 | [Enhancement]: Parquet FixedSizeList → VECF32/VECF64 直接映射 | s1 | Open |
 | #24385 | [Bug]: COUNT(*) silently skips partitions with unconvertible hive values | s1 | Open |
+| #24390 | [Enhancement]: Support auto-inference of Hive partition columns from key=value directories | s1 | Open |
 
 ---
 
@@ -1190,7 +1192,7 @@ SELECT COUNT(*) FROM edge_list_call_s3 WHERE year = 1 AND month = 1;  -- 22 ✅
 
 1. **功能完备性**: 22/28 数据类型通过 Hive Parquet 外部表正确读取；JSON/ENUM/non-UTC TIMESTAMP/跨类型转换/VECF32/VECF64 有问题 (6 个 open issue)
 2. **稳定性**: 2.8 亿+ 行数据，20 项 unhappy path 测试，各种查询模式下均无 hang/OOM (但 CREATE INDEX 会 panic)
-3. **分区支持**: 2000 分区 × 50K 行 (1亿行, 21GB) 正常工作，分区裁剪有效，100→2000 分区性能无退化
+3. **分区支持**: 当前版本采用显式 `hive_partition_columns` 模式；在声明分区列后，2000 分区 × 50K 行 (1亿行, 21GB) 正常工作，虚拟列和分区裁剪有效，100→2000 分区性能无退化。仅根据 `key=value/` 目录自动推断分区列 schema 未纳入当前版本，作为 #24390 enhancement 跟踪。
 4. **性能 (本地)**: 
    - 高分区场景 (2000 分区): **MO 全面优于 ClickHouse** (13/15 查询更快，最大 7.4x)
    - 少分区计算密集场景 (84 分区): CK 在 SUM/窗口函数上更快 (2-29x)
@@ -1213,4 +1215,3 @@ SELECT COUNT(*) FROM edge_list_call_s3 WHERE year = 1 AND month = 1;  -- 22 ✅
 13. **深度不匹配**: 更深的忽略、更浅的忽略 ✅
 14. **隐藏文件/非 Parquet**: .xxx/_xxx 开头被跳过, 非.parquet 扩展被跳过, .snappy.parquet/.gzip.parquet/.PARQUET 全识别 ✅
 15. **3.0-dev OOM 问题在 main 分支未复现**
-
