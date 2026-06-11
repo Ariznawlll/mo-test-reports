@@ -1,4 +1,4 @@
-# Checkpoint Dump 工具详细测试用例设计
+# Checkpoint Dump 工具测试方案
 
 ## 1. 测试目标
 
