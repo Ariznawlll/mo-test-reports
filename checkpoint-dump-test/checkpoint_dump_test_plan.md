@@ -11,9 +11,72 @@
 - 失败路径清晰：错误信息明确，不产生容易误判为成功的半截文件。
 - 兼容升级可靠：3.0-dev 产生的 checkpoint 在 4.0-dev 中可按预期 dump 和恢复。
 
-## 2. 测试对象和命令矩阵
+## 2. 基于回归数据的执行策略
 
-### 2.1 导出粒度
+第一轮测试优先复用 MatrixOne 已有 SQL 回归测试产生的数据，不单独建设大规模造数流程。回归用例本身已经覆盖大量 DDL、DML、类型、表达式、边界值和历史问题，用它作为 checkpoint dump 的数据源，可以更快暴露真实兼容性问题。
+
+### 2.1 总体思路
+
+| 步骤 | 操作 | 产物 | 目的 |
+|---|---|---|---|
+| 1 | 启动源端 MO，执行现有回归测试集合 | 源端 `mo-data`、回归数据库/表 | 复用已有数据覆盖面 |
+| 2 | 回归执行完成后停止写入，等待或触发 checkpoint | 稳定 checkpoint、latest ts | 固定 dump 快照 |
+| 3 | 从源端导出对象清单 | account_id、database_id、table_id、表类型、行数 | 确定 dump 范围 |
+| 4 | 对源端库表生成基线 | schema、row count、checksum、关键查询结果 | 作为恢复后对比标准 |
+| 5 | 使用 `mo-tool ckp dump` 从回归 `mo-data` 离线导出 | CSV、`restore.sql`、dump 日志 | 验证 checkpoint 工具 |
+| 6 | 启动干净目标 MO，执行 `restore.sql` 或 `LOAD DATA` | 恢复后的库表 | 验证 dump 产物可恢复 |
+| 7 | 对恢复库执行同样的基线 SQL | 恢复端 schema/count/checksum/result | 和源端基线对比 |
+| 8 | 对回归未覆盖的类型/约束/表形态补少量专项用例 | 补充库表 | 封住覆盖缺口 |
+
+### 2.2 回归数据选择
+
+| 类型 | 选择原则 | dump 范围 | 说明 |
+|---|---|---|---|
+| 全量冒烟 | 选一批稳定回归库 | database/account | 验证目录结构、批量导出、restore.sql |
+| 类型覆盖 | 从回归中挑包含多数据类型的表 | table/database | 优先验证 CSV 编码和 load 正确性 |
+| DDL 覆盖 | 选含 PK/UK/FK/default/auto_increment/comment/index 的表 | table/database | 验证 DDL 还原能力 |
+| DML 覆盖 | 选经历 insert/update/delete/truncate/alter 的回归库 | database | 验证 checkpoint 可见性 |
+| 大数据覆盖 | 复用回归或已有性能回归中的大表 | table/database | 验证吞吐、内存和大文件 |
+| 多租户覆盖 | 复用多 account 回归数据 | account | 验证 account 级导出 |
+
+### 2.3 源端基线采集
+
+回归数据 dump 前必须先采集源端基线，否则恢复后无法判断“数据正确”还是“只是 load 成功”。
+
+| 基线 | 建议采集方式 | 用途 |
+|---|---|---|
+| 对象清单 | `mo_database`、`mo_tables`、`information_schema` | 确定 database_id/table_id/account_id |
+| 建表语句 | `SHOW CREATE TABLE` | 对比 DDL |
+| 行数 | `SELECT COUNT(*) FROM t` | 快速发现丢行/多行 |
+| 主键范围 | `MIN(pk)`, `MAX(pk)` | 快速发现范围异常 |
+| 分桶 checksum | `GROUP BY pk % N` 或按稳定列分桶 | 大表对比 |
+| 关键查询结果 | 复用回归 result 或自定义 select | 验证复杂类型和表达式 |
+| 约束行为 | 恢复后执行负向插入/更新 | 验证 PK/UK/FK/default 等仍生效 |
+
+### 2.4 和现有回归的关系
+
+| 内容 | 处理方式 |
+|---|---|
+| 已被回归覆盖的数据类型/DDL/DML | 直接复用回归数据，不重复造数 |
+| 回归 result 文件已有稳定预期 | 恢复端重新执行同类查询，对比 result |
+| 回归没有稳定主键的大表 | 用行数 + 多列 checksum + 抽样查询对比 |
+| 回归没有覆盖的表类型/列类型/约束 | 使用第 9 节的专项库补齐 |
+| 外部表/临时表/视图等特殊对象 | 先以回归真实行为为准，再明确工具应该导出、跳过还是报错 |
+
+### 2.5 第一轮执行优先级
+
+| 优先级 | 内容 | 原因 |
+|---|---|---|
+| P0 | 回归库 database dump + restore + count/checksum | 最快验证主流程 |
+| P0 | 典型单表 table dump + restore | 定位单表 CSV/DDL 问题 |
+| P0 | unhappy path：错误 id、错误路径、非法 ts、无权限目录 | 成本低，能快速发现体验问题 |
+| P1 | 大表/宽表/大字段表 dump | 验证性能和内存 |
+| P1 | 3.0-dev 回归数据升级到 4.0-dev 后 dump | 验证领导关注的兼容性 |
+| P2 | 回归缺口专项库 | 全类型、全约束、特殊对象收尾 |
+
+## 3. 测试对象和命令矩阵
+
+### 3.1 导出粒度
 
 | ID | 场景 | 命令模板 | 期望 |
 |---|---|---|---|
@@ -28,7 +91,7 @@
 | CMD-009 | latest 快照 | 不带 `--ts` | 使用最新 checkpoint，可恢复最新可见数据 |
 | CMD-010 | `--no-load` | `--load-script --no-load` | 只生成 DDL，不生成或不执行 `LOAD DATA` |
 
-### 2.2 参数组合
+### 3.2 参数组合
 
 | ID | 参数组合 | 覆盖点 | 期望 |
 |---|---|---|---|
@@ -43,9 +106,9 @@
 | ARG-009 | `-o` 为目录 | load script | 目录路径语义正确 |
 | ARG-010 | `--output-dir` 和 `-o` 同时存在 | db/account 模式 | 语义明确，不把 CSV 和 SQL 写错位置 |
 
-## 3. Schema 覆盖测试
+## 4. Schema 覆盖测试
 
-### 3.1 表类型覆盖
+### 4.1 表类型覆盖
 
 | ID | 表类型 | 建表/数据准备 | dump 粒度 | 验证点 | 期望 |
 |---|---|---|---|---|---|
@@ -68,7 +131,7 @@
 | TBL-017 | 带 comment 表 | table comment + column comment | table/db/account | 注释 | `SHOW CREATE TABLE`/information_schema 一致 |
 | TBL-018 | 特殊表名 | 关键字、大小写、中文、空格、特殊符号 | table/db/account | 标识符转义、文件名清洗 | DDL 正确加反引号，CSV 文件名安全 |
 
-### 3.2 数据类型覆盖
+### 4.2 数据类型覆盖
 
 每种类型都需要至少覆盖：正常值、边界值、`NULL`、默认值、CSV 特殊字符/转义、dump 后 load 一致性。大字段类型还要覆盖大值和内存占用。
 
@@ -105,7 +168,7 @@
 | TYPE-029 | vector | `VECTOR(n)` | `[1,2,3]`, 小数向量、零向量、NULL | 维度和值一致 |
 | TYPE-030 | datalink | `DATALINK` | 合法 URI、空值、特殊字符 URI | 链接值一致 |
 
-### 3.3 列属性和约束覆盖
+### 4.3 列属性和约束覆盖
 
 | ID | 约束/属性 | 建表示例 | 数据准备 | 验证点 | 期望 |
 |---|---|---|---|---|---|
@@ -133,7 +196,7 @@
 | CONS-022 | 列名特殊字符 | `` `a-b` ``, `` `中文列` `` | 任意数据 | 标识符转义 | DDL/load 正确 |
 | CONS-023 | 不可恢复约束冲突 | 目标库已有冲突表 | 执行 restore.sql | 错误提示 | 失败可诊断，不静默覆盖 |
 
-### 3.4 索引覆盖
+### 4.4 索引覆盖
 
 | ID | 索引类型 | 建表/建索引 | 验证点 | 期望 |
 |---|---|---|---|---|
@@ -144,9 +207,9 @@
 | IDX-005 | vector IVFFLAT | `CREATE INDEX ... USING IVFFLAT` | 向量索引 DDL | load 后索引存在或明确重建策略 |
 | IDX-006 | vector HNSW | `CREATE INDEX ... USING HNSW` | 向量索引 DDL | load 后索引存在或明确重建策略 |
 
-## 4. 数据正确性测试
+## 5. 数据正确性测试
 
-### 4.1 dump + load 标准流程
+### 5.1 dump + load 标准流程
 
 | 步骤 | 操作 | 验证 |
 |---|---|---|
@@ -157,7 +220,7 @@
 | 5 | 对比源库和目标库 | schema、行数、checksum、sample rows 一致 |
 | 6 | 继续插入一行验证约束 | PK/UK/FK/auto_increment/default 行为一致 |
 
-### 4.2 推荐校验 SQL
+### 5.2 推荐校验 SQL
 
 | ID | 校验项 | SQL/方法 |
 |---|---|---|
@@ -172,7 +235,7 @@
 | CHECK-009 | CSV 行数 | 文件行数减 header/comment 等于可见行数 |
 | CHECK-010 | 特殊字符 | 精确查询包含逗号、引号、换行的行 |
 
-### 4.3 DML/MVCC 可见性
+### 5.3 DML/MVCC 可见性
 
 | ID | 场景 | 数据准备 | dump ts | 期望 |
 |---|---|---|---|---|
@@ -189,9 +252,9 @@
 | MVCC-011 | 长事务未提交 | 开事务插入不提交，触发 dump | latest | 未提交数据不可见 |
 | MVCC-012 | dump 时并发写入 | dump 过程中持续 insert/update/delete | 固定 ts/latest | dump 对应同一快照，不混入半新半旧数据 |
 
-## 5. Unhappy Path 详细用例
+## 6. Unhappy Path 详细用例
 
-### 5.1 参数和对象错误
+### 6.1 参数和对象错误
 
 | ID | 场景 | 命令/操作 | 期望 |
 |---|---|---|---|
@@ -210,7 +273,7 @@
 | ERR-013 | `--load-script --no-load` 但未指定输出目录 | 缺少 `-o`/`--output-dir` | 失败或 stdout DDL，行为需固定 |
 | ERR-014 | db/account 模式缺少 `--output-dir` | `--database-id=1 <mo-data>` | 失败，提示缺少输出目录 |
 
-### 5.2 文件系统和对象存储错误
+### 6.2 文件系统和对象存储错误
 
 | ID | 场景 | 操作 | 期望 |
 |---|---|---|---|
@@ -230,7 +293,7 @@
 | S3-004 | 网络中断 | dump 中断网络 | 失败或重试后失败，不能 hang |
 | S3-005 | 远端对象缺失 | 删除部分 checkpoint object | 失败，不 panic |
 
-### 5.3 checkpoint/metadata 损坏
+### 6.3 checkpoint/metadata 损坏
 
 | ID | 场景 | 操作 | 期望 |
 |---|---|---|---|
@@ -241,7 +304,7 @@
 | CORR-005 | schema metadata 异常 | 人工构造非法 schema | 失败，错误定位到对象/table |
 | CORR-006 | DDL 无法重新执行 | 特殊约束或版本差异 | restore.sql 中标记或失败清晰 |
 
-### 5.4 load 恢复错误
+### 6.4 load 恢复错误
 
 | ID | 场景 | 操作 | 期望 |
 |---|---|---|---|
@@ -253,7 +316,7 @@
 | LOAD-ERR-006 | FK 建表顺序错误 | 父子表恢复 | restore.sql 应正确排序 |
 | LOAD-ERR-007 | auto_increment 恢复后继续写 | load 后插入默认 id | id 不冲突，序列推进正确 |
 
-## 6. 性能和大数据测试
+## 7. 性能和大数据测试
 
 | ID | 场景 | 数据规模 | 命令 | 指标 | 期望 |
 |---|---|---|---|---|---|
@@ -269,7 +332,7 @@
 | PERF-010 | S3/MinIO | 大表/多表 | 远端 mo-data | 网络吞吐、重试 | 可完成或失败清晰 |
 | PERF-011 | dump + load 端到端 | 大表/多表 | restore.sql | RTO、总耗时 | 数据一致 |
 
-## 7. 3.0-dev 到 4.0-dev 兼容性测试
+## 8. 3.0-dev 到 4.0-dev 兼容性测试
 
 | ID | 源数据 | 操作 | dump 工具 | dump ts | load 目标 | 期望 |
 |---|---|---|---|---|---|---|
@@ -282,9 +345,9 @@
 | COMP-007 | 3.0 不支持/4.0 新增类型 | 分别建表验证 | 4.0-dev | old/new | 4.0-dev | 旧类型可读，新类型可 dump |
 | COMP-008 | 3.0 alter 后升级 | add/drop/modify column | 4.0-dev | old/new | 4.0-dev | schema 版本链正确 |
 
-## 8. 最小全覆盖测试库建议
+## 9. 回归缺口补充专项库
 
-建议准备 4 个 database，便于拆分风险：
+回归数据优先，但它不一定覆盖 checkpoint dump 需要的所有边界。建议只对缺口准备 4 个专项 database，避免把测试工作变成重复造数：
 
 | database | 内容 | 用途 |
 |---|---|---|
@@ -293,7 +356,7 @@
 | `ckp_tables` | 普通表、空表、临时表、视图、外部表、分区表、cluster by | 表形态覆盖 |
 | `ckp_mvcc_perf` | DML 历史快照、大表、多表、多库 | MVCC、性能、稳定性 |
 
-## 9. 通过准则
+## 10. 通过准则
 
 | 类别 | 通过标准 |
 |---|---|
@@ -305,7 +368,7 @@
 | 性能 | 大数据场景达到约定基线，无 OOM、无 hang、无不可控临时文件 |
 | 兼容 | 3.0-dev checkpoint 在 4.0-dev 指定 ts/latest 场景下恢复正确 |
 
-## 10. 参考依据
+## 11. 参考依据
 
 - MatrixOne Data Types Overview：官方文档列出整数、浮点、bit、字符串、JSON、日期时间、bool、decimal、UUID、vector、datalink 等类型。
 - MatrixOne CREATE TABLE：官方语法包含 temporary table、column definition、primary key、foreign key、auto_increment、comment、partition、cluster by 等。
