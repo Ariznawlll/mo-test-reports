@@ -272,6 +272,16 @@
 | ERR-012 | 非法 row-order | `--row-order=random` | 失败，提示合法值 |
 | ERR-013 | `--load-script --no-load` 但未指定输出目录 | 缺少 `-o`/`--output-dir` | 失败或 stdout DDL，行为需固定 |
 | ERR-014 | db/account 模式缺少 `--output-dir` | `--database-id=1 <mo-data>` | 失败，提示缺少输出目录 |
+| ERR-015 | table name 不存在 | `--database-id=<dbid> --table=not_exists` | 失败并提示表不存在，不能生成空 CSV/restore.sql |
+| ERR-016 | table name 歧义 | 只传 `--table=<name>`，多个 database/account 下同名 | 失败并提示需要 `--database-id`/`--account-id` 消歧 |
+| ERR-017 | account 和 database 不匹配 | `--account-id=<aid1> --database-id=<dbid_of_aid2>` | 失败或导出 0 表，日志必须明确说明无匹配对象 |
+| ERR-018 | account 和 table 不匹配 | `--account-id=<aid1> --table-id=<table_of_aid2>` | 失败，不能跨租户误导出 |
+| ERR-019 | `--table-id` 与 `--table` 指向不同表 | 同时传冲突对象 | 失败并提示参数冲突 |
+| ERR-020 | `--jobs=0` | db/account batch dump | 明确拒绝或等价默认值，行为固定 |
+| ERR-021 | `--jobs` 为负数/非数字 | `--jobs=-1` / `--jobs=abc` | 失败，提示非法 jobs |
+| ERR-022 | `--jobs` 过大 | `--jobs=10000` | 有上限或资源保护，不能 OOM/hang |
+| ERR-023 | `--fs-name` 不存在 | 指定不存在 fileservice | 失败并提示 fileservice 名称 |
+| ERR-024 | `--fs-config` 文件不存在/格式错误 | 指定错误 config | 失败并提示 config 读取/解析错误 |
 
 ### 6.2 文件系统和对象存储错误
 
@@ -287,11 +297,22 @@
 | FS-008 | 输出路径是文件但期望目录 | load-script `-o <file>` | 失败，提示路径类型错误 |
 | FS-009 | 磁盘空间不足 | 使用受限空间目录 | 失败，错误可诊断，部分文件标记清楚 |
 | FS-010 | 中途 kill 进程 | dump 大表时 kill | 不留下被误判为完整的 `restore.sql` |
+| FS-011 | 传入 mo-data 上层目录 | 传 `$MO_DATA` 而不是 `$MO_DATA/shared` | 失败信息可诊断，例如明确无 checkpoint 或提示正确 fileservice 根目录 |
+| FS-012 | 传入 ckp 子目录 | 传 `$MO_DATA/shared/ckp` | 失败并提示目录层级不正确 |
+| FS-013 | 输出目录父路径不存在 | `-o /not/exist/out` | 自动创建完整父目录或明确失败，行为固定 |
+| FS-014 | 输出目录中已有半截旧文件 | 复用上次失败的输出目录 | 覆盖/跳过/失败策略明确，不能混入旧 CSV |
+| FS-015 | 输出目录和输入目录相同 | `-o` 指向 checkpoint 数据目录内 | 拒绝或强警告，避免污染源数据 |
+| FS-016 | CSV 文件名冲突 | 不同表名清洗后同名 | 文件名需唯一，不能互相覆盖 |
+| FS-017 | 文件名特殊字符 | 表名包含空格、斜杠、中文、反引号 | CSV 文件名安全，restore.sql 引用正确 |
 | S3-001 | S3 endpoint 错误 | 错误 endpoint | 失败超时可控 |
 | S3-002 | AK/SK 错误 | 错误凭证 | 失败，鉴权错误明确 |
 | S3-003 | bucket 不存在 | 错误 bucket | 失败，bucket/path 信息明确 |
 | S3-004 | 网络中断 | dump 中断网络 | 失败或重试后失败，不能 hang |
 | S3-005 | 远端对象缺失 | 删除部分 checkpoint object | 失败，不 panic |
+| S3-006 | `--s3` 参数不完整 | 缺 bucket/endpoint/key-prefix 等 | 失败，提示缺少字段 |
+| S3-007 | backend 不支持 | `--backend=OSS` | 失败，提示合法 backend |
+| S3-008 | key-prefix 错误 | 指向不存在前缀 | 失败，不能误判为空 checkpoint |
+| S3-009 | S3 权限只读/无 list 权限 | 凭证无法 list/get | 失败信息区分 list/get 权限问题 |
 
 ### 6.3 checkpoint/metadata 损坏
 
@@ -303,8 +324,31 @@
 | CORR-004 | 表元数据存在但数据 object 缺失 | 删除表数据 object | 失败，不导出伪空表 |
 | CORR-005 | schema metadata 异常 | 人工构造非法 schema | 失败，错误定位到对象/table |
 | CORR-006 | DDL 无法重新执行 | 特殊约束或版本差异 | restore.sql 中标记或失败清晰 |
+| CORR-007 | 无可用 checkpoint | 空 `shared/ckp` 或未生成 checkpoint | 失败并提示 no checkpoint timestamp，不 panic |
+| CORR-008 | 只有 GC checkpoint | 仅存在 `shared/gc` 相关文件 | 失败信息明确，不能把 gc 文件当数据 checkpoint |
+| CORR-009 | checkpoint chain 断裂 | 删除中间 meta 文件 | 失败并定位断裂区间 |
+| CORR-010 | checkpoint ts 边界文件存在但数据缺失 | meta 存在、object 不存在 | 失败，不导出部分成功表为完整成功 |
+| CORR-011 | catalog 可读但用户表 object 损坏 | list databases 成功、dump 表失败 | batch dump 最终退出码非 0，并列出失败表 |
+| CORR-012 | DDL metadata 缺失索引 | 源表有二级/向量索引 | restore.sql 应保留索引；缺失时 checksum 可过但 DDL 校验失败 |
 
-### 6.4 load 恢复错误
+### 6.4 生成 SQL/DDL 错误
+
+| ID | 场景 | 操作 | 期望 |
+|---|---|---|---|
+| SQL-ERR-001 | `parallel 'true'` 位置错误 | `parallel` 生成在 `IGNORE 1 LINES` 前 | load 报 parser error；工具应生成合法顺序：`IGNORE 1 LINES` 后再 `parallel 'true'` |
+| SQL-ERR-002 | header 与 `IGNORE 1 LINES` 不匹配 | 带 `--header` 但 SQL 未忽略 header | load 后首行被当数据或报错，应避免 |
+| SQL-ERR-003 | 无 header 却生成 `IGNORE 1 LINES` | 不带 `--header --load-script` | load 丢第一行，应避免 |
+| SQL-ERR-004 | 表/列关键字未转义 | 表名/列名为 SQL keyword | restore.sql 可执行 |
+| SQL-ERR-005 | 表/列名包含反引号 | 标识符中有反引号 | restore.sql 正确 escape |
+| SQL-ERR-006 | 字符串 default/comment 未转义 | comment/default 含引号、换行 | DDL 可执行且元数据一致 |
+| SQL-ERR-007 | vector index 丢失 | 源表有 IVFFLAT/HNSW index | 恢复后 `SHOW CREATE TABLE` 保持索引定义 |
+| SQL-ERR-008 | 二级索引丢失 | 源表有普通/唯一/fulltext index | 恢复后索引存在 |
+| SQL-ERR-009 | 分区定义丢失 | 源表为 partition table | 恢复后分区 DDL 一致 |
+| SQL-ERR-010 | FK 建表顺序不合法 | 子表 DDL 早于父表 | restore.sql 能成功执行 |
+| SQL-ERR-011 | LOAD DATA 路径不可访问 | restore.sql 使用生成机器绝对路径，目标 MO 在另一机器 | load 失败应易诊断；文档需说明路径要求 |
+| SQL-ERR-012 | `--meta-comments` 生成注释影响 load | CSV 头部有 `--` 注释 | restore.sql 应正确跳过注释或禁止直接 load |
+
+### 6.5 load 恢复错误
 
 | ID | 场景 | 操作 | 期望 |
 |---|---|---|---|
@@ -315,6 +359,27 @@
 | LOAD-ERR-005 | CSV 内容被截断 | 截断 CSV | load 失败或 checksum 不一致 |
 | LOAD-ERR-006 | FK 建表顺序错误 | 父子表恢复 | restore.sql 应正确排序 |
 | LOAD-ERR-007 | auto_increment 恢复后继续写 | load 后插入默认 id | id 不冲突，序列推进正确 |
+| LOAD-ERR-008 | 普通租户权限不足 | 普通租户账号无 create/load 权限 | load 失败，错误明确 |
+| LOAD-ERR-009 | 恢复系统库到普通租户 | load `mo_catalog`/`system` 等系统库 | 不建议执行；若执行需失败清晰，不能破坏租户元数据 |
+| LOAD-ERR-010 | 目标租户已有同名库但表不完整 | restore.sql 继续执行 | 不能混入旧数据；建议测试 drop 后恢复和未 drop 恢复两种行为 |
+| LOAD-ERR-011 | load 中途 kill mysql 客户端 | 大表 load 中断 | 目标库处于可诊断状态，重试策略明确 |
+| LOAD-ERR-012 | load 中途重启 MO | 恢复过程中重启 CN/TN | 失败可诊断，不能报成功 |
+| LOAD-ERR-013 | load 磁盘空间不足 | 目标 MO 数据盘写满 | load 失败，错误明确 |
+| LOAD-ERR-014 | load 后 checksum 不一致 | 人工修改 CSV 一行 | 校验能发现，记录定位方式 |
+| LOAD-ERR-015 | load 后 DDL 一致但索引不可用 | `SHOW CREATE` 有索引但查询/插入报错 | 索引恢复需做行为验证 |
+
+### 6.6 并发和资源异常
+
+| ID | 场景 | 操作 | 期望 |
+|---|---|---|---|
+| RES-001 | 多个 dump 同时读同一 checkpoint | 并发启动多个 table/database dump | 不互相污染，性能下降可接受 |
+| RES-002 | dump 和 checkpoint GC 并发 | dump 时后台 GC 删除旧 object | 固定 ts dump 不受影响；失败时错误明确 |
+| RES-003 | dump 和源库继续写入并发 | latest dump 期间持续写入 | dump 基于同一快照，不混入半新半旧数据 |
+| RES-004 | 内存限制较低 | 使用 cgroup/容器限制内存 | 工具限流或失败清晰，不 OOM kill |
+| RES-005 | CPU 限制较低 | 降低 CPU quota | 可完成，性能指标记录 |
+| RES-006 | 输出盘 IO 慢 | 使用低速盘/限速盘 | 不 hang，进度日志持续输出 |
+| RES-007 | 超大 `--row-order=lexical` | 大表 lexical 排序 | 内存风险可控，必要时明确拒绝或提示 |
+| RES-008 | 进度日志异常 | 大表长时间无输出 | 需要周期性 progress，便于判断是否 hang |
 
 ## 7. 性能和大数据测试
 
