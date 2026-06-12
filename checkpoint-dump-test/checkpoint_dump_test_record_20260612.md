@@ -183,7 +183,222 @@ select 'table_20_columns', count(*) from test.table_20_columns;
 
 行数与 dump 阶段 CSV 数据行数一致，验证通过。
 
-## 10. 本轮结论
+## 10. table 级 dump/load 验证
+
+### 10.1 测试对象
+
+本轮补充验证 `ann` 库下两张向量表的 table 级 dump 和 restore。
+
+| 项目 | 值 |
+|---|---|
+| source account_id | `0` |
+| source database | `ann` |
+| source database_id | `333172` |
+| load 目标租户 | `acc_cdc_test:test_account` |
+| load 目标 database | `ann` |
+
+表信息：
+
+| 表 | table_id | 类型特点 |
+|---|---:|---|
+| `ann.items_gist` | `333177` | `vecf32(960)` + IVFFLAT index |
+| `ann.items_sift` | `333173` | `vecf32(128)` + IVFFLAT index |
+
+### 10.2 table 级 dump 命令
+
+`items_gist`：
+
+```bash
+./mo-tool ckp dump \
+  --database-id=333172 \
+  --table=items_gist \
+  --header \
+  --load-script \
+  -o "$OUT/ann_items_gist" \
+  "$CKP_DATA" 2>&1 | tee "$OUT/dump_ann_items_gist.log"
+```
+
+`items_sift`：
+
+```bash
+./mo-tool ckp dump \
+  --database-id=333172 \
+  --table=items_sift \
+  --header \
+  --load-script \
+  -o "$OUT/ann_items_sift" \
+  "$CKP_DATA" 2>&1 | tee "$OUT/dump_ann_items_sift.log"
+```
+
+### 10.3 table 级 dump 结果
+
+| 表 | table_id | visible_rows | physical_rows | CSV | restore.sql |
+|---|---:|---:|---:|---|---|
+| `ann.items_gist` | `333177` | `1,000,000` | `1,000,000` | `/data4/weilu/ckp_dump_20260612_140136/ann_items_gist/account_0/db_333172/items_gist_333177.csv` | `/data4/weilu/ckp_dump_20260612_140136/ann_items_gist/restore.sql` |
+| `ann.items_sift` | `333173` | `1,000,000` | `1,000,000` | `/data4/weilu/ckp_dump_20260612_140136/ann_items_sift/account_0/db_333172/items_sift_333173.csv` | `/data4/weilu/ckp_dump_20260612_140136/ann_items_sift/restore.sql` |
+
+CSV 输出大小：
+
+| 表 | written_bytes |
+|---|---:|
+| `items_gist` | `7,583,671,563` |
+| `items_sift` | `468,818,728` |
+
+### 10.4 table 级 load 命令和结果
+
+`items_gist` load：
+
+```bash
+{
+  echo "LOAD_GIST_START: $(date '+%Y-%m-%d %H:%M:%S')"
+  /usr/bin/time -v mysql -h127.0.0.1 -P6001 -uacc_cdc_test:test_account -p111 \
+    < "$OUT/ann_items_gist/restore.sql"
+  echo "LOAD_GIST_END: $(date '+%Y-%m-%d %H:%M:%S')"
+} 2>&1 | tee "$OUT/ann_items_gist/load_acc_cdc_test.log"
+```
+
+结果：
+
+| 项目 | 值 |
+|---|---|
+| LOAD_GIST_START | `2026-06-12 14:18:49` |
+| LOAD_GIST_END | `2026-06-12 14:18:57` |
+| `time -v` Elapsed | `0:07.53` |
+| Exit status | `0` |
+
+`items_sift` load：
+
+```bash
+{
+  echo "LOAD_SIFT_START: $(date '+%Y-%m-%d %H:%M:%S')"
+  /usr/bin/time -v mysql -h127.0.0.1 -P6001 -uacc_cdc_test:test_account -p111 \
+    < "$OUT/ann_items_sift/restore.sql"
+  echo "LOAD_SIFT_END: $(date '+%Y-%m-%d %H:%M:%S')"
+} 2>&1 | tee "$OUT/ann_items_sift/load_acc_cdc_test.log"
+```
+
+结果：
+
+| 项目 | 值 |
+|---|---|
+| LOAD_SIFT_START | `2026-06-12 14:19:20` |
+| LOAD_SIFT_END | `2026-06-12 14:19:26` |
+| `time -v` Elapsed | `0:05.74` |
+| Exit status | `0` |
+
+### 10.5 table 级数据正确性校验
+
+使用源租户和恢复租户分别执行聚合 checksum，并对 `id % 100` 分桶结果做 diff。
+
+聚合 checksum SQL：
+
+```sql
+select 'items_gist' as tbl,
+       count(*) as cnt,
+       min(id) as min_id,
+       max(id) as max_id,
+       sum(crc32(cast(id as char))) as id_crc_sum,
+       sum(crc32(embedding)) as emb_crc_sum
+from ann.items_gist
+union all
+select 'items_sift' as tbl,
+       count(*) as cnt,
+       min(id) as min_id,
+       max(id) as max_id,
+       sum(crc32(cast(id as char))) as id_crc_sum,
+       sum(crc32(embedding)) as emb_crc_sum
+from ann.items_sift;
+```
+
+源租户和恢复租户聚合结果一致：
+
+```text
+items_sift  1000000  0  999999  2147509531781186  2148181623720352
+items_gist  1000000  0  999999  2147509531781186  2148923198754481
+```
+
+分桶 checksum 校验：
+
+```sql
+select 'items_gist' as tbl,
+       id % 100 as bucket,
+       count(*) as cnt,
+       sum(crc32(cast(id as char))) as id_crc_sum,
+       sum(crc32(embedding)) as emb_crc_sum
+from ann.items_gist
+group by bucket
+union all
+select 'items_sift' as tbl,
+       id % 100 as bucket,
+       count(*) as cnt,
+       sum(crc32(cast(id as char))) as id_crc_sum,
+       sum(crc32(embedding)) as emb_crc_sum
+from ann.items_sift
+group by bucket
+order by tbl, bucket;
+```
+
+校验结果：
+
+| 校验项 | 结果 |
+|---|---|
+| 源租户分桶结果 | `200` rows |
+| 恢复租户分桶结果 | `200` rows |
+| `diff` | 无差异 |
+
+数据正确性结论：`items_gist` 和 `items_sift` 行数、id 范围、全表 checksum、分桶 checksum 均一致。
+
+### 10.6 table 级 DDL 一致性校验
+
+数据一致，但 DDL 不完全一致：恢复后的表缺少源表中的 IVFFLAT 向量索引。该问题已追加到 issue：
+
+- [matrixorigin/matrixone#24943 comment](https://github.com/matrixorigin/matrixone/issues/24943#issuecomment-4688062717)
+
+`items_gist` 源表：
+
+```sql
+CREATE TABLE `items_gist` (
+  `id` int NOT NULL,
+  `embedding` vecf32(960) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ivf_2000` USING ivfflat (`embedding`) lists = 2000  op_type 'vector_l2_ops'
+)
+```
+
+`items_gist` 恢复后：
+
+```sql
+CREATE TABLE `items_gist` (
+  `id` int NOT NULL,
+  `embedding` vecf32(960) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+)
+```
+
+`items_sift` 源表：
+
+```sql
+CREATE TABLE `items_sift` (
+  `id` int NOT NULL,
+  `embedding` vecf32(128) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ivf_500` USING ivfflat (`embedding`) lists = 500  op_type 'vector_l2_ops'
+)
+```
+
+`items_sift` 恢复后：
+
+```sql
+CREATE TABLE `items_sift` (
+  `id` int NOT NULL,
+  `embedding` vecf32(128) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+)
+```
+
+DDL 结论：列定义和主键一致，但 IVFFLAT 向量索引丢失，需研发修复。
+
+## 11. 本轮结论
 
 | 验证项 | 结论 |
 |---|---|
@@ -194,5 +409,11 @@ select 'table_20_columns', count(*) from test.table_20_columns;
 | `restore.sql` 中 `parallel 'true'` 修复后可执行 | 通过 |
 | 普通租户 load | 通过 |
 | load 后行数校验 | 通过 |
+| table 级 dump | 通过 |
+| table 级 load | 通过 |
+| table 级数据 checksum | 通过 |
+| table 级 DDL 一致性 | 不通过，IVFFLAT 向量索引丢失 |
 
-本轮使用回归数据中的大表完成了端到端验证：checkpoint dump 成功，生成 CSV 和 `restore.sql` 成功，`restore.sql` load 到普通租户成功，恢复后行数和 dump 数据一致。
+本轮使用回归数据中的大表完成了 database 级端到端验证：checkpoint dump 成功，生成 CSV 和 `restore.sql` 成功，`restore.sql` load 到普通租户成功，恢复后行数和 dump 数据一致。
+
+补充的 table 级验证中，`ann.items_gist` 和 `ann.items_sift` 的数据 checksum 一致，但恢复后的 DDL 缺少 IVFFLAT 向量索引，已记录为 ckp issue 合集中的问题 2。
