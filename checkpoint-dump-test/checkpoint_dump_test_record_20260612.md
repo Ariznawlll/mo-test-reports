@@ -554,7 +554,171 @@ ERROR 20101 (HY000): internal error: the input value '
 | 去掉 `parallel` 后单独 load `part` | 仍失败 |
 | 初步判断 | CSV 特殊字符转义或 `LOAD DATA` 解析问题 |
 
-## 12. 本轮结论
+## 12. `tpcc_1000` database 级 dump/load 验证
+
+### 12.1 测试对象
+
+| 项目 | 值 |
+|---|---|
+| source account_id | `0` |
+| source database | `tpcc_1000` |
+| source database_id | `332565` |
+| dump 输出目录 | `/data4/weilu/ckp_dump_20260612_145510/tpcc_1000_db_332565` |
+| restore.sql | `/data4/weilu/ckp_dump_20260612_145510/tpcc_1000_db_332565/restore.sql` |
+| load 目标租户 | `acc_cdc_test:test_account` |
+| load 目标 database | `tpcc_1000` |
+
+### 12.2 表清单
+
+`mo-tool ckp list --type=tables --database-id=332565` 可识别 10 张表：
+
+| 表 | table_id |
+|---|---:|
+| `bmsql_config` | `332566` |
+| `bmsql_customer` | `332567` |
+| `bmsql_district` | `332568` |
+| `bmsql_history` | `332569` |
+| `bmsql_item` | `332570` |
+| `bmsql_new_order` | `332571` |
+| `bmsql_oorder` | `332572` |
+| `bmsql_order_line` | `332573` |
+| `bmsql_stock` | `332574` |
+| `bmsql_warehouse` | `332575` |
+
+### 12.3 dump 命令
+
+```bash
+export CKP_DATA=/data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared
+export OUT=/data4/weilu/ckp_dump_20260612_145510
+
+cd /data4/weilu/matrixone
+
+/usr/bin/time -v ./mo-tool ckp dump \
+  --database-id=332565 \
+  --output-dir="$OUT/tpcc_1000_db_332565" \
+  --header \
+  --load-script \
+  --jobs=4 \
+  -o "$OUT/tpcc_1000_db_332565" \
+  "$CKP_DATA" 2>&1 | tee "$OUT/dump_tpcc_1000_db_332565.log"
+```
+
+### 12.4 dump 结果
+
+| 项目 | 结果 |
+|---|---|
+| 导出表数 | `10` |
+| dump 耗时 | `1:05.00` |
+| CPU | `5035%` |
+| 最大内存 | `1,835,560 KB`，约 `1.75 GB` |
+| dump 退出码 | `0` |
+
+CSV 行数：
+
+```text
+          5 bmsql_config_332566.csv
+   30000001 bmsql_customer_332567.csv
+      10001 bmsql_district_332568.csv
+   30092090 bmsql_history_332569.csv
+     100001 bmsql_item_332570.csv
+    9011221 bmsql_new_order_332571.csv
+   30095971 bmsql_oorder_332572.csv
+  300939654 bmsql_order_line_332573.csv
+  100000001 bmsql_stock_332574.csv
+       1001 bmsql_warehouse_332575.csv
+  500249946 total
+```
+
+CSV 包含 header，因此数据行数为每个 CSV 行数减 1。
+
+### 12.5 load 命令和结果
+
+首次执行 load 时因当前 shell 未设置 `$TPCC_OUT`，`"$TPCC_OUT/restore.sql"` 被展开为 `/restore.sql`，未实际执行 SQL。重新设置变量后执行成功：
+
+```bash
+export OUT=/data4/weilu/ckp_dump_20260612_145510
+export TPCC_OUT=$OUT/tpcc_1000_db_332565
+
+mysql -h127.0.0.1 -P6001 -uacc_cdc_test:test_account -p111 \
+  -e "drop database if exists tpcc_1000;"
+
+{
+  echo "LOAD_TPCC1000_START: $(date '+%Y-%m-%d %H:%M:%S')"
+  /usr/bin/time -v mysql -h127.0.0.1 -P6001 -uacc_cdc_test:test_account -p111 \
+    < "$TPCC_OUT/restore.sql"
+  echo "LOAD_TPCC1000_END: $(date '+%Y-%m-%d %H:%M:%S')"
+} 2>&1 | tee "$TPCC_OUT/load_acc_cdc_test.log"
+```
+
+实际结果：
+
+| 项目 | 结果 |
+|---|---|
+| LOAD_TPCC1000_START | `2026-06-12 15:01:25` |
+| LOAD_TPCC1000_END | `2026-06-12 15:03:09` |
+| `time -v` Elapsed | `1:43.28` |
+| load 退出码 | `0` |
+
+### 12.6 表清单和行数校验
+
+源库和普通租户恢复库均包含 10 张表，表清单一致。
+
+行数校验结果：
+
+| 表 | 行数 |
+|---|---:|
+| `bmsql_config` | `4` |
+| `bmsql_customer` | `30,000,000` |
+| `bmsql_district` | `10,000` |
+| `bmsql_history` | `30,092,089` |
+| `bmsql_item` | `100,000` |
+| `bmsql_new_order` | `9,011,220` |
+| `bmsql_oorder` | `30,095,970` |
+| `bmsql_order_line` | `300,939,653` |
+| `bmsql_stock` | `100,000,000` |
+| `bmsql_warehouse` | `1,000` |
+
+行数与 dump 阶段 CSV 数据行数一致。
+
+### 12.7 DDL 一致性校验
+
+对 10 张表分别执行源库和恢复库 `SHOW CREATE TABLE` 并 diff，结果全部一致：
+
+```text
+DDL_OK bmsql_config
+DDL_OK bmsql_customer
+DDL_OK bmsql_district
+DDL_OK bmsql_history
+DDL_OK bmsql_item
+DDL_OK bmsql_new_order
+DDL_OK bmsql_oorder
+DDL_OK bmsql_order_line
+DDL_OK bmsql_stock
+DDL_OK bmsql_warehouse
+```
+
+### 12.8 数据 checksum 尝试
+
+曾尝试对 `tpcc_1000` 做全表全列 checksum；由于数据量约 5 亿行，该方式过重，随后改为按主键前后 1000 行样本 checksum。但带 `ORDER BY ... LIMIT` 的样本 checksum 仍然较重，最终连接被服务端断开：
+
+```text
+ERROR 2013 (HY000): Lost connection to MySQL server during query
+```
+
+后续建议改成更轻量的业务范围抽样，例如按仓库维度选择 `w_id in (1, 500, 1000)`，避免对大表做全表排序或全表 checksum。
+
+### 12.9 `tpcc_1000` 结论
+
+| 验证项 | 结论 |
+|---|---|
+| `tpcc_1000` database 级 dump | 通过 |
+| `tpcc_1000` restore.sql load | 通过 |
+| 表清单一致性 | 通过 |
+| 行数一致性 | 通过 |
+| DDL 一致性 | 通过 |
+| 全表/排序 checksum | 未完成，查询过重导致连接断开 |
+
+## 13. 本轮结论
 
 | 验证项 | 结论 |
 |---|---|
@@ -571,9 +735,14 @@ ERROR 20101 (HY000): internal error: the input value '
 | table 级 DDL 一致性 | 不通过，IVFFLAT 向量索引丢失 |
 | `tpch_100g` database 级 dump | 通过 |
 | `tpch_100g` restore.sql load | 不通过，`part` 表 CSV load 失败 |
+| `tpcc_1000` database 级 dump | 通过 |
+| `tpcc_1000` restore.sql load | 通过 |
+| `tpcc_1000` 行数和 DDL 校验 | 通过 |
 
 本轮使用回归数据中的大表完成了 database 级端到端验证：checkpoint dump 成功，生成 CSV 和 `restore.sql` 成功，`restore.sql` load 到普通租户成功，恢复后行数和 dump 数据一致。
 
 补充的 table 级验证中，`ann.items_gist` 和 `ann.items_sift` 的数据 checksum 一致，但恢复后的 DDL 缺少 IVFFLAT 向量索引，已记录为 ckp issue 合集中的问题 2。
 
 `tpch_100g` 的 database 级 dump 成功，但 load 到 `part` 表失败；去掉 `parallel 'true'` 后仍失败，已单独记录为 `tpch_100g.part` CSV 无法 load 的问题。
+
+`tpcc_1000` 的 database 级 dump 和 restore.sql load 均成功，表清单、行数和 DDL 均一致；全表/排序 checksum 对该规模数据过重，后续改用按业务范围的轻量抽样 checksum。
