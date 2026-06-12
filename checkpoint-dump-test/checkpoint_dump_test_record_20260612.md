@@ -398,7 +398,163 @@ CREATE TABLE `items_sift` (
 
 DDL 结论：列定义和主键一致，但 IVFFLAT 向量索引丢失，需研发修复。
 
-## 11. 本轮结论
+## 11. `tpch_100g` database 级 dump/load 验证
+
+### 11.1 测试对象
+
+| 项目 | 值 |
+|---|---|
+| source account_id | `0` |
+| source database | `tpch_100g` |
+| source database_id | `332525` |
+| dump 输出目录 | `/data4/weilu/ckp_dump_20260612_143026/tpch_100g_db_332525` |
+| restore.sql | `/data4/weilu/ckp_dump_20260612_143026/tpch_100g_db_332525/restore.sql` |
+| load 目标租户 | `acc_cdc_test:test_account` |
+| load 目标 database | `tpch_100g` |
+
+### 11.2 dump 命令
+
+```bash
+export CKP_DATA=/data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared
+export OUT=/data4/weilu/ckp_dump_20260612_143026
+
+cd /data4/weilu/matrixone
+
+/usr/bin/time -v ./mo-tool ckp dump \
+  --database-id=332525 \
+  --output-dir="$OUT/tpch_100g_db_332525" \
+  --header \
+  --load-script \
+  --jobs=4 \
+  -o "$OUT/tpch_100g_db_332525" \
+  "$CKP_DATA" 2>&1 | tee "$OUT/dump_tpch_100g_db_332525.log"
+```
+
+### 11.3 dump 结果
+
+| 项目 | 结果 |
+|---|---|
+| 导出表数 | `8` |
+| dump 耗时 | `3:17.32` |
+| CPU | `5517%` |
+| 最大内存 | `1,358,120 KB`，约 `1.30 GB` |
+| dump 退出码 | `0` |
+
+导出表：
+
+| 表 | table_id | visible_rows |
+|---|---:|---:|
+| `tpch_100g.nation` | `332528` | `25` |
+| `tpch_100g.region` | `332532` | `5` |
+| `tpch_100g.supplier` | `332533` | `1,000,000` |
+| `tpch_100g.customer` | `332526` | `15,000,000` |
+| `tpch_100g.part` | `332530` | `20,000,000` |
+| `tpch_100g.partsupp` | `332531` | `80,000,000` |
+| `tpch_100g.orders` | `332529` | `150,000,000` |
+| `tpch_100g.lineitem` | `332527` | `600,037,902` |
+
+### 11.4 load 命令和失败现象
+
+```bash
+export TPCH_OUT=/data4/weilu/ckp_dump_20260612_143026/tpch_100g_db_332525
+
+mysql -h127.0.0.1 -P6001 -uacc_cdc_test:test_account -p111 \
+  -e "drop database if exists tpch_100g;"
+
+{
+  echo "LOAD_TPCH100G_START: $(date '+%Y-%m-%d %H:%M:%S')"
+  /usr/bin/time -v mysql -h127.0.0.1 -P6001 -uacc_cdc_test:test_account -p111 \
+    < "$TPCH_OUT/restore.sql"
+  echo "LOAD_TPCH100G_END: $(date '+%Y-%m-%d %H:%M:%S')"
+} 2>&1 | tee "$TPCH_OUT/load_acc_cdc_test.log"
+```
+
+实际结果：
+
+| 项目 | 结果 |
+|---|---|
+| LOAD_TPCH100G_START | `2026-06-12 14:37:41` |
+| LOAD_TPCH100G_END | `2026-06-12 14:39:53` |
+| `time -v` Elapsed | `2:11.76` |
+| load 退出码 | `1` |
+| 失败行 | `restore.sql` line `111` |
+| 失败表 | `tpch_100g.part` |
+
+错误信息：
+
+```text
+ERROR 20101 (HY000) at line 111: internal error: the input value '
+```
+
+第 111 行对应 `part` 表的 `LOAD DATA`：
+
+```sql
+LOAD DATA INFILE '/data4/weilu/ckp_dump_20260612_143026/tpch_100g_db_332525/account_0/db_332525/part_332530.csv'
+INTO TABLE `part`
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+parallel 'true'
+;
+```
+
+失败时，普通租户中已经创建/导入了前面的部分表：
+
+```text
+customer
+lineitem
+nation
+orders
+part
+```
+
+后续表未执行：
+
+```text
+partsupp
+region
+supplier
+```
+
+### 11.5 单独验证 `part` 表 load
+
+进入 `tpch_100g` 后，手工执行不带 `parallel 'true'` 的 `LOAD DATA`：
+
+```sql
+use tpch_100g;
+
+LOAD DATA INFILE '/data4/weilu/ckp_dump_20260612_143026/tpch_100g_db_332525/account_0/db_332525/part_332530.csv'
+INTO TABLE `part`
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;
+```
+
+仍然失败：
+
+```text
+ERROR 20101 (HY000): internal error: the input value '
+```
+
+因此该问题不是 `parallel 'true'` 顺序或并行 load 导致，疑似 `part_332530.csv` 中某些字符串字段的 CSV 转义或 `LOAD DATA` 解析问题。
+
+已单独提交 issue：
+
+- [matrixorigin/matrixone#24957](https://github.com/matrixorigin/matrixone/issues/24957)
+
+### 11.6 `tpch_100g` 结论
+
+| 验证项 | 结论 |
+|---|---|
+| `tpch_100g` database 级 dump | 通过 |
+| `tpch_100g` restore.sql load | 不通过 |
+| 失败定位 | `part_332530.csv` 对应 `LOAD DATA` |
+| 去掉 `parallel` 后单独 load `part` | 仍失败 |
+| 初步判断 | CSV 特殊字符转义或 `LOAD DATA` 解析问题 |
+
+## 12. 本轮结论
 
 | 验证项 | 结论 |
 |---|---|
@@ -413,7 +569,11 @@ DDL 结论：列定义和主键一致，但 IVFFLAT 向量索引丢失，需研�
 | table 级 load | 通过 |
 | table 级数据 checksum | 通过 |
 | table 级 DDL 一致性 | 不通过，IVFFLAT 向量索引丢失 |
+| `tpch_100g` database 级 dump | 通过 |
+| `tpch_100g` restore.sql load | 不通过，`part` 表 CSV load 失败 |
 
 本轮使用回归数据中的大表完成了 database 级端到端验证：checkpoint dump 成功，生成 CSV 和 `restore.sql` 成功，`restore.sql` load 到普通租户成功，恢复后行数和 dump 数据一致。
 
 补充的 table 级验证中，`ann.items_gist` 和 `ann.items_sift` 的数据 checksum 一致，但恢复后的 DDL 缺少 IVFFLAT 向量索引，已记录为 ckp issue 合集中的问题 2。
+
+`tpch_100g` 的 database 级 dump 成功，但 load 到 `part` 表失败；去掉 `parallel 'true'` 后仍失败，已单独记录为 `tpch_100g.part` CSV 无法 load 的问题。
