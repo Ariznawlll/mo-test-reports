@@ -718,7 +718,173 @@ ERROR 2013 (HY000): Lost connection to MySQL server during query
 | DDL 一致性 | 通过 |
 | 全表/排序 checksum | 未完成，查询过重导致连接断开 |
 
-## 13. 本轮结论
+## 13. TKE/COS `tpcc_100` database 级 dump 验证
+
+### 13.1 测试对象
+
+| 项目 | 值 |
+|---|---|
+| 环境 | TKE |
+| checkpoint 存储 | COS |
+| COS checkpoint 前缀 | `mo-nightly-gz-1308875761/mo-benchmark-27359437757/data/ckp/` |
+| source account | `sys` / `account_id=0` |
+| source database | `tpcc_100` |
+| database_id | `272577` |
+| dump 输出目录 | `/mnt/disk1/weilu/ckp_dump_tke_tpcc100_20260612_171411/tpcc_100_db_272577` |
+
+本节先记录 TKE/COS checkpoint 输入 + 本地输出目录的 database 级 dump 结果；随后使用最新工具补测 `--out-s3` 输出到 COS 的恢复链路。
+
+### 13.2 COS checkpoint 读取验证
+
+使用 `mo-tool ckp list --backend=S3 --type=databases` 可正常读取 COS checkpoint，输出中包含目标库：
+
+```text
+ACCOUNT_ID  DATABASE  DATABASE_ID
+0           tpcc_100  272577
+```
+
+继续按 database_id 列表：
+
+```text
+ACCOUNT_ID  DATABASE  TABLE             TABLE_ID  REL_KIND
+0           tpcc_100  bmsql_config      272578    r
+0           tpcc_100  bmsql_customer    272579    r
+0           tpcc_100  bmsql_district    272580    r
+0           tpcc_100  bmsql_history     272596    r
+0           tpcc_100  bmsql_item        272581    r
+0           tpcc_100  bmsql_new_order   272597    r
+0           tpcc_100  bmsql_oorder      272582    r
+0           tpcc_100  bmsql_order_line  272583    r
+0           tpcc_100  bmsql_stock       272785    r
+0           tpcc_100  bmsql_warehouse   272786    r
+```
+
+### 13.3 dump 命令
+
+```bash
+export DB_ID=272577
+export CKP_DIR=ckp
+export OUT=/mnt/disk1/weilu/ckp_dump_tke_tpcc100_20260612_171411
+export TPCC_OUT="$OUT/tpcc_100_db_${DB_ID}"
+
+{
+  echo "DUMP_TPCC100_START: $(date '+%Y-%m-%d %H:%M:%S')"
+  /usr/bin/time -v ./mo-tool ckp dump \
+    --backend=S3 \
+    --s3 "$S3_ARGS" \
+    --database-id="$DB_ID" \
+    --output-dir="$TPCC_OUT" \
+    --header \
+    --load-script \
+    --jobs=4 \
+    -o "$TPCC_OUT" \
+    "$CKP_DIR"
+  echo "DUMP_TPCC100_END: $(date '+%Y-%m-%d %H:%M:%S')"
+} 2>&1 | tee "$TPCC_OUT/dump.log"
+```
+
+### 13.4 dump 结果
+
+```text
+DUMP_TPCC100_START: 2026-06-12 17:18:30
+Dumped 10 tables to /mnt/disk1/weilu/ckp_dump_tke_tpcc100_20260612_171411/tpcc_100_db_272577
+Restore script written to /mnt/disk1/weilu/ckp_dump_tke_tpcc100_20260612_171411/tpcc_100_db_272577/restore.sql
+Elapsed (wall clock) time: 2:41.87
+Maximum resident set size: 587704 KB
+Exit status: 0
+DUMP_TPCC100_END: 2026-06-12 17:21:12
+```
+
+CSV 行数如下，包含 header：
+
+| CSV 文件 | 行数 |
+|---|---:|
+| `bmsql_config_272578.csv` | `5` |
+| `bmsql_customer_272579.csv` | `3,000,001` |
+| `bmsql_district_272580.csv` | `1,001` |
+| `bmsql_history_272596.csv` | `3,202,140` |
+| `bmsql_item_272581.csv` | `100,001` |
+| `bmsql_new_order_272597.csv` | `922,790` |
+| `bmsql_oorder_272582.csv` | `3,210,370` |
+| `bmsql_order_line_272583.csv` | `32,117,299` |
+| `bmsql_stock_272785.csv` | `10,000,001` |
+| `bmsql_warehouse_272786.csv` | `101` |
+| total | `52,553,709` |
+
+### 13.5 restore.sql 语法检查
+
+`restore.sql` 中 10 个 `LOAD DATA` 均包含 header 跳过和并行 load 配置，顺序正确：
+
+```sql
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+parallel 'true'
+;
+```
+
+检查结果说明此前发现的 `parallel 'true'` 放在 `IGNORE 1 LINES` 前导致 parser error 的问题，在该版本中未复现。
+
+### 13.6 `--out-s3` 输出到 COS 阻塞问题
+
+研发更新工具后，`mo-tool ckp dump` 新增输出端参数：
+
+```text
+--out-backend string     remote backend for --out-s3: S3 or MINIO
+--out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+```
+
+使用小表 `tpcc_100.bmsql_config` 做 S3/COS 输出冒烟测试：
+
+```bash
+./mo-tool ckp dump \
+  --backend=S3 \
+  --s3 "$S3_ARGS" \
+  --table-id=272578 \
+  --header \
+  --load-script \
+  --out-backend=S3 \
+  --out-s3 "$OUT_S3_ARGS" \
+  -o "bmsql_config" \
+  "$CKP_DIR"
+```
+
+执行结果：
+
+```text
+DUMP_CONFIG_S3_START: 2026-06-12 17:54:18
+Table 272578 tpcc_100.bmsql_config dumped to bmsql_config/account_0/db_272577/bmsql_config_272578.csv
+Restore script written to bmsql_config/restore.sql
+Elapsed (wall clock) time: 2:06.23
+Exit status: 0
+DUMP_CONFIG_S3_END: 2026-06-12 17:56:24
+```
+
+COS 控制台可看到对应 CSV 和 `restore.sql`，说明 `--out-s3` 可以把 dump 产物写入 COS。
+
+但生成的 `restore.sql` 中 `LOAD DATA INFILE` 仍然是相对路径：
+
+```sql
+LOAD DATA INFILE 'bmsql_config/account_0/db_272577/bmsql_config_272578.csv'
+INTO TABLE `bmsql_config`
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+parallel 'true'
+;
+```
+
+该路径在通过集群 IP load 时由服务端 CN pod 解析，CN pod 无法访问该相对路径，导致 TKE/COS 场景仍无法直接端到端 restore。期望行为是：当使用 `--out-s3` 时，`restore.sql` 中的 `LOAD DATA INFILE` 生成 COS/S3 可访问路径，或生成 MatrixOne 支持的远端 load 语法。
+
+已单独提 bug：
+
+```text
+https://github.com/matrixorigin/matrixone/issues/24965
+```
+
+当前状态：`--out-s3` 写 COS 冒烟通过，但 `restore.sql` 路径错误导致普通租户 load 阻塞。该问题修复前，TKE/COS `tpcc_100` 的 S3 输出端到端恢复测试暂停，下周继续验证。
+
+## 14. 本轮结论
 
 | 验证项 | 结论 |
 |---|---|
@@ -738,6 +904,9 @@ ERROR 2013 (HY000): Lost connection to MySQL server during query
 | `tpcc_1000` database 级 dump | 通过 |
 | `tpcc_1000` restore.sql load | 通过 |
 | `tpcc_1000` 行数和 DDL 校验 | 通过 |
+| TKE/COS `tpcc_100` database 级 dump | 通过 |
+| TKE/COS `tpcc_100` `--out-s3` 写 COS | 冒烟通过 |
+| TKE/COS `tpcc_100` `--out-s3` restore.sql load | 阻塞，`restore.sql` 仍生成相对路径，见 #24965 |
 
 本轮使用回归数据中的大表完成了 database 级端到端验证：checkpoint dump 成功，生成 CSV 和 `restore.sql` 成功，`restore.sql` load 到普通租户成功，恢复后行数和 dump 数据一致。
 
@@ -746,3 +915,5 @@ ERROR 2013 (HY000): Lost connection to MySQL server during query
 `tpch_100g` 的 database 级 dump 成功，但 load 到 `part` 表失败；去掉 `parallel 'true'` 后仍失败，已单独记录为 `tpch_100g.part` CSV 无法 load 的问题。
 
 `tpcc_1000` 的 database 级 dump 和 restore.sql load 均成功，表清单、行数和 DDL 均一致；全表/排序 checksum 对该规模数据过重，后续改用按业务范围的轻量抽样 checksum。
+
+TKE/COS 场景中，`tpcc_100` 已验证可以从 COS checkpoint 成功 list 和 dump 到本地目录，10 张表 CSV 及 `restore.sql` 均生成成功。最新工具的 `--out-s3` 可将 dump 产物写到 COS，但 `restore.sql` 中 `LOAD DATA INFILE` 仍为相对路径，导致通过集群 IP 恢复到普通租户时 CN pod 无法访问 CSV；该问题已记录为 #24965，当前阻塞 TKE/COS S3 输出端到端 restore 测试。
