@@ -130,10 +130,10 @@ COMPARE_DIR="$OUT/compare"
 mkdir -p "$LOG_DIR" "$DUMP_DIR" "$COMPARE_DIR"
 
 DATABASES=(
-  "publisher_all:$PUBLISHER_USER:$DB_PUB_ALL"
-  "publisher_part:$PUBLISHER_USER:$DB_PUB_PART"
-  "subscriber_all:$SUBSCRIBER_USER:$DB_SUB_ALL"
-  "subscriber_part:$SUBSCRIBER_USER:$DB_SUB_PART"
+  $'publisher_all\t'"$PUBLISHER_USER"$'\t'"$DB_PUB_ALL"
+  $'publisher_part\t'"$PUBLISHER_USER"$'\t'"$DB_PUB_PART"
+  $'subscriber_all\t'"$SUBSCRIBER_USER"$'\t'"$DB_SUB_ALL"
+  $'subscriber_part\t'"$SUBSCRIBER_USER"$'\t'"$DB_SUB_PART"
 )
 
 MANIFEST="$OUT/table_manifest.tsv"
@@ -360,7 +360,7 @@ write_database_metadata_summary() {
 
   printf 'label\tsource_user\tdb\tmetadata_status\tdb_id\n' > "$DB_METADATA_SUMMARY"
   for item in "${DATABASES[@]}"; do
-    IFS=: read -r label user db <<< "$item"
+    IFS=$'\t' read -r label user db <<< "$item"
     db_id="$(awk -v db="$db" '$2 == db {print $3; exit}' "$OUT/databases.txt" 2>/dev/null || true)"
     if [[ -n "$db_id" ]]; then
       printf '%s\t%s\t%s\tFOUND\t%s\n' "$label" "$user" "$db" "$db_id" >> "$DB_METADATA_SUMMARY"
@@ -384,7 +384,7 @@ wait_databases() {
     write_database_metadata_summary
     all_found="1"
     for item in "${DATABASES[@]}"; do
-      IFS=: read -r label user db <<< "$item"
+      IFS=$'\t' read -r label user db <<< "$item"
       if ! awk -v db="$db" '$2 == db {found=1} END {exit found ? 0 : 1}' "$OUT/databases.txt"; then
         all_found="0"
       fi
@@ -411,7 +411,7 @@ collect_table_manifest() {
 
   printf 'label\tsource_user\tdb\tdb_id\ttable\ttable_id\trel_kind\n' > "$MANIFEST"
   for item in "${DATABASES[@]}"; do
-    IFS=: read -r label source_user db <<< "$item"
+    IFS=$'\t' read -r label source_user db <<< "$item"
     db_id="$(awk -F'\t' -v db="$db" '$3 == db && $4 == "FOUND" {print $5; exit}' "$DB_METADATA_SUMMARY")"
     if [[ -z "$db_id" ]]; then
       log "==> Skip $label $db: database not found in checkpoint metadata"
@@ -486,7 +486,7 @@ restore_target() {
   local rc
 
   for item in "${DATABASES[@]}"; do
-    IFS=: read -r label source_user db <<< "$item"
+    IFS=$'\t' read -r label source_user db <<< "$item"
     log "==> Drop target database $db"
     mysql_query "$TARGET_USER" "$ACCOUNT_PASSWORD" "DROP DATABASE IF EXISTS \`$db\`;" \
       > "$LOG_DIR/drop_target_${db}.log" 2>&1 || true
