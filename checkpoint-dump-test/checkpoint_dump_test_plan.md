@@ -115,7 +115,7 @@
 | TBL-001 | 普通表 | `CREATE TABLE t_normal (...)`，插入多行 | table/db/account | CSV、DDL、load | 完整导出和恢复 |
 | TBL-002 | 空普通表 | 只建表不插入 | table/db/account | 空 CSV、DDL | load 后表存在且 0 行 |
 | TBL-003 | 临时表 | `CREATE TEMPORARY TABLE t_tmp (...)`，插入数据 | db/account | checkpoint 可见性 | 明确预期：若 checkpoint 不持久化临时表，应不导出；若导出则需可恢复 |
-| TBL-004 | 视图 | `CREATE VIEW v AS SELECT ...` | db/account | 文档写明 `relkind='v'` 不导出 | 不导出视图，不影响普通表 |
+| TBL-004 | 视图 | `CREATE VIEW v AS SELECT ...` | table/db/account | 输出视图定义 | `restore.sql` 使用 `CREATE VIEW`，不能退化成普通表 |
 | TBL-005 | 外部表 CSV localfile | `CREATE EXTERNAL TABLE ... localfile ...` | db/account | 元数据和数据来源 | 明确预期：外部表是否跳过或只导出 DDL；不能误导出不完整数据 |
 | TBL-006 | 外部表 S3 CSV | `CREATE EXTERNAL TABLE ... URL s3option ...` | db/account | S3 元数据 | 同上，错误信息清晰 |
 | TBL-007 | 外部表 Parquet | `CREATE EXTERNAL TABLE ... infile{"format"='parquet'}` | db/account | Parquet 外表 | 同上 |
@@ -130,6 +130,29 @@
 | TBL-016 | `cluster by` 表 | `CREATE TABLE (...) CLUSTER BY col` | table/db/account | 物理排序定义 | DDL 保留，数据一致 |
 | TBL-017 | 带 comment 表 | table comment + column comment | table/db/account | 注释 | `SHOW CREATE TABLE`/information_schema 一致 |
 | TBL-018 | 特殊表名 | 关键字、大小写、中文、空格、特殊符号 | table/db/account | 标识符转义、文件名清洗 | DDL 正确加反引号，CSV 文件名安全 |
+
+当前覆盖脚本 `prepare_ckp_dump_coverage_data.sh` 已纳入：
+- `TBL-003`：生成独立 `<prefix>_temp` 数据库，并通过 `--temp-hold-seconds` 提供临时表 checkpoint 窗口
+- `TBL-005`：生成独立 `<prefix>_external` 数据库和本地 CSV external table fixture
+- `TBL-012` / `TBL-014`：已覆盖 hash/key partition
+- `TBL-013` / `TBL-015`：已补充 range、range columns、list、list columns、linear hash partition
+- `TBL-016`：已覆盖 `cluster by`
+- `TBL-017`：已覆盖 table/column comment
+- table options：已补充 `AUTO_INCREMENT = 100` + table comment + column comment 专项表
+
+### 4.1.1 跨对象依赖覆盖
+
+checkpoint dump restore 最容易出问题的是对象恢复顺序和依赖对象遗漏，自动化需要显式覆盖：
+
+| ID | 依赖类型 | 准备方式 | 验证点 | 期望 |
+|---|---|---|---|---|
+| DEP-001 | view 依赖 table | `CREATE VIEW v_normal AS SELECT ... FROM t_normal` | view DDL 和查询结果 | 恢复后仍是 view，依赖表存在，查询结果一致 |
+| DEP-002 | view 依赖 view | `v_chain_child` 查询 `v_chain_base` | 同库 view 创建顺序 | 先恢复被依赖 view，再恢复依赖 view |
+| DEP-003 | view 依赖 external table | `v_external` 查询 external table | 外表元数据、view DDL | 外表先可用，view 可创建并可查询 |
+| DEP-004 | FK 子表依赖父表 | child table foreign key 引用 parent table | restore 顺序和约束 | 父表先恢复，子表 DDL/load 不失败 |
+| DEP-005 | fulltext/vector index metadata | `t_fulltext`、`t_vector_index` | 特殊 index DDL | `SHOW CREATE TABLE` 保留 index 定义 |
+| DEP-006 | sequence/default 依赖 sequence | `t_sequence_default` default 使用 `nextval(seq)` | sequence 对象和 default 表达式 | sequence 先恢复，默认值插入行为一致 |
+| DEP-007 | database 级 restore 顺序 | database dump + load 整库 | 多对象排序 | 不因对象顺序导致 view/FK/default/index 恢复失败 |
 
 ### 4.2 数据类型覆盖
 

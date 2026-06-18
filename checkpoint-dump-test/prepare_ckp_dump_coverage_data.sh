@@ -5,11 +5,14 @@ usage() {
   cat <<'USAGE'
 Prepare MatrixOne checkpoint-dump coverage data.
 
-This script creates four focused databases:
+This script creates four focused databases by default:
   <prefix>_types        data types and boundary values
   <prefix>_constraints  defaults, PK/UK/FK, comments, indexes
   <prefix>_tables       table shapes: empty, view, CTAS, LIKE, partition, special names
   <prefix>_mvcc_perf    DML history, alter/truncate, scale rows, wide table
+
+Temporary-table and external-table cases are currently behind
+--include-temp-external because they have known bugs under checkpoint dump.
 
 Usage:
   ./prepare_ckp_dump_coverage_data.sh [options]
@@ -21,9 +24,11 @@ Options:
   --password PASSWORD     MySQL password, default: 111
   --db-prefix PREFIX      Database prefix. Default: ckp_cov_<timestamp>
   --scale N               Rows for scale tables. Default: 10000, max generated: 1000000
+  --temp-hold-seconds N   Keep the temporary-table session open for N seconds. Default: 0; only with --include-temp-external
+  --include-temp-external Include temporary-table and external-table cases
   --drop-existing         Drop target databases before creating them
   --mysql-bin PATH        mysql client path, default: mysql
-  --out-dir DIR           SQL/log output directory, default: /tmp/ckp_dump_coverage_<timestamp>
+  --out-dir DIR           SQL/log output directory, default: /data4/ckp_dump_coverage_<timestamp>
   --generate-only         Only generate SQL files, do not execute them
   --help                  Show this help
 
@@ -44,9 +49,11 @@ MYSQL_BIN="mysql"
 TS="$(date +%Y%m%d_%H%M%S)"
 DB_PREFIX="ckp_cov_${TS}"
 SCALE="10000"
+TEMP_HOLD_SECONDS="0"
+INCLUDE_TEMP_EXTERNAL="0"
 DROP_EXISTING="0"
 GENERATE_ONLY="0"
-OUT_DIR="/tmp/ckp_dump_coverage_${TS}"
+OUT_DIR="/data4/ckp_dump_coverage_${TS}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -56,6 +63,8 @@ while [[ $# -gt 0 ]]; do
     --password) PASSWORD="$2"; shift 2 ;;
     --db-prefix) DB_PREFIX="$2"; shift 2 ;;
     --scale) SCALE="$2"; shift 2 ;;
+    --temp-hold-seconds) TEMP_HOLD_SECONDS="$2"; shift 2 ;;
+    --include-temp-external) INCLUDE_TEMP_EXTERNAL="1"; shift ;;
     --drop-existing) DROP_EXISTING="1"; shift ;;
     --mysql-bin) MYSQL_BIN="$2"; shift 2 ;;
     --out-dir) OUT_DIR="$2"; shift 2 ;;
@@ -69,6 +78,10 @@ if ! [[ "$SCALE" =~ ^[0-9]+$ ]]; then
   echo "--scale must be a positive integer" >&2
   exit 2
 fi
+if ! [[ "$TEMP_HOLD_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "--temp-hold-seconds must be a non-negative integer" >&2
+  exit 2
+fi
 if (( SCALE < 1 )); then
   echo "--scale must be >= 1" >&2
   exit 2
@@ -78,13 +91,36 @@ if (( SCALE > 1000000 )); then
   exit 2
 fi
 
+case "$OUT_DIR" in
+  /data4/*) ;;
+  *)
+    echo "--out-dir must be under /data4 so generated SQL/log files stay on the data disk: $OUT_DIR" >&2
+    exit 2
+    ;;
+esac
+
 DB_TYPES="${DB_PREFIX}_types"
 DB_CONS="${DB_PREFIX}_constraints"
 DB_TABLES="${DB_PREFIX}_tables"
+DB_TEMP="${DB_PREFIX}_temp"
+DB_EXT="${DB_PREFIX}_external"
 DB_MVCC="${DB_PREFIX}_mvcc_perf"
 DB_UTIL="${DB_PREFIX}_util"
+EXT_FIXTURE_DIR="$OUT_DIR/external_fixtures"
+EXT_CSV_FILE="$EXT_FIXTURE_DIR/local_ext_people.csv"
 
 mkdir -p "$OUT_DIR"
+if [[ "$INCLUDE_TEMP_EXTERNAL" == "1" ]]; then
+  mkdir -p "$EXT_FIXTURE_DIR"
+
+  printf '%s\n' \
+    '1,alice,10.50,plain' \
+    '2,bob,20.00,"comma,value"' \
+    '3,charlie,0.00,"quote ""inside"""' \
+    > "$EXT_CSV_FILE"
+
+  EXT_CSV_FILE_SQL="$(printf "%s" "$EXT_CSV_FILE" | sed "s/'/''/g")"
+fi
 
 mysql_base_args=(
   -h"$HOST"
@@ -115,6 +151,8 @@ drop_stmt() {
 DROP DATABASE IF EXISTS \`$DB_TYPES\`;
 DROP DATABASE IF EXISTS \`$DB_CONS\`;
 DROP DATABASE IF EXISTS \`$DB_TABLES\`;
+DROP DATABASE IF EXISTS \`$DB_TEMP\`;
+DROP DATABASE IF EXISTS \`$DB_EXT\`;
 DROP DATABASE IF EXISTS \`$DB_MVCC\`;
 DROP DATABASE IF EXISTS \`$DB_UTIL\`;
 SQL
@@ -456,6 +494,40 @@ CREATE TABLE t_vector_index (
 INSERT INTO t_vector_index VALUES (1, '[1,0,0]'), (2, '[0,1,0]'), (3, '[0,0,1]');
 SQL
 
+cat > "$OUT_DIR/22_dependencies_optional.sql" <<SQL
+USE \`$DB_CONS\`;
+
+DROP TABLE IF EXISTS t_sequence_default;
+DROP TABLE IF EXISTS t_sequence_nextval;
+DROP SEQUENCE IF EXISTS seq_default_id;
+
+CREATE SEQUENCE seq_default_id INCREMENT BY 1 START WITH 100 NO CYCLE;
+
+DROP TABLE IF EXISTS t_sequence_nextval;
+CREATE TABLE t_sequence_nextval (
+  id BIGINT NOT NULL PRIMARY KEY,
+  note VARCHAR(50)
+);
+INSERT INTO t_sequence_nextval VALUES
+  (nextval('seq_default_id'), 'nextval-row-1'),
+  (nextval('seq_default_id'), 'nextval-row-2');
+
+DROP TABLE IF EXISTS t_sequence_default;
+CREATE TABLE t_sequence_default (
+  id BIGINT NOT NULL DEFAULT nextval('seq_default_id') PRIMARY KEY,
+  note VARCHAR(50)
+);
+INSERT INTO t_sequence_default(note) VALUES
+  ('default-nextval-row-1'),
+  ('default-nextval-row-2');
+INSERT INTO t_sequence_default(id, note) VALUES
+  (999, 'manual-row');
+
+SELECT 't_sequence_nextval' AS table_name, COUNT(*) AS table_rows FROM t_sequence_nextval
+UNION ALL
+SELECT 't_sequence_default', COUNT(*) FROM t_sequence_default;
+SQL
+
 cat > "$OUT_DIR/30_tables.sql" <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_TABLES\`;
 USE \`$DB_TABLES\`;
@@ -503,6 +575,91 @@ CREATE TABLE t_key_partition (
 INSERT INTO t_key_partition
 SELECT n, n % 8, CONCAT('key-', n) FROM \`$DB_UTIL\`.seq WHERE n < LEAST($SCALE, 1000);
 
+DROP TABLE IF EXISTS t_range_partition;
+CREATE TABLE t_range_partition (
+  id INT NOT NULL,
+  name VARCHAR(30),
+  created_at DATE NOT NULL
+)
+PARTITION BY RANGE (id) (
+  PARTITION p_lt_10 VALUES LESS THAN (10),
+  PARTITION p_lt_20 VALUES LESS THAN (20),
+  PARTITION p_max VALUES LESS THAN MAXVALUE
+);
+INSERT INTO t_range_partition VALUES
+  (1, 'range-a', '2024-01-01'),
+  (9, 'range-b', '2024-01-02'),
+  (10, 'range-c', '2024-01-03'),
+  (19, 'range-d', '2024-01-04'),
+  (20, 'range-e', '2024-01-05');
+
+DROP TABLE IF EXISTS t_range_columns_partition;
+CREATE TABLE t_range_columns_partition (
+  emp_no INT NOT NULL,
+  joined DATE NOT NULL,
+  note VARCHAR(40)
+)
+PARTITION BY RANGE COLUMNS(joined) (
+  PARTITION p_2023 VALUES LESS THAN ('2024-01-01'),
+  PARTITION p_2024 VALUES LESS THAN ('2025-01-01'),
+  PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+INSERT INTO t_range_columns_partition VALUES
+  (1, '2023-12-31', 'before-2024'),
+  (2, '2024-01-01', 'start-2024'),
+  (3, '2024-12-31', 'end-2024'),
+  (4, '2025-01-01', 'future');
+
+DROP TABLE IF EXISTS t_list_partition;
+CREATE TABLE t_list_partition (
+  id INT NOT NULL,
+  region_id INT NOT NULL,
+  name VARCHAR(30)
+)
+PARTITION BY LIST (region_id) (
+  PARTITION p_north VALUES IN (1, 2),
+  PARTITION p_south VALUES IN (3, 4),
+  PARTITION p_other VALUES IN (5, 6)
+);
+INSERT INTO t_list_partition VALUES
+  (1, 1, 'north-a'),
+  (2, 2, 'north-b'),
+  (3, 3, 'south-a'),
+  (4, 4, 'south-b'),
+  (5, 5, 'other-a');
+
+DROP TABLE IF EXISTS t_list_columns_partition;
+CREATE TABLE t_list_columns_partition (
+  id INT NOT NULL,
+  category VARCHAR(20) NOT NULL,
+  payload VARCHAR(40)
+)
+PARTITION BY LIST COLUMNS(category) (
+  PARTITION p_ab VALUES IN ('a', 'b'),
+  PARTITION p_cd VALUES IN ('c', 'd'),
+  PARTITION p_ef VALUES IN ('e', 'f')
+);
+INSERT INTO t_list_columns_partition VALUES
+  (1, 'a', 'category-a'),
+  (2, 'b', 'category-b'),
+  (3, 'c', 'category-c'),
+  (4, 'd', 'category-d'),
+  (5, 'e', 'category-e');
+
+DROP TABLE IF EXISTS t_linear_hash_partition;
+CREATE TABLE t_linear_hash_partition (
+  id INT NOT NULL,
+  created_at DATE NOT NULL,
+  payload VARCHAR(40)
+)
+PARTITION BY LINEAR HASH(YEAR(created_at)) PARTITIONS 4;
+INSERT INTO t_linear_hash_partition VALUES
+  (1, '2021-01-01', 'linear-2021'),
+  (2, '2022-01-01', 'linear-2022'),
+  (3, '2023-01-01', 'linear-2023'),
+  (4, '2024-01-01', 'linear-2024'),
+  (5, '2025-01-01', 'linear-2025');
+
 DROP TABLE IF EXISTS t_cluster_by;
 CREATE TABLE t_cluster_by (
   id INT NOT NULL,
@@ -520,14 +677,65 @@ CREATE TABLE \`select\` (
 );
 INSERT INTO \`select\` VALUES (1, 'space value', 'dash value');
 
-CREATE TEMPORARY TABLE t_tmp_checkpoint_visibility (
-  id INT NOT NULL PRIMARY KEY,
-  note VARCHAR(30)
-);
-INSERT INTO t_tmp_checkpoint_visibility VALUES (1, 'temporary row');
+DROP TABLE IF EXISTS t_table_options;
+CREATE TABLE t_table_options (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'auto increment id',
+  code VARCHAR(30) NOT NULL COMMENT 'business code',
+  note VARCHAR(80) DEFAULT 'default-note' COMMENT 'column default and comment',
+  PRIMARY KEY(id),
+  UNIQUE KEY uk_code(code)
+) AUTO_INCREMENT = 100 COMMENT='table options: comment and auto_increment';
+INSERT INTO t_table_options(code, note) VALUES
+  ('auto-a', 'first auto row'),
+  ('auto-b', 'second auto row');
+INSERT INTO t_table_options(id, code, note) VALUES
+  (200, 'manual-id', 'manual id row');
 
 SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = '$DB_TABLES' ORDER BY table_name;
 SQL
+
+if [[ "$INCLUDE_TEMP_EXTERNAL" == "1" ]]; then
+cat > "$OUT_DIR/31_temp_tables.sql" <<SQL
+CREATE DATABASE IF NOT EXISTS \`$DB_TEMP\`;
+USE \`$DB_TEMP\`;
+
+DROP TABLE IF EXISTS temp_case_marker;
+CREATE TABLE temp_case_marker (
+  id INT NOT NULL PRIMARY KEY,
+  note VARCHAR(100)
+);
+REPLACE INTO temp_case_marker VALUES
+  (1, 'rerun with --temp-hold-seconds > 0 and trigger checkpoint during the hold window');
+
+CREATE TEMPORARY TABLE t_session_only (
+  id INT NOT NULL PRIMARY KEY,
+  note VARCHAR(30)
+);
+INSERT INTO t_session_only VALUES (1, 'temporary row');
+
+SELECT 'temp table session rows' AS item, COUNT(*) AS rows FROM t_session_only;
+SELECT 'temp hold seconds' AS item, $TEMP_HOLD_SECONDS AS rows;
+SELECT SLEEP($TEMP_HOLD_SECONDS) AS temp_hold_completed;
+SQL
+
+cat > "$OUT_DIR/32_external_tables.sql" <<SQL
+CREATE DATABASE IF NOT EXISTS \`$DB_EXT\`;
+USE \`$DB_EXT\`;
+
+DROP TABLE IF EXISTS ext_csv_local;
+CREATE EXTERNAL TABLE ext_csv_local (
+  id INT,
+  name VARCHAR(50),
+  score DECIMAL(10,2),
+  note VARCHAR(100)
+) INFILE {
+  'filepath'='$EXT_CSV_FILE_SQL',
+  'format'='csv'
+};
+
+SELECT 'ext_csv_local rows' AS item, COUNT(*) AS rows FROM ext_csv_local;
+SQL
+fi
 
 cat > "$OUT_DIR/40_mvcc_perf.sql" <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_MVCC\`;
@@ -627,6 +835,21 @@ SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema 
 SELECT 't_scale_rows count' AS item, COUNT(*) AS rows FROM t_scale_rows;
 SQL
 
+if [[ "$INCLUDE_TEMP_EXTERNAL" == "1" ]]; then
+cat > "$OUT_DIR/90_summary.sql" <<SQL
+SELECT 'database' AS kind, '$DB_TYPES' AS name
+UNION ALL SELECT 'database', '$DB_CONS'
+UNION ALL SELECT 'database', '$DB_TABLES'
+UNION ALL SELECT 'database', '$DB_TEMP'
+UNION ALL SELECT 'database', '$DB_EXT'
+UNION ALL SELECT 'database', '$DB_MVCC';
+
+SELECT table_schema, table_name, table_type
+FROM information_schema.tables
+WHERE table_schema IN ('$DB_TYPES', '$DB_CONS', '$DB_TABLES', '$DB_TEMP', '$DB_EXT', '$DB_MVCC')
+ORDER BY table_schema, table_name;
+SQL
+else
 cat > "$OUT_DIR/90_summary.sql" <<SQL
 SELECT 'database' AS kind, '$DB_TYPES' AS name
 UNION ALL SELECT 'database', '$DB_CONS'
@@ -638,7 +861,51 @@ FROM information_schema.tables
 WHERE table_schema IN ('$DB_TYPES', '$DB_CONS', '$DB_TABLES', '$DB_MVCC')
 ORDER BY table_schema, table_name;
 SQL
+fi
 
+if [[ "$INCLUDE_TEMP_EXTERNAL" == "1" ]]; then
+cat > "$OUT_DIR/README.next_steps.txt" <<TXT
+Generated SQL files in: $OUT_DIR
+
+Created databases:
+  $DB_TYPES
+  $DB_CONS
+  $DB_TABLES
+  $DB_TEMP
+  $DB_EXT
+  $DB_MVCC
+
+Special fixtures:
+  local external CSV: $EXT_CSV_FILE
+  temporary-table SQL: $OUT_DIR/31_temp_tables.sql
+
+Suggested checkpoint-dump test flow on 129:
+  1. Run this script and confirm SQL completion.
+  2. For temporary-table coverage, rerun with --temp-hold-seconds 180 and trigger checkpoint while 31_temp_tables.sql is sleeping.
+  3. Stop writes to these databases.
+  4. Wait for or trigger a checkpoint according to the MO environment.
+  5. Use mo-tool ckp list --type=databases to get database IDs.
+  6. Dump each database:
+       ./mo-tool ckp dump --database-id=<DB_ID> --output-dir=<OUT>/<DB> --header --load-script --jobs=4 -o <OUT>/<DB> <mo-data/shared>
+     Or dump each table:
+       ./mo-tool ckp dump --table-id=<TABLE_ID> --header --load-script -o <OUT>/<DB>/<TABLE> <mo-data/shared>
+  7. Restore into a clean normal tenant.
+  8. Compare:
+       - table list
+       - row counts
+       - SHOW CREATE TABLE
+       - sampled checksums for scale tables
+       - temp/external behavior against expectation:
+         * temporary table: should only be visible if checkpoint was taken during the hold window
+         * external table: verify whether ckp list/dump skips it, exports only metadata, or produces a clear error
+       - cross-object dependencies:
+         * FK child tables restore after parent tables
+         * fulltext/vector index metadata is preserved
+         * sequence/default dependencies are restorable
+
+Scale rows requested: $SCALE
+TXT
+else
 cat > "$OUT_DIR/README.next_steps.txt" <<TXT
 Generated SQL files in: $OUT_DIR
 
@@ -648,10 +915,15 @@ Created databases:
   $DB_TABLES
   $DB_MVCC
 
+Temporary-table and external-table cases are skipped by default because they
+currently have known checkpoint dump bugs. Rerun with --include-temp-external
+only when validating those known issues.
+
 Suggested checkpoint-dump test flow on 129:
   1. Run this script and confirm SQL completion.
   2. Stop writes to these databases.
-  3. Wait for or trigger a checkpoint according to the MO environment.
+  3. Trigger a checkpoint:
+       SELECT mo_ctl('dn', 'checkpoint', '');
   4. Use mo-tool ckp list --type=databases to get database IDs.
   5. Dump each database:
        ./mo-tool ckp dump --database-id=<DB_ID> --output-dir=<OUT>/<DB> --header --load-script --jobs=4 -o <OUT>/<DB> <mo-data/shared>
@@ -663,9 +935,14 @@ Suggested checkpoint-dump test flow on 129:
        - row counts
        - SHOW CREATE TABLE
        - sampled checksums for scale tables
+       - cross-object dependencies:
+         * FK child tables restore after parent tables
+         * fulltext/vector index metadata is preserved
+         * sequence/default dependencies are restorable
 
 Scale rows requested: $SCALE
 TXT
+fi
 
 echo "Generated SQL files under $OUT_DIR"
 
@@ -679,7 +956,12 @@ run_sql "10_types_core" "$OUT_DIR/10_types_core.sql" 0
 run_sql "11_types_optional" "$OUT_DIR/11_types_optional.sql" 1
 run_sql "20_constraints" "$OUT_DIR/20_constraints.sql" 0
 run_sql "21_indexes_optional" "$OUT_DIR/21_indexes_optional.sql" 1
+run_sql "22_dependencies_optional" "$OUT_DIR/22_dependencies_optional.sql" 1
 run_sql "30_tables" "$OUT_DIR/30_tables.sql" 1
+if [[ "$INCLUDE_TEMP_EXTERNAL" == "1" ]]; then
+  run_sql "31_temp_tables" "$OUT_DIR/31_temp_tables.sql" 0
+  run_sql "32_external_tables" "$OUT_DIR/32_external_tables.sql" 1
+fi
 run_sql "40_mvcc_perf" "$OUT_DIR/40_mvcc_perf.sql" 0
 run_sql "90_summary" "$OUT_DIR/90_summary.sql" 0
 

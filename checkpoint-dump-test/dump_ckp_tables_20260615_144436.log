@@ -1,0 +1,1632 @@
+nohup: ignoring input
+MO_TOOL=/data4/weilu/matrixone/mo-tool
+CKP_DATA=/data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared
+OUT=/data4/weilu/ckp_test
+==> List checkpoint databases
+2026/06/15 14:44:36.993715 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90749779968 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90749779968 mem_floor=26989533184 mem_waits=0
+ACCOUNT_ID  DATABASE                  DATABASE_ID
+0           ann                       333175
+0           ckp_constraints           333997
+0           ckp_mvcc_perf             334036
+0           ckp_tables                334017
+0           ckp_types                 333981
+0           ckp_util                  333978
+0           information_schema        272421
+0           mo_catalog                1
+0           mo_debug                  272407
+0           mo_task                   272389
+0           mysql                     272467
+0           ssb_100g                  332504
+0           ssb_10g                   332498
+0           ssb_1g                    332492
+0           system                    272527
+0           system_metrics            272502
+0           test                      332579
+0           tpcc_10                   332546
+0           tpcc_100                  332557
+0           tpcc_1000                 332568
+0           tpch_1000g                332537
+0           tpch_100g                 332528
+0           tpch_10g                  332519
+0           tpch_1g                   332510
+406         cdc_comprehensive_test    333697
+406         cdc_comprehensive_test01  333771
+406         information_schema        333626
+406         mo_catalog                1
+406         mysql                     333627
+406         system                    333624
+406         system_metrics            333625
+==> Target databases
+ckp_constraints	333997
+ckp_mvcc_perf	334036
+ckp_tables	334017
+ckp_types	333981
+==> List checkpoint tables for db=ckp_constraints db_id=333997
+2026/06/15 14:44:37.738612 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90747092992 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90747092992 mem_floor=26989533184 mem_waits=0
+ACCOUNT_ID  DATABASE         TABLE                  TABLE_ID  REL_KIND
+0           ckp_constraints  child_cascade          334001    r
+0           ckp_constraints  child_restrict         334000    r
+0           ckp_constraints  child_set_null         334002    r
+0           ckp_constraints  parent                 333999    r
+0           ckp_constraints  t_auto_inc             334004    r
+0           ckp_constraints  t_composite_keys       334007    r
+0           ckp_constraints  t_fulltext             334012    r
+0           ckp_constraints  t_identifier_comments  334008    r
+0           ckp_constraints  t_vector_index         334016    r
+==> Dump db=ckp_constraints db_id=333997 table=child_cascade table_id=334001 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334001_child_cascade
+2026/06/15 14:44:38.486409 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90741121024 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90741121024 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90708738048 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1 physical_rows=1 written_batches=1 written_bytes=20 read_ms=0 process_ms=0 write_ms=0 mem_available=90708738048 mem_floor=26989533184 mem_waits=0
+Table 334001 ckp_constraints.child_cascade dumped to /data4/weilu/ckp_test/ckp_constraints/334001_child_cascade/account_0/db_333997/child_cascade_334001.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90698747904 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90698747904 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90686795776 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=7 write_ms=0 mem_available=90686795776 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_constraints/334001_child_cascade/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334001 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334001_child_cascade /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.64
+	System time (seconds): 0.41
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.76
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 242456
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 46117
+	Voluntary context switches: 9763
+	Involuntary context switches: 23
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_constraints db_id=333997 table=child_restrict table_id=334000 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334000_child_restrict
+2026/06/15 14:44:40.266976 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90739019776 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90739019776 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90701893632 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=2 physical_rows=2 written_batches=1 written_bytes=32 read_ms=0 process_ms=0 write_ms=0 mem_available=90701893632 mem_floor=26989533184 mem_waits=0
+Table 334000 ckp_constraints.child_restrict dumped to /data4/weilu/ckp_test/ckp_constraints/334000_child_restrict/account_0/db_333997/child_restrict_334000.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90693996544 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90693996544 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90689826816 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=7 write_ms=0 mem_available=90689826816 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_constraints/334000_child_restrict/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334000 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334000_child_restrict /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.69
+	System time (seconds): 0.40
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 233608
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 55191
+	Voluntary context switches: 9572
+	Involuntary context switches: 60
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_constraints db_id=333997 table=child_set_null table_id=334002 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334002_child_set_null
+2026/06/15 14:44:42.088120 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90724597760 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90724597760 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90689490944 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=2 physical_rows=2 written_batches=1 written_bytes=43 read_ms=0 process_ms=0 write_ms=0 mem_available=90689490944 mem_floor=26989533184 mem_waits=0
+Table 334002 ckp_constraints.child_set_null dumped to /data4/weilu/ckp_test/ckp_constraints/334002_child_set_null/account_0/db_333997/child_set_null_334002.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90682228736 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90682228736 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90676076544 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=7 write_ms=0 mem_available=90676076544 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_constraints/334002_child_set_null/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334002 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334002_child_set_null /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.65
+	System time (seconds): 0.39
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.76
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 241916
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 50261
+	Voluntary context switches: 9851
+	Involuntary context switches: 29
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_constraints db_id=333997 table=parent table_id=333999 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/333999_parent
+2026/06/15 14:44:43.857146 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90714304512 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90714304512 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90695585792 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=54 read_ms=0 process_ms=0 write_ms=0 mem_available=90695585792 mem_floor=26989533184 mem_waits=0
+Table 333999 ckp_constraints.parent dumped to /data4/weilu/ckp_test/ckp_constraints/333999_parent/account_0/db_333997/parent_333999.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90690465792 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90690465792 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90682216448 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90682216448 mem_floor=26989533184 mem_waits=0
+Error: merge create table indexes for table 333999: cannot locate CREATE TABLE definition
+Usage:
+  mo-tool ckp dump [directory] [flags]
+
+Flags:
+      --account-id uint32      Account ID to dump tables for; combine with --database-id to narrow the result
+      --cpuprofile string      Write CPU profile to file
+      --database-id uint       Database ID to dump tables for
+      --header                 Include a CSV header row with column names
+  -h, --help                   help for dump
+      --jobs int               Concurrent table dumps for --database-id/--account-id batch dumps (default 5)
+      --load-script            Generate restore.sql with CREATE DATABASE, CREATE TABLE, and LOAD DATA statements; --output/-o is treated as a directory
+      --meta-comments          Prepend DDL and row-count comment lines (disabled by default so output can be loaded directly)
+      --no-load                With --load-script, generate only DDL and skip CSV dump and LOAD DATA statements
+      --out-backend string     remote backend for --out-s3: S3 or MINIO
+      --out-fs-config string   MO config TOML containing fileservice settings for dump output
+      --out-fs-name string     fileservice name to use from --out-fs-config (default "SHARED")
+      --out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+  -o, --output string          Output CSV file path (default: stdout)
+      --output-dir string      Output directory for database/account dumps
+      --row-order string       CSV row order: storage (streaming, large-table friendly) or lexical (sort by visible CSV values in memory) (default "storage")
+      --table-id uint          Table ID to dump
+      --ts string              Snapshot timestamp: physical:logical, physical-logical, RFC3339, or '2006-01-02 15:04:05' in local time (default: latest)
+
+Global Flags:
+      --backend string     remote backend for --s3: S3 or MINIO
+      --fs-config string   MO config TOML containing fileservice settings
+      --fs-name string     fileservice name to use from --fs-config (default "SHARED")
+      --s3 string          S3 arguments, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+
+Command exited with non-zero status 1
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333999 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/333999_parent /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.68
+	System time (seconds): 0.37
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.77
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 237160
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 53469
+	Voluntary context switches: 9511
+	Involuntary context switches: 51
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+==> Dump db=ckp_constraints db_id=333997 table=t_auto_inc table_id=334004 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334004_t_auto_inc
+2026/06/15 14:44:45.640892 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90733686784 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90733686784 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90705518592 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=35 read_ms=0 process_ms=0 write_ms=0 mem_available=90705518592 mem_floor=26989533184 mem_waits=0
+Table 334004 ckp_constraints.t_auto_inc dumped to /data4/weilu/ckp_test/ckp_constraints/334004_t_auto_inc/account_0/db_333997/t_auto_inc_334004.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90699763712 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90699763712 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90694746112 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=9 write_ms=0 mem_available=90694746112 mem_floor=26989533184 mem_waits=0
+Error: merge create table indexes for table 334004: cannot locate CREATE TABLE definition
+Usage:
+  mo-tool ckp dump [directory] [flags]
+
+Flags:
+      --account-id uint32      Account ID to dump tables for; combine with --database-id to narrow the result
+      --cpuprofile string      Write CPU profile to file
+      --database-id uint       Database ID to dump tables for
+      --header                 Include a CSV header row with column names
+  -h, --help                   help for dump
+      --jobs int               Concurrent table dumps for --database-id/--account-id batch dumps (default 5)
+      --load-script            Generate restore.sql with CREATE DATABASE, CREATE TABLE, and LOAD DATA statements; --output/-o is treated as a directory
+      --meta-comments          Prepend DDL and row-count comment lines (disabled by default so output can be loaded directly)
+      --no-load                With --load-script, generate only DDL and skip CSV dump and LOAD DATA statements
+      --out-backend string     remote backend for --out-s3: S3 or MINIO
+      --out-fs-config string   MO config TOML containing fileservice settings for dump output
+      --out-fs-name string     fileservice name to use from --out-fs-config (default "SHARED")
+      --out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+  -o, --output string          Output CSV file path (default: stdout)
+      --output-dir string      Output directory for database/account dumps
+      --row-order string       CSV row order: storage (streaming, large-table friendly) or lexical (sort by visible CSV values in memory) (default "storage")
+      --table-id uint          Table ID to dump
+      --ts string              Snapshot timestamp: physical:logical, physical-logical, RFC3339, or '2006-01-02 15:04:05' in local time (default: latest)
+
+Global Flags:
+      --backend string     remote backend for --s3: S3 or MINIO
+      --fs-config string   MO config TOML containing fileservice settings
+      --fs-name string     fileservice name to use from --fs-config (default "SHARED")
+      --s3 string          S3 arguments, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+
+Command exited with non-zero status 1
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334004 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334004_t_auto_inc /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.68
+	System time (seconds): 0.41
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 230848
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 51249
+	Voluntary context switches: 10105
+	Involuntary context switches: 54
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+==> Dump db=ckp_constraints db_id=333997 table=t_composite_keys table_id=334007 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334007_t_composite_keys
+2026/06/15 14:44:47.458202 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90726109184 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90726109184 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90680311808 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=33 read_ms=0 process_ms=0 write_ms=0 mem_available=90680311808 mem_floor=26989533184 mem_waits=0
+Table 334007 ckp_constraints.t_composite_keys dumped to /data4/weilu/ckp_test/ckp_constraints/334007_t_composite_keys/account_0/db_333997/t_composite_keys_334007.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90675724288 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90675724288 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90668474368 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90668474368 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_constraints/334007_t_composite_keys/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334007 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334007_t_composite_keys /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.73
+	System time (seconds): 0.41
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.84
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 253940
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 52994
+	Voluntary context switches: 9202
+	Involuntary context switches: 47
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_constraints db_id=333997 table=t_fulltext table_id=334012 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334012_t_fulltext
+2026/06/15 14:44:49.315565 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90713985024 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90709790720 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90674900992 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=2 physical_rows=2 written_batches=1 written_bytes=49 read_ms=0 process_ms=0 write_ms=0 mem_available=90674900992 mem_floor=26989533184 mem_waits=0
+Table 334012 ckp_constraints.t_fulltext dumped to /data4/weilu/ckp_test/ckp_constraints/334012_t_fulltext/account_0/db_333997/t_fulltext_334012.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90695004160 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90695004160 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90694111232 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90694111232 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_constraints/334012_t_fulltext/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334012 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334012_t_fulltext /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.73
+	System time (seconds): 0.38
+	Percent of CPU this job got: 119%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.77
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 239988
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 49408
+	Voluntary context switches: 9639
+	Involuntary context switches: 13
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_constraints db_id=333997 table=t_identifier_comments table_id=334008 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334008_t_identifier_comments
+2026/06/15 14:44:51.104670 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90729050112 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90729050112 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90708496384 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=2 physical_rows=2 written_batches=1 written_bytes=60 read_ms=0 process_ms=0 write_ms=0 mem_available=90708496384 mem_floor=26989533184 mem_waits=0
+Table 334008 ckp_constraints.t_identifier_comments dumped to /data4/weilu/ckp_test/ckp_constraints/334008_t_identifier_comments/account_0/db_333997/t_identifier_comments_334008.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90696454144 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90696454144 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90694418432 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90694418432 mem_floor=26989533184 mem_waits=0
+Error: merge create table indexes for table 334008: cannot locate CREATE TABLE definition
+Usage:
+  mo-tool ckp dump [directory] [flags]
+
+Flags:
+      --account-id uint32      Account ID to dump tables for; combine with --database-id to narrow the result
+      --cpuprofile string      Write CPU profile to file
+      --database-id uint       Database ID to dump tables for
+      --header                 Include a CSV header row with column names
+  -h, --help                   help for dump
+      --jobs int               Concurrent table dumps for --database-id/--account-id batch dumps (default 5)
+      --load-script            Generate restore.sql with CREATE DATABASE, CREATE TABLE, and LOAD DATA statements; --output/-o is treated as a directory
+      --meta-comments          Prepend DDL and row-count comment lines (disabled by default so output can be loaded directly)
+      --no-load                With --load-script, generate only DDL and skip CSV dump and LOAD DATA statements
+      --out-backend string     remote backend for --out-s3: S3 or MINIO
+      --out-fs-config string   MO config TOML containing fileservice settings for dump output
+      --out-fs-name string     fileservice name to use from --out-fs-config (default "SHARED")
+      --out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+  -o, --output string          Output CSV file path (default: stdout)
+      --output-dir string      Output directory for database/account dumps
+      --row-order string       CSV row order: storage (streaming, large-table friendly) or lexical (sort by visible CSV values in memory) (default "storage")
+      --table-id uint          Table ID to dump
+      --ts string              Snapshot timestamp: physical:logical, physical-logical, RFC3339, or '2006-01-02 15:04:05' in local time (default: latest)
+
+Global Flags:
+      --backend string     remote backend for --s3: S3 or MINIO
+      --fs-config string   MO config TOML containing fileservice settings
+      --fs-name string     fileservice name to use from --fs-config (default "SHARED")
+      --s3 string          S3 arguments, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+
+Command exited with non-zero status 1
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334008 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334008_t_identifier_comments /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.76
+	System time (seconds): 0.35
+	Percent of CPU this job got: 118%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 235348
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 52190
+	Voluntary context switches: 9326
+	Involuntary context switches: 33
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+==> Dump db=ckp_constraints db_id=333997 table=t_vector_index table_id=334016 relkind=r
+    output=/data4/weilu/ckp_test/ckp_constraints/334016_t_vector_index
+2026/06/15 14:44:52.910493 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90725310464 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90725310464 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90697363456 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=42 read_ms=0 process_ms=0 write_ms=0 mem_available=90697363456 mem_floor=26989533184 mem_waits=0
+Table 334016 ckp_constraints.t_vector_index dumped to /data4/weilu/ckp_test/ckp_constraints/334016_t_vector_index/account_0/db_333997/t_vector_index_334016.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90689486848 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90689486848 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90682179584 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90682179584 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_constraints/334016_t_vector_index/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334016 --header --load-script -o /data4/weilu/ckp_test/ckp_constraints/334016_t_vector_index /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.67
+	System time (seconds): 0.42
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 230500
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 55629
+	Voluntary context switches: 9075
+	Involuntary context switches: 66
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> List checkpoint tables for db=ckp_mvcc_perf db_id=334036
+2026/06/15 14:44:54.738685 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90726916096 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90726916096 mem_floor=26989533184 mem_waits=0
+ACCOUNT_ID  DATABASE       TABLE            TABLE_ID  REL_KIND
+0           ckp_mvcc_perf  t_alter_case     334041    r
+0           ckp_mvcc_perf  t_dml_history    334037    r
+0           ckp_mvcc_perf  t_scale_rows     334042    r
+0           ckp_mvcc_perf  t_truncate_case  334039    r
+0           ckp_mvcc_perf  t_wide_32_cols   334043    r
+==> Dump db=ckp_mvcc_perf db_id=334036 table=t_alter_case table_id=334041 relkind=r
+    output=/data4/weilu/ckp_test/ckp_mvcc_perf/334041_t_alter_case
+2026/06/15 14:44:55.475940 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90717818880 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90717818880 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90700128256 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=2 physical_rows=2 written_batches=1 written_bytes=32 read_ms=0 process_ms=0 write_ms=0 mem_available=90700128256 mem_floor=26989533184 mem_waits=0
+Table 334041 ckp_mvcc_perf.t_alter_case dumped to /data4/weilu/ckp_test/ckp_mvcc_perf/334041_t_alter_case/account_0/db_334036/t_alter_case_334041.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90690965504 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90690965504 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90690973696 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90690973696 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_mvcc_perf/334041_t_alter_case/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334041 --header --load-script -o /data4/weilu/ckp_test/ckp_mvcc_perf/334041_t_alter_case /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.67
+	System time (seconds): 0.38
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.76
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 231596
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 54721
+	Voluntary context switches: 9287
+	Involuntary context switches: 57
+	Swaps: 0
+	File system inputs: 159288
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_mvcc_perf db_id=334036 table=t_dml_history table_id=334037 relkind=r
+    output=/data4/weilu/ckp_test/ckp_mvcc_perf/334037_t_dml_history
+2026/06/15 14:44:57.251643 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90740113408 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90740113408 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90719588352 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=120 read_ms=0 process_ms=0 write_ms=0 mem_available=90719588352 mem_floor=26989533184 mem_waits=0
+Table 334037 ckp_mvcc_perf.t_dml_history dumped to /data4/weilu/ckp_test/ckp_mvcc_perf/334037_t_dml_history/account_0/db_334036/t_dml_history_334037.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90707914752 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90707914752 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90695254016 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90695249920 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_mvcc_perf/334037_t_dml_history/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334037 --header --load-script -o /data4/weilu/ckp_test/ckp_mvcc_perf/334037_t_dml_history /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.70
+	System time (seconds): 0.41
+	Percent of CPU this job got: 117%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.80
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 241564
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 52167
+	Voluntary context switches: 9900
+	Involuntary context switches: 29
+	Swaps: 0
+	File system inputs: 159288
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_mvcc_perf db_id=334036 table=t_scale_rows table_id=334042 relkind=r
+    output=/data4/weilu/ckp_test/ckp_mvcc_perf/334042_t_scale_rows
+2026/06/15 14:44:59.071162 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90737393664 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90737393664 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90707070976 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=2 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=10000 physical_rows=10000 written_batches=2 written_bytes=538174 read_ms=2 process_ms=17 write_ms=0 mem_available=90707070976 mem_floor=26989533184 mem_waits=0
+Table 334042 ckp_mvcc_perf.t_scale_rows dumped to /data4/weilu/ckp_test/ckp_mvcc_perf/334042_t_scale_rows/account_0/db_334036/t_scale_rows_334042.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90699829248 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90699829248 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90692202496 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90692202496 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_mvcc_perf/334042_t_scale_rows/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334042 --header --load-script -o /data4/weilu/ckp_test/ckp_mvcc_perf/334042_t_scale_rows /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.72
+	System time (seconds): 0.40
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.84
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 245296
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 49370
+	Voluntary context switches: 9589
+	Involuntary context switches: 62
+	Swaps: 0
+	File system inputs: 159560
+	File system outputs: 1104
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_mvcc_perf db_id=334036 table=t_truncate_case table_id=334039 relkind=r
+    output=/data4/weilu/ckp_test/ckp_mvcc_perf/334039_t_truncate_case
+2026/06/15 14:45:00.924753 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90724372480 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90724372480 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90691964928 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1 physical_rows=1 written_batches=1 written_bytes=10 read_ms=0 process_ms=0 write_ms=0 mem_available=90691964928 mem_floor=26989533184 mem_waits=0
+Table 334039 ckp_mvcc_perf.t_truncate_case dumped to /data4/weilu/ckp_test/ckp_mvcc_perf/334039_t_truncate_case/account_0/db_334036/t_truncate_case_334039.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90674520064 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90674520064 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90668326912 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90668326912 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_mvcc_perf/334039_t_truncate_case/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334039 --header --load-script -o /data4/weilu/ckp_test/ckp_mvcc_perf/334039_t_truncate_case /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.69
+	System time (seconds): 0.40
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.80
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 237684
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 51191
+	Voluntary context switches: 9530
+	Involuntary context switches: 51
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_mvcc_perf db_id=334036 table=t_wide_32_cols table_id=334043 relkind=r
+    output=/data4/weilu/ckp_test/ckp_mvcc_perf/334043_t_wide_32_cols
+2026/06/15 14:45:02.739531 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90717339648 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90717339648 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90699964416 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=2 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=10000 physical_rows=10000 written_batches=2 written_bytes=4265049 read_ms=12 process_ms=64 write_ms=3 mem_available=90691432448 mem_floor=26989533184 mem_waits=0
+Table 334043 ckp_mvcc_perf.t_wide_32_cols dumped to /data4/weilu/ckp_test/ckp_mvcc_perf/334043_t_wide_32_cols/account_0/db_334036/t_wide_32_cols_334043.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90678988800 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90678988800 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90667896832 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=19 write_ms=0 mem_available=90667896832 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_mvcc_perf/334043_t_wide_32_cols/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334043 --header --load-script -o /data4/weilu/ckp_test/ckp_mvcc_perf/334043_t_wide_32_cols /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.85
+	System time (seconds): 0.40
+	Percent of CPU this job got: 121%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.85
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 241508
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 49933
+	Voluntary context switches: 9356
+	Involuntary context switches: 34
+	Swaps: 0
+	File system inputs: 161632
+	File system outputs: 8392
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> List checkpoint tables for db=ckp_tables db_id=334017
+2026/06/15 14:45:04.594266 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90716475392 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90716475392 mem_floor=26989533184 mem_waits=0
+ACCOUNT_ID  DATABASE    TABLE                                                                             TABLE_ID  REL_KIND
+0           ckp_tables  __mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility  334035    r
+0           ckp_tables  select                                                                            334034    r
+0           ckp_tables  t_cluster_by                                                                      334033    r
+0           ckp_tables  t_ctas                                                                            334021    r
+0           ckp_tables  t_empty                                                                           334019    r
+0           ckp_tables  t_hash_partition                                                                  334023    r
+0           ckp_tables  t_key_partition                                                                   334028    r
+0           ckp_tables  t_like                                                                            334022    r
+0           ckp_tables  t_normal                                                                          334018    r
+==> Dump db=ckp_tables db_id=334017 table=__mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility table_id=334035 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334035___mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility
+2026/06/15 14:45:05.325062 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90723209216 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90723209216 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90703347712 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1 physical_rows=1 written_batches=1 written_bytes=18 read_ms=0 process_ms=0 write_ms=0 mem_available=90703347712 mem_floor=26989533184 mem_waits=0
+Table 334035 ckp_tables.__mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility dumped to /data4/weilu/ckp_test/ckp_tables/334035___mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility/account_0/db_334017/__mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility_334035.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90688864256 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90688864256 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90670338048 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90670338048 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_tables/334035___mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334035 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334035___mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.71
+	System time (seconds): 0.38
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 247260
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 51629
+	Voluntary context switches: 9482
+	Involuntary context switches: 42
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_tables db_id=334017 table=select table_id=334034 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334034_select
+2026/06/15 14:45:07.159869 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90729832448 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90729832448 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90710081536 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1 physical_rows=1 written_batches=1 written_bytes=29 read_ms=0 process_ms=0 write_ms=0 mem_available=90710081536 mem_floor=26989533184 mem_waits=0
+Table 334034 ckp_tables.select dumped to /data4/weilu/ckp_test/ckp_tables/334034_select/account_0/db_334017/select_334034.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90697023488 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90702438400 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90701283328 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90701283328 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_tables/334034_select/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334034 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334034_select /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.71
+	System time (seconds): 0.40
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.82
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 224440
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 52531
+	Voluntary context switches: 9515
+	Involuntary context switches: 44
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_tables db_id=334017 table=t_cluster_by table_id=334033 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334033_t_cluster_by
+2026/06/15 14:45:08.998098 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90741030912 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90741030912 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90728984576 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1000 physical_rows=1000 written_batches=1 written_bytes=20152 read_ms=0 process_ms=0 write_ms=0 mem_available=90728984576 mem_floor=26989533184 mem_waits=0
+Table 334033 ckp_tables.t_cluster_by dumped to /data4/weilu/ckp_test/ckp_tables/334033_t_cluster_by/account_0/db_334017/t_cluster_by_334033.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90725109760 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90725109760 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90717163520 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90717163520 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_tables/334033_t_cluster_by/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334033 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334033_t_cluster_by /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.67
+	System time (seconds): 0.43
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.80
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 228012
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 54385
+	Voluntary context switches: 9481
+	Involuntary context switches: 35
+	Swaps: 0
+	File system inputs: 159224
+	File system outputs: 104
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_tables db_id=334017 table=t_ctas table_id=334021 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334021_t_ctas
+2026/06/15 14:45:10.809295 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90745380864 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90745380864 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90712637440 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=39 read_ms=0 process_ms=0 write_ms=0 mem_available=90712637440 mem_floor=26989533184 mem_waits=0
+Table 334021 ckp_tables.t_ctas dumped to /data4/weilu/ckp_test/ckp_tables/334021_t_ctas/account_0/db_334017/t_ctas_334021.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90708054016 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90708054016 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90699194368 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90699194368 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_tables/334021_t_ctas/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334021 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334021_t_ctas /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.69
+	System time (seconds): 0.40
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 224652
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 55553
+	Voluntary context switches: 9567
+	Involuntary context switches: 87
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_tables db_id=334017 table=t_empty table_id=334019 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334019_t_empty
+2026/06/15 14:45:12.627692 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90722435072 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90722435072 mem_floor=26989533184 mem_waits=0
+Error: prepare table 334019 (ckp_tables.t_empty): internal error: table 334019 not found in checkpoint at ts 1781505702346157941-0
+Usage:
+  mo-tool ckp dump [directory] [flags]
+
+Flags:
+      --account-id uint32      Account ID to dump tables for; combine with --database-id to narrow the result
+      --cpuprofile string      Write CPU profile to file
+      --database-id uint       Database ID to dump tables for
+      --header                 Include a CSV header row with column names
+  -h, --help                   help for dump
+      --jobs int               Concurrent table dumps for --database-id/--account-id batch dumps (default 5)
+      --load-script            Generate restore.sql with CREATE DATABASE, CREATE TABLE, and LOAD DATA statements; --output/-o is treated as a directory
+      --meta-comments          Prepend DDL and row-count comment lines (disabled by default so output can be loaded directly)
+      --no-load                With --load-script, generate only DDL and skip CSV dump and LOAD DATA statements
+      --out-backend string     remote backend for --out-s3: S3 or MINIO
+      --out-fs-config string   MO config TOML containing fileservice settings for dump output
+      --out-fs-name string     fileservice name to use from --out-fs-config (default "SHARED")
+      --out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+  -o, --output string          Output CSV file path (default: stdout)
+      --output-dir string      Output directory for database/account dumps
+      --row-order string       CSV row order: storage (streaming, large-table friendly) or lexical (sort by visible CSV values in memory) (default "storage")
+      --table-id uint          Table ID to dump
+      --ts string              Snapshot timestamp: physical:logical, physical-logical, RFC3339, or '2006-01-02 15:04:05' in local time (default: latest)
+
+Global Flags:
+      --backend string     remote backend for --s3: S3 or MINIO
+      --fs-config string   MO config TOML containing fileservice settings
+      --fs-name string     fileservice name to use from --fs-config (default "SHARED")
+      --s3 string          S3 arguments, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+
+Command exited with non-zero status 1
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334019 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334019_t_empty /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 0.78
+	System time (seconds): 0.22
+	Percent of CPU this job got: 129%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.78
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 217452
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 25934
+	Voluntary context switches: 5260
+	Involuntary context switches: 4
+	Swaps: 0
+	File system inputs: 60440
+	File system outputs: 40
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+==> Dump db=ckp_tables db_id=334017 table=t_hash_partition table_id=334023 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334023_t_hash_partition
+2026/06/15 14:45:13.431631 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90711240704 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90711240704 mem_floor=26989533184 mem_waits=0
+Error: prepare table 334023 (ckp_tables.t_hash_partition): internal error: table 334023 not found in checkpoint at ts 1781505702346157941-0
+Usage:
+  mo-tool ckp dump [directory] [flags]
+
+Flags:
+      --account-id uint32      Account ID to dump tables for; combine with --database-id to narrow the result
+      --cpuprofile string      Write CPU profile to file
+      --database-id uint       Database ID to dump tables for
+      --header                 Include a CSV header row with column names
+  -h, --help                   help for dump
+      --jobs int               Concurrent table dumps for --database-id/--account-id batch dumps (default 5)
+      --load-script            Generate restore.sql with CREATE DATABASE, CREATE TABLE, and LOAD DATA statements; --output/-o is treated as a directory
+      --meta-comments          Prepend DDL and row-count comment lines (disabled by default so output can be loaded directly)
+      --no-load                With --load-script, generate only DDL and skip CSV dump and LOAD DATA statements
+      --out-backend string     remote backend for --out-s3: S3 or MINIO
+      --out-fs-config string   MO config TOML containing fileservice settings for dump output
+      --out-fs-name string     fileservice name to use from --out-fs-config (default "SHARED")
+      --out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+  -o, --output string          Output CSV file path (default: stdout)
+      --output-dir string      Output directory for database/account dumps
+      --row-order string       CSV row order: storage (streaming, large-table friendly) or lexical (sort by visible CSV values in memory) (default "storage")
+      --table-id uint          Table ID to dump
+      --ts string              Snapshot timestamp: physical:logical, physical-logical, RFC3339, or '2006-01-02 15:04:05' in local time (default: latest)
+
+Global Flags:
+      --backend string     remote backend for --s3: S3 or MINIO
+      --fs-config string   MO config TOML containing fileservice settings
+      --fs-name string     fileservice name to use from --fs-config (default "SHARED")
+      --s3 string          S3 arguments, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+
+Command exited with non-zero status 1
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334023 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334023_t_hash_partition /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 0.72
+	System time (seconds): 0.25
+	Percent of CPU this job got: 125%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.78
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 209660
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 23031
+	Voluntary context switches: 5044
+	Involuntary context switches: 15
+	Swaps: 0
+	File system inputs: 60584
+	File system outputs: 48
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+==> Dump db=ckp_tables db_id=334017 table=t_key_partition table_id=334028 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334028_t_key_partition
+2026/06/15 14:45:14.221815 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90714771456 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90714771456 mem_floor=26989533184 mem_waits=0
+Error: prepare table 334028 (ckp_tables.t_key_partition): internal error: table 334028 not found in checkpoint at ts 1781505702346157941-0
+Usage:
+  mo-tool ckp dump [directory] [flags]
+
+Flags:
+      --account-id uint32      Account ID to dump tables for; combine with --database-id to narrow the result
+      --cpuprofile string      Write CPU profile to file
+      --database-id uint       Database ID to dump tables for
+      --header                 Include a CSV header row with column names
+  -h, --help                   help for dump
+      --jobs int               Concurrent table dumps for --database-id/--account-id batch dumps (default 5)
+      --load-script            Generate restore.sql with CREATE DATABASE, CREATE TABLE, and LOAD DATA statements; --output/-o is treated as a directory
+      --meta-comments          Prepend DDL and row-count comment lines (disabled by default so output can be loaded directly)
+      --no-load                With --load-script, generate only DDL and skip CSV dump and LOAD DATA statements
+      --out-backend string     remote backend for --out-s3: S3 or MINIO
+      --out-fs-config string   MO config TOML containing fileservice settings for dump output
+      --out-fs-name string     fileservice name to use from --out-fs-config (default "SHARED")
+      --out-s3 string          S3 arguments for dump output, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+  -o, --output string          Output CSV file path (default: stdout)
+      --output-dir string      Output directory for database/account dumps
+      --row-order string       CSV row order: storage (streaming, large-table friendly) or lexical (sort by visible CSV values in memory) (default "storage")
+      --table-id uint          Table ID to dump
+      --ts string              Snapshot timestamp: physical:logical, physical-logical, RFC3339, or '2006-01-02 15:04:05' in local time (default: latest)
+
+Global Flags:
+      --backend string     remote backend for --s3: S3 or MINIO
+      --fs-config string   MO config TOML containing fileservice settings
+      --fs-name string     fileservice name to use from --fs-config (default "SHARED")
+      --s3 string          S3 arguments, for example bucket=...,endpoint=...,region=...,key-prefix=...,key-id=...,key-secret=...
+
+Command exited with non-zero status 1
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334028 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334028_t_key_partition /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 0.76
+	System time (seconds): 0.24
+	Percent of CPU this job got: 130%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.77
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 218768
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 22535
+	Voluntary context switches: 5036
+	Involuntary context switches: 40
+	Swaps: 0
+	File system inputs: 60584
+	File system outputs: 40
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+==> Dump db=ckp_tables db_id=334017 table=t_like table_id=334022 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334022_t_like
+2026/06/15 14:45:15.014601 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90722156544 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90722156544 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90695430144 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1 physical_rows=1 written_batches=1 written_bytes=34 read_ms=0 process_ms=0 write_ms=0 mem_available=90695430144 mem_floor=26989533184 mem_waits=0
+Table 334022 ckp_tables.t_like dumped to /data4/weilu/ckp_test/ckp_tables/334022_t_like/account_0/db_334017/t_like_334022.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90679332864 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90679332864 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90672775168 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=7 write_ms=0 mem_available=90672775168 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_tables/334022_t_like/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334022 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334022_t_like /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.72
+	System time (seconds): 0.39
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 243512
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 50698
+	Voluntary context switches: 9929
+	Involuntary context switches: 32
+	Swaps: 0
+	File system inputs: 159320
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_tables db_id=334017 table=t_normal table_id=334018 relkind=r
+    output=/data4/weilu/ckp_test/ckp_tables/334018_t_normal
+2026/06/15 14:45:16.829772 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90724769792 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90724769792 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90686550016 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=99 read_ms=0 process_ms=0 write_ms=0 mem_available=90686550016 mem_floor=26989533184 mem_waits=0
+Table 334018 ckp_tables.t_normal dumped to /data4/weilu/ckp_test/ckp_tables/334018_t_normal/account_0/db_334017/t_normal_334018.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90676588544 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90676588544 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90669744128 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90669744128 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_tables/334018_t_normal/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=334018 --header --load-script -o /data4/weilu/ckp_test/ckp_tables/334018_t_normal /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.73
+	System time (seconds): 0.35
+	Percent of CPU this job got: 117%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.78
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 243700
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 46698
+	Voluntary context switches: 9622
+	Involuntary context switches: 41
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> List checkpoint tables for db=ckp_types db_id=333981
+2026/06/15 14:45:18.626022 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90730172416 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90730172416 mem_floor=26989533184 mem_waits=0
+ACCOUNT_ID  DATABASE   TABLE            TABLE_ID  REL_KIND
+0           ckp_types  t_all_wide       333991    r
+0           ckp_types  t_array          333995    r
+0           ckp_types  t_binary_blob    333988    r
+0           ckp_types  t_bool_bit       333986    r
+0           ckp_types  t_datalink       333996    r
+0           ckp_types  t_defaults       333990    r
+0           ckp_types  t_enum_set       333992    r
+0           ckp_types  t_float_decimal  333985    r
+0           ckp_types  t_int_signed     333982    r
+0           ckp_types  t_int_unsigned   333983    r
+0           ckp_types  t_strings        333987    r
+0           ckp_types  t_temporal       333989    r
+0           ckp_types  t_uuid           333993    r
+0           ckp_types  t_vector_vecf32  333994    r
+==> Dump db=ckp_types db_id=333981 table=t_all_wide table_id=333991 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333991_t_all_wide
+2026/06/15 14:45:19.357129 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90730610688 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90730610688 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90696499200 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=2 physical_rows=2 written_batches=1 written_bytes=257 read_ms=0 process_ms=0 write_ms=0 mem_available=90696499200 mem_floor=26989533184 mem_waits=0
+Table 333991 ckp_types.t_all_wide dumped to /data4/weilu/ckp_test/ckp_types/333991_t_all_wide/account_0/db_333981/t_all_wide_333991.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90684981248 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90684981248 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90679336960 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90679336960 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333991_t_all_wide/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333991 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333991_t_all_wide /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.70
+	System time (seconds): 0.40
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 237240
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 48967
+	Voluntary context switches: 9235
+	Involuntary context switches: 33
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_array table_id=333995 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333995_t_array
+2026/06/15 14:45:21.174140 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90728726528 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90728726528 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90703126528 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=47 read_ms=0 process_ms=0 write_ms=0 mem_available=90703126528 mem_floor=26989533184 mem_waits=0
+Table 333995 ckp_types.t_array dumped to /data4/weilu/ckp_test/ckp_types/333995_t_array/account_0/db_333981/t_array_333995.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90702282752 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90702282752 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90692886528 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90692886528 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333995_t_array/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333995 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333995_t_array /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.65
+	System time (seconds): 0.37
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.75
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 231688
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 47212
+	Voluntary context switches: 9294
+	Involuntary context switches: 66
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_binary_blob table_id=333988 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333988_t_binary_blob
+2026/06/15 14:45:22.944631 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90728345600 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90728345600 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90707390464 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=1078 read_ms=0 process_ms=0 write_ms=0 mem_available=90707390464 mem_floor=26989533184 mem_waits=0
+Table 333988 ckp_types.t_binary_blob dumped to /data4/weilu/ckp_test/ckp_types/333988_t_binary_blob/account_0/db_333981/t_binary_blob_333988.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90685927424 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90685927424 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90677850112 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=7 write_ms=0 mem_available=90677850112 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333988_t_binary_blob/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333988 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333988_t_binary_blob /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.68
+	System time (seconds): 0.38
+	Percent of CPU this job got: 116%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.77
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 242876
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 49118
+	Voluntary context switches: 9847
+	Involuntary context switches: 49
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_bool_bit table_id=333986 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333986_t_bool_bit
+2026/06/15 14:45:24.733435 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90730319872 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90730319872 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90673983488 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=76 read_ms=0 process_ms=0 write_ms=0 mem_available=90673983488 mem_floor=26989533184 mem_waits=0
+Table 333986 ckp_types.t_bool_bit dumped to /data4/weilu/ckp_test/ckp_types/333986_t_bool_bit/account_0/db_333981/t_bool_bit_333986.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90665975808 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90665975808 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90666057728 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90666057728 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333986_t_bool_bit/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333986 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333986_t_bool_bit /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.69
+	System time (seconds): 0.36
+	Percent of CPU this job got: 117%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.75
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 247612
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 45356
+	Voluntary context switches: 9227
+	Involuntary context switches: 41
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_datalink table_id=333996 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333996_t_datalink
+2026/06/15 14:45:26.503399 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90719838208 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90719838208 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90707562496 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=1 physical_rows=1 written_batches=1 written_bytes=5 read_ms=0 process_ms=0 write_ms=0 mem_available=90707562496 mem_floor=26989533184 mem_waits=0
+Table 333996 ckp_types.t_datalink dumped to /data4/weilu/ckp_test/ckp_types/333996_t_datalink/account_0/db_333981/t_datalink_333996.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90684280832 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90684280832 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90671669248 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=7 write_ms=0 mem_available=90671669248 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333996_t_datalink/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333996 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333996_t_datalink /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.71
+	System time (seconds): 0.39
+	Percent of CPU this job got: 117%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 243872
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 50238
+	Voluntary context switches: 9599
+	Involuntary context switches: 55
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_defaults table_id=333990 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333990_t_defaults
+2026/06/15 14:45:28.315677 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90733703168 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90733703168 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90706616320 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=122 read_ms=0 process_ms=0 write_ms=0 mem_available=90706616320 mem_floor=26989533184 mem_waits=0
+Table 333990 ckp_types.t_defaults dumped to /data4/weilu/ckp_test/ckp_types/333990_t_defaults/account_0/db_333981/t_defaults_333990.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90698608640 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90698608640 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90698743808 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=7 write_ms=0 mem_available=90698743808 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333990_t_defaults/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333990 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333990_t_defaults /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.66
+	System time (seconds): 0.39
+	Percent of CPU this job got: 114%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.80
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 222080
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 55046
+	Voluntary context switches: 9326
+	Involuntary context switches: 59
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_enum_set table_id=333992 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333992_t_enum_set
+2026/06/15 14:45:30.128954 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90726309888 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90726309888 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90684014592 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=4 physical_rows=4 written_batches=1 written_bytes=26 read_ms=0 process_ms=0 write_ms=0 mem_available=90684014592 mem_floor=26989533184 mem_waits=0
+Table 333992 ckp_types.t_enum_set dumped to /data4/weilu/ckp_test/ckp_types/333992_t_enum_set/account_0/db_333981/t_enum_set_333992.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90679971840 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90679971840 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90665713664 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90665713664 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333992_t_enum_set/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333992 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333992_t_enum_set /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.77
+	System time (seconds): 0.40
+	Percent of CPU this job got: 119%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.83
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 238964
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 53246
+	Voluntary context switches: 9217
+	Involuntary context switches: 32
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_float_decimal table_id=333985 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333985_t_float_decimal
+2026/06/15 14:45:31.971914 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90711142400 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90711142400 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90684588032 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=4 physical_rows=4 written_batches=1 written_bytes=185 read_ms=0 process_ms=0 write_ms=0 mem_available=90684588032 mem_floor=26989533184 mem_waits=0
+Table 333985 ckp_types.t_float_decimal dumped to /data4/weilu/ckp_test/ckp_types/333985_t_float_decimal/account_0/db_333981/t_float_decimal_333985.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90681094144 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90681094144 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90672009216 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=7 write_ms=0 mem_available=90672009216 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333985_t_float_decimal/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333985 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333985_t_float_decimal /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.72
+	System time (seconds): 0.37
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.82
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 230024
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 51339
+	Voluntary context switches: 9455
+	Involuntary context switches: 43
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_int_signed table_id=333982 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333982_t_int_signed
+2026/06/15 14:45:33.812573 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90717126656 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90717126656 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90699423744 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=4 physical_rows=4 written_batches=1 written_bytes=114 read_ms=0 process_ms=0 write_ms=0 mem_available=90699423744 mem_floor=26989533184 mem_waits=0
+Table 333982 ckp_types.t_int_signed dumped to /data4/weilu/ckp_test/ckp_types/333982_t_int_signed/account_0/db_333981/t_int_signed_333982.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90693791744 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90693791744 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90684026880 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90684026880 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333982_t_int_signed/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333982 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333982_t_int_signed /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.67
+	System time (seconds): 0.42
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 230080
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 55110
+	Voluntary context switches: 9691
+	Involuntary context switches: 71
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_int_unsigned table_id=333983 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333983_t_int_unsigned
+2026/06/15 14:45:35.633015 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90727718912 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90727718912 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90690260992 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=68 read_ms=0 process_ms=0 write_ms=0 mem_available=90690260992 mem_floor=26989533184 mem_waits=0
+Table 333983 ckp_types.t_int_unsigned dumped to /data4/weilu/ckp_test/ckp_types/333983_t_int_unsigned/account_0/db_333981/t_int_unsigned_333983.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90682347520 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90682347520 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90668998656 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90668998656 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333983_t_int_unsigned/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333983 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333983_t_int_unsigned /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.78
+	System time (seconds): 0.39
+	Percent of CPU this job got: 121%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 241424
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 44086
+	Voluntary context switches: 9635
+	Involuntary context switches: 48
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_strings table_id=333987 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333987_t_strings
+2026/06/15 14:45:37.434334 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90714611712 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90714611712 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90689253376 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=4 physical_rows=4 written_batches=1 written_bytes=1378 read_ms=0 process_ms=0 write_ms=0 mem_available=90689253376 mem_floor=26989533184 mem_waits=0
+Table 333987 ckp_types.t_strings dumped to /data4/weilu/ckp_test/ckp_types/333987_t_strings/account_0/db_333981/t_strings_333987.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90663927808 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90663927808 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90658217984 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90658217984 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333987_t_strings/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333987 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333987_t_strings /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.72
+	System time (seconds): 0.38
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 249232
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 51240
+	Voluntary context switches: 9654
+	Involuntary context switches: 35
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_temporal table_id=333989 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333989_t_temporal
+2026/06/15 14:45:39.268337 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90709016576 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90709016576 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90683740160 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=351 read_ms=0 process_ms=0 write_ms=0 mem_available=90683740160 mem_floor=26989533184 mem_waits=0
+Table 333989 ckp_types.t_temporal dumped to /data4/weilu/ckp_test/ckp_types/333989_t_temporal/account_0/db_333981/t_temporal_333989.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90674921472 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90674921472 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90666598400 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90666598400 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333989_t_temporal/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333989 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333989_t_temporal /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.67
+	System time (seconds): 0.37
+	Percent of CPU this job got: 112%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.82
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 245780
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 51445
+	Voluntary context switches: 9446
+	Involuntary context switches: 32
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_uuid table_id=333993 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333993_t_uuid
+2026/06/15 14:45:41.106079 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90726711296 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90726711296 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90711818240 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=3 physical_rows=3 written_batches=1 written_bytes=83 read_ms=0 process_ms=0 write_ms=0 mem_available=90711818240 mem_floor=26989533184 mem_waits=0
+Table 333993 ckp_types.t_uuid dumped to /data4/weilu/ckp_test/ckp_types/333993_t_uuid/account_0/db_333981/t_uuid_333993.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90708582400 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90708582400 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90703220736 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=6 process_ms=8 write_ms=0 mem_available=90703220736 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333993_t_uuid/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333993 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333993_t_uuid /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.70
+	System time (seconds): 0.37
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 225420
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 54206
+	Voluntary context switches: 9292
+	Involuntary context switches: 37
+	Swaps: 0
+	File system inputs: 159208
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> Dump db=ckp_types db_id=333981 table=t_vector_vecf32 table_id=333994 relkind=r
+    output=/data4/weilu/ckp_test/ckp_types/333994_t_vector_vecf32
+2026/06/15 14:45:42.905939 +0800 INFO system/system.go:141 call runtime.GOMAXPROCS(64): 64, keep: 64
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90722557952 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=2 write_ms=0 mem_available=90722557952 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90712686592 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=4 physical_rows=4 written_batches=1 written_bytes=53 read_ms=0 process_ms=0 write_ms=0 mem_available=90712686592 mem_floor=26989533184 mem_waits=0
+Table 333994 ckp_types.t_vector_vecf32 dumped to /data4/weilu/ckp_test/ckp_types/333994_t_vector_vecf32/account_0/db_333981/t_vector_vecf32_333994.csv
+csv pipeline: start objects=1 reader_mode=in_processor processor_workers=1 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90707365888 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=1/1 read_batches=1 read_queue_blocks=0 read_queue_rows=0 processed_batches=1 write_queue_batches=0 write_queue_bytes=0 visible_rows=508 physical_rows=508 written_batches=1 written_bytes=489058 read_ms=1 process_ms=3 write_ms=0 mem_available=90707365888 mem_floor=26989533184 mem_waits=0
+csv pipeline: start objects=3 reader_mode=in_processor processor_workers=3 writer_workers=1 cpu_limit=64 memory_limit=237 memory_total=269895331840 memory_free=90699329536 memory_floor=26989533184 memory_per_worker=268435456 write_queue_capacity=2 report_every=10s
+csv pipeline: finish objects=3/3 read_batches=3 read_queue_blocks=0 read_queue_rows=0 processed_batches=2 write_queue_batches=0 write_queue_bytes=0 visible_rows=7576 physical_rows=7582 written_batches=2 written_bytes=633722 read_ms=7 process_ms=8 write_ms=0 mem_available=90699329536 mem_floor=26989533184 mem_waits=0
+Restore script written to /data4/weilu/ckp_test/ckp_types/333994_t_vector_vecf32/restore.sql
+	Command being timed: "/data4/weilu/matrixone/mo-tool ckp dump --table-id=333994 --header --load-script -o /data4/weilu/ckp_test/ckp_types/333994_t_vector_vecf32 /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared"
+	User time (seconds): 1.69
+	System time (seconds): 0.37
+	Percent of CPU this job got: 115%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 227668
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 50964
+	Voluntary context switches: 9349
+	Involuntary context switches: 50
+	Swaps: 0
+	File system inputs: 159176
+	File system outputs: 56
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+==> All dumped table ids
+ckp_constraints	333997	child_cascade	334001	r
+ckp_constraints	333997	child_restrict	334000	r
+ckp_constraints	333997	child_set_null	334002	r
+ckp_constraints	333997	parent	333999	r
+ckp_constraints	333997	t_auto_inc	334004	r
+ckp_constraints	333997	t_composite_keys	334007	r
+ckp_constraints	333997	t_fulltext	334012	r
+ckp_constraints	333997	t_identifier_comments	334008	r
+ckp_constraints	333997	t_vector_index	334016	r
+ckp_mvcc_perf	334036	t_alter_case	334041	r
+ckp_mvcc_perf	334036	t_dml_history	334037	r
+ckp_mvcc_perf	334036	t_scale_rows	334042	r
+ckp_mvcc_perf	334036	t_truncate_case	334039	r
+ckp_mvcc_perf	334036	t_wide_32_cols	334043	r
+ckp_tables	334017	__mo_tmp_019ec9e6fbf2704595b61a8315d93f4a_ckp_tables_t_tmp_checkpoint_visibility	334035	r
+ckp_tables	334017	select	334034	r
+ckp_tables	334017	t_cluster_by	334033	r
+ckp_tables	334017	t_ctas	334021	r
+ckp_tables	334017	t_empty	334019	r
+ckp_tables	334017	t_hash_partition	334023	r
+ckp_tables	334017	t_key_partition	334028	r
+ckp_tables	334017	t_like	334022	r
+ckp_tables	334017	t_normal	334018	r
+ckp_types	333981	t_all_wide	333991	r
+ckp_types	333981	t_array	333995	r
+ckp_types	333981	t_binary_blob	333988	r
+ckp_types	333981	t_bool_bit	333986	r
+ckp_types	333981	t_datalink	333996	r
+ckp_types	333981	t_defaults	333990	r
+ckp_types	333981	t_enum_set	333992	r
+ckp_types	333981	t_float_decimal	333985	r
+ckp_types	333981	t_int_signed	333982	r
+ckp_types	333981	t_int_unsigned	333983	r
+ckp_types	333981	t_strings	333987	r
+ckp_types	333981	t_temporal	333989	r
+ckp_types	333981	t_uuid	333993	r
+ckp_types	333981	t_vector_vecf32	333994	r
+Done. Dump output: /data4/weilu/ckp_test
