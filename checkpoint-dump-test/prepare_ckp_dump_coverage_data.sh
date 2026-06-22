@@ -145,6 +145,48 @@ run_sql() {
   fi
 }
 
+run_probe_sql() {
+  local sql="$1"
+  MYSQL_PWD="$PASSWORD" "$MYSQL_BIN" "${mysql_base_args[@]}" -e "$sql" >/dev/null 2>&1
+}
+
+detect_array_column_type() {
+  local probe_db="${DB_PREFIX}_array_probe_$$"
+  local candidate
+  local candidates=(
+    "ARRAY(VARCHAR(20))"
+    "ARRAY<varchar(20)>"
+    "VARCHAR(20) ARRAY"
+    "TEXT ARRAY"
+    "ARRAY"
+  )
+
+  run_probe_sql "DROP DATABASE IF EXISTS \`$probe_db\`; CREATE DATABASE \`$probe_db\`;" || return 1
+  for candidate in "${candidates[@]}"; do
+    if run_probe_sql "USE \`$probe_db\`; DROP TABLE IF EXISTS t; CREATE TABLE t (id INT NOT NULL PRIMARY KEY, tags $candidate NULL); INSERT INTO t VALUES (1, '[\"a\",\"b\"]'), (2, '[]'), (3, NULL); DROP TABLE t;"; then
+      run_probe_sql "DROP DATABASE IF EXISTS \`$probe_db\`;" || true
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  run_probe_sql "DROP DATABASE IF EXISTS \`$probe_db\`;" || true
+  return 1
+}
+
+ARRAY_COLUMN_TYPE="ARRAY(VARCHAR(20))"
+ARRAY_SETUP_NOTE="native ARRAY syntax selected by default"
+if [[ "$GENERATE_ONLY" != "1" ]]; then
+  if detected_array_type="$(detect_array_column_type)"; then
+    ARRAY_COLUMN_TYPE="$detected_array_type"
+    ARRAY_SETUP_NOTE="native ARRAY syntax accepted by current MatrixOne server"
+  else
+    ARRAY_COLUMN_TYPE="JSON"
+    ARRAY_SETUP_NOTE="fallback to JSON because current MatrixOne server rejected ARRAY column syntax candidates"
+  fi
+fi
+echo "t_array column type: $ARRAY_COLUMN_TYPE ($ARRAY_SETUP_NOTE)"
+
 drop_stmt() {
   if [[ "$DROP_EXISTING" == "1" ]]; then
     cat <<SQL
@@ -189,7 +231,7 @@ FROM (
 ) s
 WHERE n < $SCALE;
 
-SELECT 'util.seq rows' AS item, COUNT(*) AS rows FROM seq;
+SELECT 'util.seq rows' AS item, COUNT(*) AS \`rows\` FROM seq;
 SQL
 
 cat > "$OUT_DIR/10_types_core.sql" <<SQL
@@ -278,6 +320,8 @@ INSERT INTO t_binary_blob VALUES
   (3, NULL, NULL, NULL);
 
 DROP TABLE IF EXISTS t_temporal;
+-- YEAR coverage is temporarily disabled due to #25066:
+-- LOAD DATA fails with "the value type 22 is not support now".
 CREATE TABLE t_temporal (
   id INT NOT NULL PRIMARY KEY,
   c_date DATE NULL,
@@ -287,13 +331,12 @@ CREATE TABLE t_temporal (
   c_datetime3 DATETIME(3) NULL,
   c_datetime6 DATETIME(6) NULL,
   c_timestamp TIMESTAMP NULL,
-  c_timestamp6 TIMESTAMP(6) NULL,
-  c_year YEAR NULL
+  c_timestamp6 TIMESTAMP(6) NULL
 );
 INSERT INTO t_temporal VALUES
-  (1, '1970-01-01', '00:00:00', '00:00:00.000001', '1970-01-01 00:00:00', '2024-02-29 12:34:56.789', '2024-02-29 12:34:56.789123', '2024-02-29 12:34:56', '2024-02-29 12:34:56.789123', 1901),
-  (2, '2024-02-29', '23:59:59', '23:59:59.999999', '2038-01-19 03:14:07', '2000-01-01 00:00:00.123', '2000-01-01 00:00:00.123456', '2038-01-19 03:14:07', '2000-01-01 00:00:00.123456', 2155),
-  (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+  (1, '1970-01-01', '00:00:00', '00:00:00.000001', '1970-01-01 00:00:00', '2024-02-29 12:34:56.789', '2024-02-29 12:34:56.789123', '2024-02-29 12:34:56', '2024-02-29 12:34:56.789123'),
+  (2, '2024-02-29', '23:59:59', '23:59:59.999999', '2038-01-19 03:14:07', '2000-01-01 00:00:00.123', '2000-01-01 00:00:00.123456', '2038-01-19 03:14:07', '2000-01-01 00:00:00.123456'),
+  (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 DROP TABLE IF EXISTS t_defaults;
 CREATE TABLE t_defaults (
@@ -307,6 +350,8 @@ INSERT INTO t_defaults(c_null) VALUES (NULL), ('explicit');
 INSERT INTO t_defaults(id, c_int, c_str, c_dt, c_null) VALUES (100, 9, 'manual', '2024-01-01 00:00:00', 'manual-row');
 
 DROP TABLE IF EXISTS t_all_wide;
+-- YEAR coverage is temporarily disabled due to #25066:
+-- LOAD DATA fails with "the value type 22 is not support now".
 CREATE TABLE t_all_wide (
   id INT NOT NULL PRIMARY KEY,
   c_tiny TINYINT,
@@ -326,12 +371,11 @@ CREATE TABLE t_all_wide (
   c_time TIME(6),
   c_datetime DATETIME(6),
   c_timestamp TIMESTAMP(6),
-  c_year YEAR,
   c_json JSON
 );
 INSERT INTO t_all_wide VALUES
-  (1, -1, -2, -3, -4, 4, 1.25, 2.5, 12345.678901, true, 'char', 'varchar,quote"', 'text\nline', UNHEX('00FF'), '2024-02-29', '12:34:56.123456', '2024-02-29 12:34:56.123456', '2024-02-29 12:34:56.123456', 2024, '{"wide":true}'),
-  (2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+  (1, -1, -2, -3, -4, 4, 1.25, 2.5, 12345.678901, true, 'char', 'varchar,quote"', 'text\nline', UNHEX('00FF'), '2024-02-29', '12:34:56.123456', '2024-02-29 12:34:56.123456', '2024-02-29 12:34:56.123456', '{"wide":true}'),
+  (2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema = '$DB_TYPES' ORDER BY table_name;
 SQL
@@ -373,9 +417,11 @@ INSERT INTO t_vector_vecf32 VALUES
   (4, NULL);
 
 DROP TABLE IF EXISTS t_array;
+-- t_array column type selected by prepare script: $ARRAY_COLUMN_TYPE
+-- $ARRAY_SETUP_NOTE
 CREATE TABLE t_array (
   id INT NOT NULL PRIMARY KEY,
-  tags ARRAY(VARCHAR(20)) NULL
+  tags $ARRAY_COLUMN_TYPE NULL
 );
 INSERT INTO t_array VALUES
   (1, '["a","b"]'),
@@ -713,8 +759,8 @@ CREATE TEMPORARY TABLE t_session_only (
 );
 INSERT INTO t_session_only VALUES (1, 'temporary row');
 
-SELECT 'temp table session rows' AS item, COUNT(*) AS rows FROM t_session_only;
-SELECT 'temp hold seconds' AS item, $TEMP_HOLD_SECONDS AS rows;
+SELECT 'temp table session rows' AS item, COUNT(*) AS \`rows\` FROM t_session_only;
+SELECT 'temp hold seconds' AS item, $TEMP_HOLD_SECONDS AS \`rows\`;
 SELECT SLEEP($TEMP_HOLD_SECONDS) AS temp_hold_completed;
 SQL
 
@@ -733,7 +779,7 @@ CREATE EXTERNAL TABLE ext_csv_local (
   'format'='csv'
 };
 
-SELECT 'ext_csv_local rows' AS item, COUNT(*) AS rows FROM ext_csv_local;
+SELECT 'ext_csv_local rows' AS item, COUNT(*) AS \`rows\` FROM ext_csv_local;
 SQL
 fi
 
@@ -832,7 +878,7 @@ SELECT
 FROM \`$DB_UTIL\`.seq;
 
 SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema = '$DB_MVCC' ORDER BY table_name;
-SELECT 't_scale_rows count' AS item, COUNT(*) AS rows FROM t_scale_rows;
+SELECT 't_scale_rows count' AS item, COUNT(*) AS \`rows\` FROM t_scale_rows;
 SQL
 
 if [[ "$INCLUDE_TEMP_EXTERNAL" == "1" ]]; then

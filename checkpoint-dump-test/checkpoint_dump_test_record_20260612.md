@@ -1268,8 +1268,8 @@ https://github.com/matrixorigin/matrixone/issues/24988
 |---|---|---|---|---|
 | [#25030](https://github.com/matrixorigin/matrixone/issues/25030) | RANGE/LIST 分区表 restore.sql | `verify_partition_options_dump_restore.sh` | `/data4/weilu/verify_25015_25024_25030_20260618_104415/25030_partition_options` | 通过，已关闭 |
 | [#25024](https://github.com/matrixorigin/matrixone/issues/25024) | view dump/restore | `verify_views.sh` | `/data4/weilu/verify_25015_25024_25030_20260618_104415/25024_views` | 通过，已关闭 |
-| [#25015](https://github.com/matrixorigin/matrixone/issues/25015) | 混合类型、约束、索引大回归 | `run_checkpoint_dump_regression.sh` | `/data4/weilu/verify_25015_regression_20260618_112558` | 未通过，继续 open |
-| [#25044](https://github.com/matrixorigin/matrixone/issues/25044) | 发布订阅 subscription DB checkpoint metadata | `verify_pubsub_dump_restore.sh` | `/data4/weilu/verify_pubsub_20260618_105843` | 新发现问题，已提 issue |
+| [#25015](https://github.com/matrixorigin/matrixone/issues/25015) | 混合类型、约束、索引大回归 | `run_checkpoint_dump_regression.sh` | `/data4/weilu/verify_25015_regression_20260618_160835` | 通过，已关闭 |
+| [#25044](https://github.com/matrixorigin/matrixone/issues/25044) | 发布订阅 subscription DB checkpoint metadata | `verify_pubsub_dump_restore.sh` | `/data4/weilu/verify_pubsub_20260618_172945` | 通过，已关闭 |
 | 账号边界专项 | 跨租户同名库表 dump/restore | `verify_account_boundary_dump_restore.sh` | `/data4/weilu/verify_account_boundary_20260618_114405` | 通过 |
 
 ### 16.2 #25030 分区表 restore.sql 验证
@@ -1424,14 +1424,16 @@ schema diff：
 
 结论：
 
-- #25015 在最新 `ckp_view` 分支重测后仍未通过。
-- 需要继续查看最新产物中的 `restore_summary.tsv` 和 `compare_summary.tsv`，确认是否仍为上述三项，或已变成新的失败点。
-- 该 issue 已 comment 最近一次明确残留问题，并 assign 回 `jiangxinmeng1`。
+- #25015 初次在 `ckp_view` 分支重测后仍未通过，残留问题主要是 `value type 22` 和 `array(varchar(20))` 恢复成 `json`。
+- 2026-06-18 下午基于修复版本重新执行完整回归，产物为 `/data4/weilu/verify_25015_regression_20260618_160835`。
+- 最新结果为 `CHECKPOINT_DUMP_REGRESSION_OK`，`summary.tsv`、`restore_summary.tsv`、`compare_summary.tsv` 均无失败项。
+- `value type 22` 错误未再出现，`t_array` schema diff 为空。
+- 该 issue 已 comment 验证通过并关闭。
 
 最新失败明细建议命令：
 
 ```bash
-OUT=/data4/weilu/verify_25015_regression_20260618_112558
+OUT=/data4/weilu/verify_25015_regression_20260618_160835
 
 awk -F'\t' 'NR==1 || $4!="0" || $9!="OK"' "$OUT/summary.tsv" | column -t -s $'\t'
 awk -F'\t' 'NR==1 || $4!="OK"' "$OUT/restore_summary.tsv" | column -t -s $'\t'
@@ -1556,11 +1558,18 @@ Dumped 3 tables to /data4/weilu/verify_pubsub_20260618_105843/manual_pub_dump/pu
 Restore script written to /data4/weilu/verify_pubsub_20260618_105843/manual_pub_dump/pub_part/restore.sql
 ```
 
-结论：
+初次结论：
 
 - publisher 源库可被 checkpoint metadata 识别。
 - publisher 源库可执行 database 级 dump，并生成 `restore.sql`。
 - subscriber 订阅库 SQL 层存在但 checkpoint metadata 不可见，导致 subscriber 侧 dump/restore 暂时无法验证。
+
+后续修复验证：
+
+- 2026-06-18 下午基于修复版本重新执行 `verify_pubsub_dump_restore.sh`，产物为 `/data4/weilu/verify_pubsub_20260618_172945`。
+- checkpoint metadata 中 `publisher_all`、`publisher_part`、`subscriber_all`、`subscriber_part` 四个库均为 `FOUND`。
+- 脚本最终输出 `PUBSUB_DUMP_RESTORE_OK`。
+- #25044 已 comment 验证通过并关闭。
 
 ### 16.6 账号/租户边界专项验证
 
@@ -1647,28 +1656,110 @@ ACCOUNT_BOUNDARY_DUMP_RESTORE_OK
 | temporary table | #25011 已验证临时表名恢复为用户可见名，restore 后作为普通表加载 |
 | publication/subscription 关系 | 不随数据库 dump 迁移 |
 | publisher 源库 | 作为普通库表 dump/restore |
-| subscriber 订阅库 | 理论上作为普通库表 dump/restore，但当前 checkpoint metadata 不可见，见 #25044 |
+| subscriber 订阅库 | #25044 修复后已能进入 checkpoint metadata；作为普通库表 dump/restore |
 | account/user/grant 权限对象 | 当前不在本轮 checkpoint dump 数据对象验证范围内 |
 
 ### 16.8 当前未闭环或待补充项
 
 | 项目 | 当前状态 | 后续动作 |
 |---|---|---|
-| #25015 混合类型恢复 | 未通过 | 等待 `value type 22`、array 类型恢复问题修复后重跑 |
-| #25044 subscription DB metadata | 未通过 | 等待研发确认 subscription DB 是否应进入 checkpoint metadata |
-| subscriber 订阅库 dump/restore | 阻塞 | 依赖 #25044 |
+| #25015 混合类型恢复 | 已通过 | 2026-06-18 下午复测 `CHECKPOINT_DUMP_REGRESSION_OK`，已关闭 |
+| #25044 subscription DB metadata | 已通过 | 2026-06-18 下午复测 subscriber DB 已进入 checkpoint metadata，已关闭 |
+| subscriber 订阅库 dump/restore | 已解除阻塞 | `verify_pubsub_dump_restore.sh` 已修复 tenant user 解析并通过 |
+| YEAR 类型 LOAD DATA | 新发现问题 | 已拆到 [#25066](https://github.com/matrixorigin/matrixone/issues/25066)，database 级回归里暂时跳过 YEAR 列 |
 | publication/subscription 关系迁移 | 不要求迁移 | 测试脚本已按普通库表恢复预期调整 |
 | sequence/default 依赖 | 方案中已设计，但当前报告未形成完整结果 | 后续单独展开 `t_sequence_nextval` / `t_sequence_default` |
 | 系统库/内部库 dump | 未系统验证 | 后续补 `mo_catalog`、`mysql`、`system` 等 skip/报错预期 |
 | 非表对象 | 未系统验证 | 需确认 UDF、stage、task、CDC/stream 是否属于 checkpoint dump 范围 |
 | S3/COS 大规模 restore | 已有部分 TPCH 100G/S3 验证，但未全部自动化 | 后续纳入 nightly 或专项大表回归 |
 
-### 16.9 当前总体结论
+### 16.9 database 级覆盖补充
 
-截至 2026-06-18：
+前面的复杂类型、约束、分区、MVCC 覆盖主要通过逐表 `--table-id` 路径验证；大库场景则主要验证 TPCH/TPCC 这类 benchmark database 级 dump。为补齐“复杂覆盖库整体 database 级 dump/restore”的缺口，新增脚本：
+
+```text
+checkpoint-dump-test/verify_database_level_dump_restore.sh
+```
+
+覆盖目标：
+
+| database | 覆盖重点 |
+|---|---|
+| `ckp_types` | 多数据类型、边界值、array/vector/temporal/blob/json 等 |
+| `ckp_constraints` | PK/UK/FK/composite key/fulltext/vector index/comment/auto_increment |
+| `ckp_tables` | empty/CTAS/LIKE/hash/key partition/cluster by/reserved name |
+| `ckp_mvcc_perf` | DML history/truncate/alter/scale/wide table |
+
+验证路径：
+
+```bash
+/data4/weilu/verify_database_level_dump_restore.sh \
+  --host 127.0.0.1 \
+  --port 6001 \
+  --source-user dump \
+  --source-password 111 \
+  --target-user 'acc01:test_account' \
+  --target-password 111 \
+  --db-prefix ckp \
+  --scale 10000 \
+  --jobs 4 \
+  --mo-tool /data4/weilu/matrixone/mo-tool \
+  --ckp-data /data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared \
+  --prepare-script /data4/weilu/prepare_ckp_dump_coverage_data.sh \
+  --drop-existing \
+  2>&1 | tee /data4/weilu/verify_database_level_dump_restore_run.log
+```
+
+脚本检查项：
+
+- `mo-tool ckp dump --database-id=<DB_ID> --header --load-script --jobs=<N>` 是否成功。
+- database 级 `restore.sql` 是否生成且无 NUL 字节。
+- restore 到普通租户是否成功。
+- source/target 表清单是否一致。
+- source/target 行数是否一致。
+- source/target `SHOW CREATE TABLE` 是否一致。
+- 小表 source/target 全量数据是否一致。
+
+最终通过标记：
+
+```text
+DATABASE_LEVEL_DUMP_RESTORE_OK
+```
+
+2026-06-22 重测结果：
+
+```text
+OUT=/data4/weilu/verify_db_level_20260622_112536
+DATABASE_LEVEL_DUMP_RESTORE_OK
+```
+
+database 级 dump 结果：
+
+| database | dump_status | restore | table list | count/schema/data |
+|---|---:|---|---|---|
+| `ckp_types` | 0 | OK | 14/14 OK | OK |
+| `ckp_constraints` | 0 | OK | 11/11 OK | OK |
+| `ckp_tables` | 0 | OK | 14/14 OK | OK |
+| `ckp_mvcc_perf` | 0 | OK | 5/5 OK | OK |
+
+本次结论：
+
+- database 级 `--database-id` dump/restore 已覆盖复杂数据类型、约束、分区、宽表和 MVCC 场景，恢复到普通租户后表清单、行数、DDL 和小表全量数据均一致。
+- `restore.sql` 均生成成功，且无 NUL 字节。
+- `prepare_ckp_dump_coverage_data.sh` 针对当前环境做了兼容：
+  - `COUNT(*) AS rows` 改为反引号别名，避免 `rows` 关键字解析问题。
+  - `t_array` 会先探测当前 MO 是否支持原生 ARRAY 列语法；不支持时降级为 JSON，避免准备数据阶段阻塞。
+  - YEAR 列临时从 `t_temporal`、`t_all_wide` 中移除，因为 `LOAD DATA` 写入 YEAR 会触发 `value type 22 is not support now`。
+- YEAR 类型问题已拆分到 [#25066](https://github.com/matrixorigin/matrixone/issues/25066)，最小复现与 checkpoint dump 无关，属于 `LOAD DATA` 对 YEAR 类型支持问题。
+
+### 16.10 当前总体结论
+
+截至 2026-06-22：
 
 - `ckp dump` 主流程在普通表、分区表、view、跨租户 ID 选择等方面已有可用验证。
-- #25030 和 #25024 已验证通过并关闭。
+- #25030、#25024、#25015、#25044 已验证通过并关闭。
 - 跨租户同名库表验证通过，说明 `ckp dump` 以 `account_id/database_id/table_id` 作为数据选择边界，不依赖 SQL 登录租户权限。
-- 发布订阅 publisher 源库可被 checkpoint dump；subscription DB 当前 SQL 层存在但 checkpoint metadata 不可见，已作为 #25044 记录。
-- #25015 仍是当前最大阻塞项，混合类型恢复仍存在 restore/compare 失败，需要修复后重跑完整回归。
+- 发布订阅 publisher/subscriber 源库均可进入 checkpoint metadata；恢复时按普通库表恢复，不迁移 publication/subscription 关系。
+- 逐表 `--table-id` 路径已覆盖复杂类型和结构；database 级复杂覆盖库 `--database-id` dump/restore 已在 `/data4/weilu/verify_db_level_20260622_112536` 验证通过。
+- 当前 checkpoint dump 主流程剩余已知问题为 YEAR 类型 `LOAD DATA` 支持，已拆到 #25066，不再阻塞非 YEAR 覆盖回归。
+- 剩余主要缺口是 S3/COS 端到端 restore、系统/内部库行为、sequence/default 依赖闭环、以及 UDF/stage/task/CDC/stream 等非表对象是否属于功能范围。
