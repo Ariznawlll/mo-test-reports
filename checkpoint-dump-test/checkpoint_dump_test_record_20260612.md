@@ -1668,8 +1668,8 @@ ACCOUNT_BOUNDARY_DUMP_RESTORE_OK
 | subscriber 订阅库 dump/restore | 已解除阻塞 | `verify_pubsub_dump_restore.sh` 已修复 tenant user 解析并通过 |
 | YEAR 类型 LOAD DATA | 新发现问题 | 已拆到 [#25066](https://github.com/matrixorigin/matrixone/issues/25066)，database 级回归里暂时跳过 YEAR 列 |
 | publication/subscription 关系迁移 | 不要求迁移 | 测试脚本已按普通库表恢复预期调整 |
-| sequence/default 依赖 | 方案中已设计，但当前报告未形成完整结果 | 后续单独展开 `t_sequence_nextval` / `t_sequence_default` |
-| 系统库/内部库 dump | 未系统验证 | 后续补 `mo_catalog`、`mysql`、`system` 等 skip/报错预期 |
+| sequence/default 依赖 | 已通过 | account 级用户库恢复中已覆盖 `t_sequence_default` / `t_sequence_nextval`，schema/count/data 均 OK |
+| 系统库/内部库 dump | 已做 dump-only 验证，restore 不作为当前预期 | 系统表 dump 数据行数基本可对齐；DDL 存在差异，已拆到 [#25072](https://github.com/matrixorigin/matrixone/issues/25072) |
 | 非表对象 | 未系统验证 | 需确认 UDF、stage、task、CDC/stream 是否属于 checkpoint dump 范围 |
 | S3/COS 大规模 restore | 已有部分 TPCH 100G/S3 验证，但未全部自动化 | 后续纳入 nightly 或专项大表回归 |
 
@@ -1752,14 +1752,154 @@ database 级 dump 结果：
   - YEAR 列临时从 `t_temporal`、`t_all_wide` 中移除，因为 `LOAD DATA` 写入 YEAR 会触发 `value type 22 is not support now`。
 - YEAR 类型问题已拆分到 [#25066](https://github.com/matrixorigin/matrixone/issues/25066)，最小复现与 checkpoint dump 无关，属于 `LOAD DATA` 对 YEAR 类型支持问题。
 
-### 16.10 当前总体结论
+### 16.10 account 级整租户 dump 补充
+
+本轮补充验证 `mo-tool ckp dump --account-id=<ACCOUNT_ID>` 路径，确认 checkpoint dump 可以按租户 ID 选择整租户数据。测试环境中 `account_id=1` 下包含用户覆盖库和该租户的系统/内部库：
+
+```text
+ACCOUNT_ID  DATABASE            DATABASE_ID
+1           ckp_constraints     273776
+1           ckp_mvcc_perf       273840
+1           ckp_tables          273799
+1           ckp_types           273761
+1           information_schema  272542
+1           mo_catalog          1
+1           mysql               272543
+1           system              272540
+1           system_metrics      272541
+```
+
+执行 account 级 dump：
+
+```bash
+export MO_TOOL=/data4/weilu/matrixone/mo-tool
+export CKP_DATA=/data3/actions-runner/_work/mo-auto-test/mo-auto-test/head/mo-data/shared
+export ACCOUNT_ID=1
+export OUT=/data4/weilu/verify_account_level_20260622_143031
+
+"$MO_TOOL" ckp dump \
+  --account-id="$ACCOUNT_ID" \
+  --header \
+  --load-script \
+  --jobs=4 \
+  -o "$OUT/account_${ACCOUNT_ID}" \
+  "$CKP_DATA" \
+  2>&1 | tee "$OUT/account_${ACCOUNT_ID}.dump.log"
+```
+
+dump 结果：
+
+```text
+Dumped 110 tables to /data4/weilu/verify_account_level_20260622_143031/account_1
+Restore script written to /data4/weilu/verify_account_level_20260622_143031/account_1/restore.sql
+```
+
+重要观察：
+
+- `--account-id=1` 是真正按租户 dump，会同时包含该租户下的用户库和系统/内部库。
+- 本轮 restore 只验证用户库 `ckp_*`，系统/内部库仍按 dump-only 方式验证，原因是系统库 restore 权限和系统表 DDL 语义需要单独定义。
+- 从整租户 `restore.sql` 中抽取 `ckp_*` 用户库后，load 到普通目标租户 `ckpacctdst:test_account` 成功。
+
+抽取用户库 restore 脚本：
+
+```bash
+OUT=/data4/weilu/verify_account_level_20260622_143031
+RESTORE="$OUT/account_1/restore.sql"
+
+awk '
+  /^CREATE DATABASE IF NOT EXISTS `/ {
+    keep = ($0 ~ /^CREATE DATABASE IF NOT EXISTS `ckp_/)
+  }
+  keep { print }
+' "$RESTORE" > "$OUT/account_1_user_dbs_restore.sql"
+```
+
+load 到目标租户：
+
+```bash
+mysql -h127.0.0.1 -P6001 -u'ckpacctdst:test_account' -p111 \
+  --default-character-set=utf8mb4 \
+  --binary-mode=1 \
+  --force \
+  < "$OUT/account_1_user_dbs_restore.sql" \
+  2>&1 | tee "$OUT/account_1_user_dbs_load.log"
+```
+
+关键表行数冒烟：
+
+```text
+Database:
+ckp_constraints
+ckp_mvcc_perf
+ckp_tables
+ckp_types
+
+ckp_types.t_int_signed        4
+ckp_tables.t_hash_partition   1000
+ckp_constraints.parent        3
+ckp_mvcc_perf.t_scale_rows    10000
+```
+
+随后执行 source/target schema、行数、数据完整性对比：
+
+```bash
+OUT=/data4/weilu/verify_account_level_20260622_143031/account_user_dbs_compare \
+SRC_USER='acc01:test_account' \
+SRC_PASSWORD=111 \
+DST_USER='ckpacctdst:test_account' \
+DST_PASSWORD=111 \
+/data4/weilu/compare_account_level_user_dbs.sh \
+  2>&1 | tee /data4/weilu/verify_account_level_20260622_143031/account_user_dbs_compare.log
+```
+
+对比范围：
+
+| database | 表数 | 代表覆盖 |
+|---|---:|---|
+| `ckp_constraints` | 11 | FK、复合键、auto_increment、fulltext、vector index、sequence/default |
+| `ckp_mvcc_perf` | 5 | DML/truncate/alter/scale/wide table |
+| `ckp_tables` | 14 | empty/CTAS/LIKE/hash/key/range/list/linear hash partition/cluster by/table options |
+| `ckp_types` | 14 | int/float/decimal/string/blob/bool/temporal/array/json/uuid/vector 等 |
+
+最终结果：
+
+```text
+ACCOUNT_LEVEL_USER_DBS_COMPARE_OK
+```
+
+失败项检查为空：
+
+```bash
+awk -F'\t' 'NR==1 || $5!="OK" || $6!="OK" || ($7!="OK" && $7 !~ /^SKIP/)' \
+  /data4/weilu/verify_account_level_20260622_143031/account_user_dbs_compare/compare_summary.tsv \
+  | column -t -s $'\t'
+```
+
+输出仅有表头：
+
+```text
+db  table  source_count  target_count  count_status  schema_status  data_status  schema_diff  data_diff
+```
+
+本次结论：
+
+- account 级 `--account-id` dump 能成功导出整个租户。
+- 整租户 dump 产物中，用户库 `ckp_*` 可抽取后恢复到普通目标租户。
+- 用户库恢复后 44 张表 schema、行数、数据对比均一致。
+- `sequence/default` 依赖表 `t_sequence_default`、`t_sequence_nextval` 已在本轮 account 级恢复中通过。
+- 系统/内部库会被 `--account-id` 带出，但本轮不直接 restore；系统库行为仍以单独 dump-only 验证和 #25072 跟踪。
+
+### 16.11 当前总体结论
 
 截至 2026-06-22：
 
 - `ckp dump` 主流程在普通表、分区表、view、跨租户 ID 选择等方面已有可用验证。
 - #25030、#25024、#25015、#25044 已验证通过并关闭。
 - 跨租户同名库表验证通过，说明 `ckp dump` 以 `account_id/database_id/table_id` 作为数据选择边界，不依赖 SQL 登录租户权限。
+- account 级 `--account-id` dump 已验证通过；从整租户产物中抽取用户库恢复到普通租户后，44 张表 schema、行数和数据一致。
+- sequence/default 依赖已通过 account 级用户库恢复验证。
 - 发布订阅 publisher/subscriber 源库均可进入 checkpoint metadata；恢复时按普通库表恢复，不迁移 publication/subscription 关系。
 - 逐表 `--table-id` 路径已覆盖复杂类型和结构；database 级复杂覆盖库 `--database-id` dump/restore 已在 `/data4/weilu/verify_db_level_20260622_112536` 验证通过。
 - 当前 checkpoint dump 主流程剩余已知问题为 YEAR 类型 `LOAD DATA` 支持，已拆到 #25066，不再阻塞非 YEAR 覆盖回归。
-- 剩余主要缺口是 S3/COS 端到端 restore、系统/内部库行为、sequence/default 依赖闭环、以及 UDF/stage/task/CDC/stream 等非表对象是否属于功能范围。
+- 系统/内部库已完成 dump-only 初步验证，DDL 差异已拆到 #25072；restore 权限和语义仍需产品侧确认。
+- 剩余主要缺口是 S3/COS 端到端 restore，以及 UDF/stage/task/CDC/stream 等非表对象是否属于功能范围。
