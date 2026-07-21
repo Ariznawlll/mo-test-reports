@@ -37,9 +37,35 @@
 | P2 | 云侧/集成适配 | `mo_cloud`, `dataXtest`, `tenxcloud_xx` | 5 | 未看到明确专项 | cloud information_schema、mo_cloud、DataX、TenxCloud 适配类用例缺覆盖 |
 | P2 | 分布式事务/内部链路细节 | `disttae`, `optimistic`, `pessimistic_transaction` | 81 | motr transaction、TPCC/sysbench 覆盖事务主链路 | BVT 中 disttae/乐观/悲观事务细节可能仍需和 motr 做差异比对 |
 
-## 3. 大模块下的小模块缺口
+## 3. BVT 已有但其他回归还没明确覆盖的测试内容
 
-### 3.1 SQL 语义与类型/函数兼容
+下面这张表是本报告最核心的交叉结果：左边是 BVT 里已经有的测试内容，右边是 nightly/motr/snapshot/PITR/big-data 里没有看到明确覆盖或只间接覆盖的缺口。
+
+| BVT 大模块 | BVT 已有测试内容 | BVT 对应目录/用例 | 其他回归还没覆盖到的内容 |
+| --- | --- | --- | --- |
+| SQL 语义与类型/函数兼容 | geospatial 函数、GeoJSON、geohash、geometry 构造、buffer、binary/unary geo functions | `geo/*.sql` | 其他回归没有 geo 专项，big-data 的 math/string/date/regexp 不能覆盖 geospatial |
+| SQL 语义与类型/函数兼容 | array 基础语义、array index、array KNN | `array/array.sql`, `array/array_index*.sql`, `array/array_index_knn.sql` | vector 回归覆盖 ANN/vector index，但没有覆盖 array 语义和 array index |
+| SQL 语义与类型/函数兼容 | PostgreSQL cast、charset/collation 基础/高级/错误路径 | `pg_cast/cast.sql`, `charset_collation/*.sql` | 其他回归没有 cast/collation 兼容专项 |
+| SQL 语义与类型/函数兼容 | 大量函数、类型、操作符、表达式语义 | `function`, `dtype`, `operator`, `expression` | big-data 只覆盖部分函数类别和大表查询路径，缺 BVT 里的细粒度语义、边界值、错误路径、混合类型转换 |
+| 发布订阅 | publication/subscription 创建、订阅数据可见性、发布对象变更、中文库表订阅 | `publication_subscription/pub_sub*.sql`, `publish_subscribe.sql` | 其他回归未看到 publication/subscription 专项 |
+| 扩展与可编程能力 | 存储过程创建/执行、Starlark SQL 调用、UDF、plugin | `procedure/*.sql`, `udf/udf.sql`, `plugin/plugin.sql` | 其他回归未看到 procedure、Starlark、UDF、plugin 专项 |
+| 权限、安全与账号访问控制 | password、SQL injection、account restricted、ip whitelist、grant/truncate、用户/角色/账号管理 | `security/password.sql`, `sql_inject/sql_inject.test`, `zz_accesscontrol/*.sql` | motr 有 RBAC 大方向，但没有完整覆盖 BVT 的 password、SQL inject、ip whitelist、account restricted、grant truncate 等细节 |
+| Stage/外部数据/查询结果落盘 | external stage、stage columns、writable external table、CSV options、remove stage files | `stage/*.sql` | big-data 有 parquet export stage，但没有完整覆盖 external/writable stage、stage 文件管理 |
+| Stage/外部数据/查询结果落盘 | save query result、SQL source type | `save_query_result/save_query_result.sql`, `sql_source_type/sql_source_type.sql` | 其他回归未看到 save query result 和 SQL source type 专项 |
+| DDL/对象语义兼容 | sequence 创建/修改/函数、foreign key check/self reference、fake pk、auto increment 多列/边界 | `sequence/*.sql`, `foreign_key/*.sql`, `fake_pk/*.sql`, `auto_increment/*.sql` | motr DDL/schema 和大场景有间接覆盖，但这些对象级兼容语义没有完整专项 |
+| DDL/对象语义兼容 | temporary table、replace statement、comment、keyword、sample、set | `temporary`, `replace_statement`, `comment`, `keyword`, `sample`, `set` | big-data/sysbench/TPCC 会间接覆盖部分 DDL/DML，但没有覆盖这些兼容细节 |
+| 查询语义结构 | join/subquery/window/CTE/recursive CTE/distinct/union 的语义用例 | `join`, `subquery`, `window`, `cte`, `recursive_cte`, `distinct`, `union` | TPCH/big-data 覆盖的是性能和大数据查询路径，缺 BVT 细粒度查询语义，尤其 recursive CTE、subquery、distinct/union |
+| 系统变量、查询元信息与观测 | system variables、跨账号变量、remote var expr、event scheduler | `system_variable/*.sql` | 其他回归未看到 system variable 专项 |
+| 系统变量、查询元信息与观测 | statement/query type、query tcp/version、result count、query result/cloud、metadata/log/task | `statement_query_type`, `zz_statement_query_type`, `query_result`, `result_count`, `metadata`, `log`, `task` | prepare 已有 motr，但不等价于 query type/result metadata；这些观测类能力缺专项 |
+| 查询执行与计划缓存细节 | plan cache、qexec group/sort spill、hint、analyze | `plan_cache`, `qexec`, `hint`, `analyze` | optimizer/big-data 有间接覆盖，但没有 plan cache/qexec/hint/analyze 的稳定小用例专项 |
+| 云侧/集成适配 | MO Cloud information_schema、mo_cloud、DataX、TenxCloud 适配 | `mo_cloud`, `dataXtest`, `tenxcloud_xx` | 其他回归未看到明确专项，需要确认依赖环境后决定放 motr 还是独立集成回归 |
+| 分布式事务/内部链路细节 | disttae、optimistic transaction、pessimistic transaction 的 BVT 细节 | `disttae`, `optimistic`, `pessimistic_transaction` | motr transaction/TPCC/sysbench 覆盖事务主链路，但 BVT 内部链路和异常路径仍需和 motr 做 case diff |
+
+换句话说，本报告不是说 BVT 缺少这些内容，而是说：**这些内容 BVT 已经有，其他回归还没有明确覆盖或只间接覆盖**。后续要补的是 nightly/motr 的覆盖，而不是 BVT 本身。
+
+## 4. 大模块下的小模块缺口
+
+### 4.1 SQL 语义与类型/函数兼容
 
 总判断：这是 BVT 中体量最大的能力面，其他回归有查询场景的间接覆盖，但缺少按 SQL 语义拆分的稳定回归。
 
@@ -53,7 +79,7 @@
 | 兼容语法 | `pg_cast`, `charset_collation` | 未看到明确专项 | PostgreSQL cast 语法、charset/collation 基础/高级/错误路径 |
 | 时间窗口 | `time_window` | big-data 有 date 类查询 | time window 语义本身缺专项 |
 
-### 3.2 发布订阅
+### 4.2 发布订阅
 
 总判断：发布订阅是独立功能链路，当前其他回归未看到明确覆盖，属于最清晰的缺口。
 
@@ -63,7 +89,7 @@
 | 兼容与边界 | `pub_sub_chinese_db_table.sql` | 未看到明确专项 | 中文库表、特殊命名、异常订阅路径 |
 | 变更链路 | `pub_sub_improvement*.sql`, `publish_subscribe.sql` | 未看到明确专项 | 发布对象变更、订阅刷新、清理链路 |
 
-### 3.3 扩展与可编程能力
+### 4.3 扩展与可编程能力
 
 总判断：procedure/UDF/plugin 在 BVT 有冒烟，但 nightly/motr 没有形成稳定专项。
 
@@ -74,7 +100,7 @@
 | UDF | `udf/udf.sql` | 未看到明确专项 | UDF 创建/调用/删除最小链路 |
 | Plugin | `plugin/plugin.sql` | 未看到明确专项 | plugin 加载、使用、清理、失败路径 |
 
-### 3.4 权限、安全与账号访问控制
+### 4.4 权限、安全与账号访问控制
 
 总判断：motr 已有 RBAC 大方向，但 BVT 权限安全细节更多，不能认为已完整覆盖。
 
@@ -86,7 +112,7 @@
 | 密码安全 | `security/password.sql` | 未看到明确专项 | 密码策略、错误密码、密码变更路径 |
 | SQL 注入 | `sql_inject/sql_inject.test` | 未看到明确专项 | 注入攻击输入、预期拦截/错误路径 |
 
-### 3.5 Stage/外部数据/查询结果落盘
+### 4.5 Stage/外部数据/查询结果落盘
 
 总判断：big-data 和 motr 覆盖了 load/export 的一部分，但 BVT 中 stage 相关对象和查询结果落盘没有完整专项。
 
@@ -98,7 +124,7 @@
 | 查询结果落盘 | `save_query_result/save_query_result.sql` | 未看到明确专项 | save query result 基础链路和异常路径 |
 | SQL 来源类型 | `sql_source_type/sql_source_type.sql` | 未看到明确专项 | SQL source type 标记和查询校验 |
 
-### 3.6 DDL/对象语义兼容
+### 4.6 DDL/对象语义兼容
 
 总判断：DDL/schema 有 motr 和大场景间接覆盖，但 BVT 中很多对象级语义仍缺少专项。
 
@@ -111,7 +137,7 @@
 | Temporary/Replace/Set | `temporary`, `replace_statement`, `set` | big-data 有 replace into CTAS，sysbench/TPCC 间接覆盖 | temporary table、replace 语义、set 语句边界 |
 | 兼容细节 | `comment`, `keyword`, `sample` | 未看到明确专项 | comment 语法、关键字兼容、sample 语法 |
 
-### 3.7 查询语义结构
+### 4.7 查询语义结构
 
 总判断：TPCH/big-data 覆盖的是查询性能和大数据路径，不等价于 BVT 的查询语义专项。
 
@@ -123,7 +149,7 @@
 | CTE/Recursive CTE | `cte`, `recursive_cte` | motr optimizer 有部分 CTE | recursive CTE、循环/终止条件、复杂引用 |
 | Distinct/Union | `distinct`, `union` | 查询场景间接覆盖 | distinct/union 语义、去重、类型兼容 |
 
-### 3.8 系统变量、查询元信息与观测
+### 4.8 系统变量、查询元信息与观测
 
 总判断：这类模块偏系统可观测和查询元数据，现有性能/专项回归基本不会系统性覆盖。
 
@@ -134,7 +160,7 @@
 | 查询结果元信息 | `query_result`, `result_count` | 未看到明确专项 | query result、query result cloud、result count |
 | 系统元数据 | `metadata`, `system`, `log`, `task` | 未看到明确专项 | metadata 查询、system/log/task 表或函数行为 |
 
-### 3.9 查询执行与计划缓存细节
+### 4.9 查询执行与计划缓存细节
 
 总判断：optimizer 有专项，但 qexec/plan cache/hint/analyze 这些执行细节还缺少明确覆盖。
 
@@ -144,7 +170,7 @@
 | QExec | `qexec` | big-data 有 spill sort/hash join 间接覆盖 | group、sort spill 的小型稳定语义回归 |
 | Hint/Analyze | `hint`, `analyze` | motr optimizer 间接覆盖 | hint 生效/不生效、analyze 统计信息路径 |
 
-### 3.10 云侧/集成适配
+### 4.10 云侧/集成适配
 
 总判断：这类能力容易依赖环境，BVT 有用例但其他回归没有稳定专项。
 
@@ -154,7 +180,7 @@
 | DataX | `dataXtest` | 未看到明确专项 | DataX 集成链路，需要确认环境依赖 |
 | TenxCloud | `tenxcloud_xx` | 未看到明确专项 | TenxCloud 适配类 SQL，需要确认是否仍有效 |
 
-### 3.11 分布式事务/内部链路细节
+### 4.11 分布式事务/内部链路细节
 
 总判断：事务主链路已有 motr/TPCC/sysbench 覆盖，但 BVT 的内部实现细节需要和 motr 再做差异比对。
 
@@ -164,9 +190,9 @@
 | 乐观事务 | `optimistic` | motr `01_transaction` 间接覆盖 | 冲突检测、提交失败、重试边界 |
 | DistTAE | `disttae` | 事务/大场景间接覆盖 | disttae 特有语义和内部链路回归 |
 
-## 4. 最值得优先补的“大模块”
+## 5. 最值得优先补的“大模块”
 
-### 4.1 SQL 语义与类型/函数兼容
+### 5.1 SQL 语义与类型/函数兼容
 
 BVT 已覆盖内容：
 
@@ -194,7 +220,7 @@ BVT 已覆盖内容：
 - 第一批先补 `geo`、`array`、`charset_collation`、`pg_cast`。
 - `function` 和 `dtype` 不建议整包搬运，建议按高风险函数和 issue 历史抽核心 case。
 
-### 4.2 发布订阅
+### 5.2 发布订阅
 
 BVT 已覆盖内容：
 
@@ -217,7 +243,7 @@ BVT 已覆盖内容：
 
 - 作为 P0 补到 motr，单独建 publication/subscription suite 或放到 cross-dimension/issue regression 中。
 
-### 4.3 扩展与可编程能力
+### 5.3 扩展与可编程能力
 
 BVT 已覆盖内容：
 
@@ -241,7 +267,7 @@ BVT 已覆盖内容：
 - 抽最小可稳定运行 case 补入 motr。
 - 如果 `starlark_llm` 依赖外部服务，需要拆分为可 nightly 稳定执行和需手工/环境依赖两类。
 
-### 4.4 权限、安全与账号访问控制
+### 5.4 权限、安全与账号访问控制
 
 BVT 已覆盖内容：
 
@@ -265,7 +291,7 @@ BVT 已覆盖内容：
 - 先把 `zz_accesscontrol` 和 motr `08_multitenant_rbac` 做 case diff。
 - 优先补：password、SQL inject、ip whitelist、account restricted、grant/truncate。
 
-### 4.5 Stage/外部数据/查询结果落盘
+### 5.5 Stage/外部数据/查询结果落盘
 
 BVT 已覆盖内容：
 
@@ -292,7 +318,7 @@ BVT 已覆盖内容：
 - 作为 load/export suite 的扩展补入 motr。
 - 需要先确认 nightly 环境对象存储权限和路径清理策略。
 
-### 4.6 DDL/对象语义兼容
+### 5.6 DDL/对象语义兼容
 
 BVT 已覆盖内容：
 
@@ -316,7 +342,7 @@ BVT 已覆盖内容：
 - 不建议搬运完整 DDL/DML BVT。
 - 建议先抽 sequence、foreign key、fake pk、temporary、comment/keyword 的核心 case。
 
-### 4.7 查询语义结构
+### 5.7 查询语义结构
 
 BVT 已覆盖内容：
 
@@ -342,7 +368,7 @@ BVT 已覆盖内容：
 
 - 按语义抽小集合补入 motr optimizer 或 semantic regression。
 
-### 4.8 系统变量、查询元信息与观测
+### 5.8 系统变量、查询元信息与观测
 
 BVT 已覆盖内容：
 
@@ -370,7 +396,7 @@ BVT 已覆盖内容：
 - 合并成“query metadata / system metadata”小 suite。
 - 优先补 `statement_query_type`、`zz_statement_query_type`、`query_result`、`result_count`、`system_variable`。
 
-### 4.9 云侧/集成适配
+### 5.9 云侧/集成适配
 
 BVT 已覆盖内容：
 
@@ -391,7 +417,7 @@ BVT 已覆盖内容：
 - 先确认这些 case 对外部环境的依赖。
 - 可稳定执行的 SQL 先补入 motr；依赖外部系统的保留为独立集成回归。
 
-## 5. 已有覆盖比较明确的大模块
+## 6. 已有覆盖比较明确的大模块
 
 下面这些大模块已经有较明确的专项，不建议作为“未覆盖大模块”优先项：
 
@@ -406,7 +432,7 @@ BVT 已覆盖内容：
 | CDC | BVT 无单独同名大目录，其他回归已有 | TKE T+n CDC、单机 CDC/MySQL CDC、motr `03_cdc` |
 | benchmark/performance | `benchmark` | TKE/单机 SSB、TPCH、TPCC、sysbench |
 
-## 6. 建议给领导看的简版
+## 7. 建议给领导看的简版
 
 可以概括成下面这句话：
 
