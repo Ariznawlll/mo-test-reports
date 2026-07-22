@@ -1,24 +1,23 @@
 # MatrixOne GoJieba 全文索引测试设计
 
-本目录包含基于现有 `fulltext测试设计.xlsx` 扩展整理的 GoJieba 全文索引专项测试设计。
+本目录包含基于现有 `fulltext测试设计.xlsx` 扩展整理的 GoJieba 全文索引测试设计。
 
 ## 文件
 
 - [`gojieba全文索引测试设计.md`](./gojieba全文索引测试设计.md)
 
-测试设计以纯 Markdown 展示，不使用表格，内容分为三个部分：
+测试设计采用 Markdown 表格展示，内容分为四部分：
 
-- `说明与覆盖`：功能背景、覆盖模块、优先级和回归层级统计。
-- `测试用例`：81 条详细用例，包含前置条件、步骤、预期结果、优先级和自动化建议。
-- `ngram 与 gojieba 对照基线`：相同数据下两种 parser 的语义及性能对照方法。
+- `测试原则`：明确 GoJieba 的功能定位、双分词器执行原则和结果判定标准。
+- `测试用例`：按功能、分词、查询、一致性、部署、异常、恢复和性能拆分的 81 条用例。
+- `默认/ngram 与 GoJieba 对照基线`：相同数据下两种分词器的语义、索引和性能对照方法。
+- `结果判定与记录要求`：区分确定性结果、模糊查询、分词结果和性能结果的通过标准。
 
 ## 覆盖范围
 
-覆盖 DDL、中文分词契约、Natural Language/Boolean/Phrase 查询、TF-IDF/BM25、DML 与事务一致性、词典部署与异常处理、Snapshot/PITR/备份恢复、单机与 TKE 性能及大数据稳定性。
+公共 FullText 能力使用默认/ngram 和 GoJieba 在同一数据集上分别执行；GoJieba 专项重点验证中文分词边界、词典发现、索引与查询分词一致性、混合中英文处理及异常恢复。
 
 设计依据：
 
 - MatrixOne GoJieba feature：<https://github.com/matrixorigin/matrixone/issues/24271>
 - MatrixOne GoJieba implementation：<https://github.com/matrixorigin/matrixone/pull/24297>
-
-所有用例状态默认为“未执行”；已知未修复查询形态以 `Issue Skip` 标注，不作为当前功能通过结论。
