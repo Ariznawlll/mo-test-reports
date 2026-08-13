@@ -124,6 +124,21 @@ class TestDesignValidatorTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("错误：缺少章节：Feature 背景与范围", result.stderr)
 
+    def test_cli_help_is_chinese(self):
+        result = subprocess.run(
+            [sys.executable, str(MODULE_PATH), "--help"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("位置参数：", result.stdout)
+        self.assertIn("选项：", result.stdout)
+        self.assertNotIn("：:", result.stdout)
+        self.assertIn("省略时从标准输入读取", result.stdout)
+        self.assertNotIn("positional arguments", result.stdout)
+        self.assertNotIn("Read stdin", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

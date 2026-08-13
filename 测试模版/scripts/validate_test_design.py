@@ -46,6 +46,19 @@ SECRETS = (
 )
 
 
+class ChineseArgumentParser(argparse.ArgumentParser):
+    """使用中文章节名和用法前缀的命令行解析器。"""
+
+    def format_help(self) -> str:
+        return (
+            super()
+            .format_help()
+            .replace("usage:", "用法：", 1)
+            .replace("位置参数:", "位置参数：", 1)
+            .replace("选项:", "选项：", 1)
+        )
+
+
 def _section(text: str, heading: str) -> str:
     match = re.search(
         rf"(?ms)^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)", text
@@ -93,8 +106,11 @@ def validate_design(text: str) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("path", nargs="?", help="Read stdin when omitted")
+    parser = ChineseArgumentParser(description=__doc__, add_help=False)
+    parser._positionals.title = "位置参数"
+    parser._optionals.title = "选项"
+    parser.add_argument("-h", "--help", action="help", help="显示帮助并退出")
+    parser.add_argument("path", nargs="?", help="设计文档路径；省略时从标准输入读取")
     args = parser.parse_args()
     text = Path(args.path).read_text(encoding="utf-8") if args.path else sys.stdin.read()
     errors = validate_design(text)

@@ -91,6 +91,20 @@ class CatalogAuditTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("通过：能力目录契约校验成功", result.stdout)
 
+    def test_cli_help_is_chinese(self):
+        result = subprocess.run(
+            [sys.executable, str(MODULE_PATH), "--help"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("位置参数：", result.stdout)
+        self.assertIn("选项：", result.stdout)
+        self.assertNotIn("：:", result.stdout)
+        self.assertNotIn("positional arguments", result.stdout)
+        self.assertNotIn("show this help message", result.stdout)
+
     def test_rejects_missing_required_field(self):
         self.write(
             "capability-sql.md",

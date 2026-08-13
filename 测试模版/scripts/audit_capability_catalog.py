@@ -39,6 +39,19 @@ FIELD = re.compile(r"(?m)^- \*\*([^*]+):\*\*\s*(.+)$")
 REPO_PATH = re.compile(r"`repo:([^`]+)`")
 
 
+class ChineseArgumentParser(argparse.ArgumentParser):
+    """使用中文章节名和用法前缀的命令行解析器。"""
+
+    def format_help(self) -> str:
+        return (
+            super()
+            .format_help()
+            .replace("usage:", "用法：", 1)
+            .replace("位置参数:", "位置参数：", 1)
+            .replace("选项:", "选项：", 1)
+        )
+
+
 def _entries(path: Path) -> list[tuple[str, str]]:
     text = path.read_text(encoding="utf-8")
     matches = list(HEADING.finditer(text))
@@ -103,13 +116,17 @@ def audit_catalog(skill_dir: Path, repo_root: Path | None = None) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ChineseArgumentParser(description=__doc__, add_help=False)
+    parser._positionals.title = "位置参数"
+    parser._optionals.title = "选项"
+    parser.add_argument("-h", "--help", action="help", help="显示帮助并退出")
     parser.add_argument(
         "skill_dir",
         nargs="?",
         default=str(Path(__file__).resolve().parents[1]),
+        help="Skill 目录；默认使用脚本的上级目录",
     )
-    parser.add_argument("--repo-root", type=Path)
+    parser.add_argument("--repo-root", type=Path, help="MatrixOne 仓库根目录")
     args = parser.parse_args()
     errors = audit_catalog(Path(args.skill_dir), args.repo_root)
     if errors:
