@@ -27,8 +27,8 @@
 
 ## 证据优先级
 
-1. [MatrixOne 官方 Feature List](https://docs.matrixorigin.cn/en/v25.3.0.2/MatrixOne/Overview/matrixone-feature-list/) 和当前版本官方产品文档。
-2. [MySQL Compatibility Matrix](https://docs.matrixorigin.cn/en/v26.3.0.13/MatrixOne/Reference/mysql-compatibility-matrix/)、正式 Release Notes、已接受 RFC/设计文档。
+1. [MatrixOne 官方能力列表](https://docs.matrixorigin.cn/en/v25.3.0.2/MatrixOne/Overview/matrixone-feature-list/) 和当前版本官方产品文档。
+2. [MySQL 兼容性矩阵](https://docs.matrixorigin.cn/en/v26.3.0.13/MatrixOne/Reference/mysql-compatibility-matrix/)、正式发布说明、已接受 RFC/设计文档。
 3. 官方 `main` 的公开 SQL、协议、CLI/API 和配置入口。
 4. MatrixOne BVT、MOTR、兼容性测试、Nightly/Chaos/恢复工作流。
 5. Maintainer 在 Issue/PR 中明确说明的支持合同。

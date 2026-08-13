@@ -5,19 +5,19 @@
 ```markdown
 ## domain.capability-name
 
-- **Status:** supported | supported-with-conditions
-- **User entry:** 用户可调用的 SQL/协议/CLI/API/配置
-- **Support evidence:** 官方文档、Release/RFC 或明确支持声明
-- **Scope:** 已正式支持的范围
-- **Limitations:** 条件、限制、兼容差异或“无额外限制”
-- **State and invariants:** 数据、元数据、状态和必须保持的不变量
-- **Test routing:** UT/BVT/MOTR/scenario/big-data/stability/chaos/GPU/recovery
-- **Repository evidence:** `repo:` 路径、测试目录或公开入口代码
-- **Interactions:** required/common/high-risk/conditional 能力 ID
-- **Coverage gaps:** 当前已知缺口，或“未发现已知缺口”
+- **支持状态:** supported | supported-with-conditions
+- **用户入口:** 用户可调用的 SQL/协议/CLI/API/配置
+- **支持证据:** 官方文档、Release/RFC 或明确支持声明
+- **支持范围:** 已正式支持的范围
+- **限制条件:** 条件、限制、兼容差异或“无额外限制”
+- **状态与不变量:** 数据、元数据、状态和必须保持的不变量
+- **测试分层:** UT/BVT/MOTR/scenario/big-data/stability/chaos/GPU/recovery
+- **仓库证据:** `repo:` 路径、测试目录或公开入口代码
+- **关联能力:** 必需/常见/高风险/条件适用的能力 ID
+- **覆盖缺口:** 当前已知缺口，或“未发现已知缺口”
 ```
 
-前七个字段由 `audit_capability_catalog.py` 强制检查。Repository evidence 中的 `repo:` 路径在传入 MatrixOne 仓库根目录时必须存在。
+前七个字段由 `audit_capability_catalog.py` 强制检查。“仓库证据”中的 `repo:` 路径在传入 MatrixOne 仓库根目录时必须存在。
 
 ## ID 规则
 
@@ -28,12 +28,12 @@
 
 ## 内容规则
 
-- Scope 描述已支持内容，不复制完整 SQL 语法。
-- Limitations 必须写清部署、配置、版本、协议、租户、CPU/GPU 和兼容限制。
-- State and invariants 至少包含结果正确性、失败原子性、隔离、恢复或资源清理中相关的合同。
-- Happy、Boundary、Unhappy 具体测试从不变量生成，不堆砌无关组合。
-- 合法 NULL、空集、最大值等属于 Boundary；只有合同规定非法时才属于 Unhappy。
-- Test routing 选择能够证明合同的最低成本层级；规模和故障是触发条件时才升级。
+- “支持范围”描述已支持内容，不复制完整 SQL 语法。
+- “限制条件”必须写清部署、配置、版本、协议、租户、CPU/GPU 和兼容限制。
+- “状态与不变量”至少包含结果正确性、失败原子性、隔离、恢复或资源清理中相关的合同。
+- 正常、边界和异常路径的具体测试从不变量生成，不堆砌无关组合。
+- 合法 NULL、空集、最大值等属于边界路径；只有合同规定非法时才属于异常路径。
+- “测试分层”选择能够证明合同的最低成本层级；规模和故障是触发条件时才升级。
 
 ## 变更审计
 

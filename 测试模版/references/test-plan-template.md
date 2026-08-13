@@ -8,11 +8,11 @@
 
 ## 支持证据与版本基线
 
-- 官方 main：`<40-character SHA>`
+- 官方 main：`<40 位 SHA>`
 - 核验日期：`YYYY-MM-DD`
-- 正式支持证据：官方文档/Release/RFC/maintainer URL
-- 实现/测试证据：main 入口、BVT/MOTR/UT/workflow 路径
-- Freshness：目录 SHA 到当前 SHA 的相关路径变化及处理
+- 正式支持证据：官方文档/发布说明/RFC/Maintainer URL
+- 实现/测试证据：main 入口、BVT/MOTR/UT/工作流路径
+- 新鲜度审计：目录 SHA 到当前 SHA 的相关路径变化及处理
 
 ## 验收目标与非目标
 
@@ -21,16 +21,16 @@
 ## 涉及的 MatrixOne 能力
 
 - capability_id: `domain.capability`
-- 关系：primary / required / common / high-risk / conditional
+- 关系：主能力/必需/常见/高风险/条件适用
 - 选择理由和正式限制
 
 ## 架构、入口、数据流与状态对象
 
-记录公开入口、内部依赖、数据流，以及表/Catalog/index/transaction/session/task/object/cache 等状态对象。
+记录公开入口、内部依赖、数据流，以及表、Catalog、索引、事务、会话、任务、对象、Cache 等状态对象。
 
 ## 风险与关键不变量
 
-按 correctness、atomicity、isolation、durability、recovery、cleanup 列出风险和不变量。
+按正确性、原子性、隔离性、持久性、恢复和清理列出风险与不变量。
 
 ## 测试环境、拓扑、配置与数据
 
@@ -38,51 +38,51 @@
 
 ## 功能测试矩阵
 
-建立验收目标 → capability_id → 不变量 → 用例 → 测试层的 traceability 表。
+建立“验收目标 → capability_id → 不变量 → 用例 → 测试层”的可追溯表。
 
-## Happy Path
+## 正常路径（Happy Path）
 
-正常入口、主要支持变体、重复执行和恢复后的 control。
+覆盖正常入口、主要支持变体、重复执行和恢复后的对照场景。
 
-## Boundary Path
+## 边界路径（Boundary Path）
 
-合法 NULL/empty/min/max/precision/dimension/timezone/identifier/size 等边界。
+覆盖合法 NULL、空值、最小值、最大值、精度、维度、时区、标识符和大小等边界。
 
-## Unhappy Path
+## 异常路径（Unhappy Path）
 
-非法输入、冲突、权限、timeout/cancel/disconnect 和失败后立即状态复核。
+覆盖非法输入、冲突、权限、超时、取消、断连，以及失败后的即时状态复核。
 
 ## 事务与并发
 
-autocommit/commit/rollback、可见性、锁/冲突/deadlock/retry、DDL/DML 和断连时序。
+覆盖自动提交、提交、回滚、可见性、锁/冲突、死锁/重试、DDL/DML 和断连时序。
 
 ## 安全与租户隔离
 
-owner/admin/ordinary user、最小权限、越权、跨 account/tenant 和 metadata 可见性。
+覆盖 Owner、管理员、普通用户、最小权限、越权、跨 Account/Tenant 和 metadata 可见性。
 
 ## 恢复与故障注入
 
-错误恢复、reconnect/restart/resume、checkpoint replay 和合同要求的 node/network/storage failure。
+覆盖错误恢复、重连、重启、继续执行、Checkpoint 重放和合同要求的节点/网络/存储故障。
 
 ## 性能、规模与稳定性
 
-先证明小数据是否进入相同路径；仅在 threshold/spill/plan switch/generation/soak 合同下设计 big-data/stability。
+先证明小数据是否进入相同路径；仅在阈值、spill、执行计划切换、多轮 generation 或 Soak 属于合同时设计 big-data/stability。
 
 ## 兼容性
 
-引用具体 MySQL/Driver/协议兼容边界，覆盖 metadata、error、timezone、SQL mode 和类型。
+引用具体 MySQL、Driver 和协议兼容边界，覆盖 metadata、错误、时区、SQL Mode 和类型。
 
 ## 可观测性与资源清理
 
-EXPLAIN/ANALYZE、log/metric/task progress、panic/OOM/restart，以及 schema/session/lock/file/task/port 清理。
+覆盖 EXPLAIN/ANALYZE、日志、指标、任务进度、panic/OOM/重启，以及 Schema、会话、锁、文件、任务和端口清理。
 
 ## 回归分层与已有资产
 
-- UT：内部纯逻辑/ownership/fault
+- UT：内部纯逻辑、所有权和故障注入
 - BVT：快速确定性公开 SQL
-- MOTR：跨功能或 multi-client/protocol scenario
-- big-data/stability/chaos/GPU/recovery：只在合同触发时
-- 已有测试路径、拟新增文件、repeat/suite/CI 门禁
+- MOTR：跨功能、多客户端或协议场景
+- big-data/stability/Chaos/GPU/recovery：只在合同触发时
+- 已有测试路径、拟新增文件、重复次数、Suite 和 CI 门禁
 
 ## 不适用项及原因
 

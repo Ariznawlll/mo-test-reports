@@ -11,13 +11,13 @@
 | 跨 Feature 历史回归 | `motr/suites/14_issue_regression` | 相关产品 UT/BVT |
 | 多连接、协议、Driver、并发、进程 | MOTR scenario | lifecycle UT/`-race` |
 | 内存阈值、实际 spill、百万行算法路径 | Nightly big-data | 小型语义回归 |
-| 长时间资源增长、吞吐、低概率 generation | Stability/soak | focused correctness case |
+| 长时间资源增长、吞吐、低概率 generation | Stability/Soak | 定向正确性用例 |
 | 节点 kill/restart、网络分区、外部服务失败 | Chaos/专用恢复流 | lifecycle UT |
 | GPU 专属算法/参数 | GPU workflow | CPU 参数/语义控制 |
 | Snapshot/PITR/backup/restore 生命周期 | Recovery workflow + BVT | Chaos/长稳（合同相关时） |
 | MySQL/JDBC/ODBC/生态兼容 | 对应真实客户端环境 | SQL/BVT 元数据控制 |
 
-## Big-data 决策
+## 大数据（big-data）决策
 
 ```text
 小数据能进入相同代码路径并证明相同合同？
@@ -52,7 +52,7 @@
 6. 清理失败必须让测试失败；script 资源使用 PID/time/UUID 避免碰撞。
 7. 通用错误码同时断言领域 cause；计划断言只固定关键算子/语义。
 
-## Exclusive execution
+## 独占执行
 
 只有测试必然修改共享外部状态（集群配置/restart、全租户恢复、CDC 基础设施、全局资源）才能独占。命名碰撞、缺 cleanup、弱隔离、非确定输出或产品 race 必须修复，不能靠 `exclusive_tests` 隐藏。
 

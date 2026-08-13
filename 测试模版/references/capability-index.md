@@ -22,7 +22,7 @@
 | `security` | 多租户、安全和权限 | [capability-security-tenant.md](capability-security-tenant.md) | tenant/security/access-control BVT |
 | `session` | 会话、协议、Driver 和 Proxy | [capability-session-protocol.md](capability-session-protocol.md) | prepare/system-variable/proxy tests |
 | `cluster` | 部署、扩缩容和高可用 | [capability-cluster-ha.md](capability-cluster-ha.md) | multi-CN/chaos assets |
-| `storage` | 存储、Checkpoint、Compaction、Cache、GC | [capability-storage-lifecycle.md](capability-storage-lifecycle.md) | storage engine tests |
+| `storage` | 存储、Checkpoint、Compaction、Cache、GC | [capability-storage-lifecycle.md](capability-storage-lifecycle.md) | 存储引擎测试 |
 | `recovery` | Snapshot、PITR、备份与恢复 | [capability-recovery.md](capability-recovery.md) | snapshot/pitr BVT/workflows |
 | `branch` | Data Branch / Git4Data | [capability-data-branch.md](capability-data-branch.md) | Git4Data tests/docs |
 | `observability` | 可观测性与运维 | [capability-observability.md](capability-observability.md) | system tables/EXPLAIN/log/metric assets |
@@ -31,16 +31,16 @@
 ## 使用顺序
 
 1. 从 Feature 用户合同选择主能力 ID。
-2. 读取条目的 Interactions，加入 required 和 high-risk 能力。
-3. 对 common/conditional 交互按 Feature 范围选择，并记录未选择原因。
+2. 读取条目的 Interactions，加入 必需 和 高风险 能力。
+3. 对 常见/条件适用 交互按 Feature 范围选择，并记录未选择原因。
 4. 应用 [universal-test-dimensions.md](universal-test-dimensions.md)。
 5. 使用 [test-routing.md](test-routing.md) 分层测试。
 6. 按 [test-plan-template.md](test-plan-template.md) 输出并运行校验器。
 
 ## 正式来源入口
 
-- [MatrixOne Feature List](https://docs.matrixorigin.cn/en/v25.3.0.2/MatrixOne/Overview/matrixone-feature-list/)
-- [MySQL Compatibility Matrix](https://docs.matrixorigin.cn/en/v26.3.0.13/MatrixOne/Reference/mysql-compatibility-matrix/)
+- [MatrixOne 能力列表](https://docs.matrixorigin.cn/en/v25.3.0.2/MatrixOne/Overview/matrixone-feature-list/)
+- [MySQL 兼容性矩阵](https://docs.matrixorigin.cn/en/v26.3.0.13/MatrixOne/Reference/mysql-compatibility-matrix/)
 - [SQL Statement Categories](https://docs.matrixorigin.cn/en/m1intelligence/MatrixOne-Intelligence/Reference/SQL-Reference/SQL-Type/)
-- [MatrixOne Release Notes](https://docs.matrixorigin.cn/en/dev/MatrixOne/Release-Notes/)
+- [MatrixOne 发布说明](https://docs.matrixorigin.cn/en/dev/MatrixOne/Release-Notes/)
 - MatrixOne `docs/ai-skills/` 和 `test/distributed/cases/`

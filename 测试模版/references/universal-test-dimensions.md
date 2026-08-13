@@ -10,22 +10,22 @@
 - affected rows、warning、error code、SQLSTATE、稳定 cause、protocol metadata。
 - 优化/索引/并行/spill 路径与独立语义 oracle 的结果等价性。
 
-## 2. Happy Path
+## 2. 正常路径（Happy Path）
 
 - 原始正常场景、最常见配置和默认拓扑。
 - 主要正式支持变体；不同入口（SQL/协议/Driver）只在合同相关时扩展。
 - 重复执行、drop/recreate、disable/enable 和恢复后的正常控制。
 
-## 3. Boundary Path
+## 3. 边界路径（Boundary Path）
 
 - 空输入、单行、多行、无匹配、全匹配。
 - NULL、空字符串、零值、负值、重复、NaN/Inf（类型支持时）。
 - 类型 min/max、长度、精度、scale、维度、identifier、时间/时区/闰日边界。
 - 基数、倾斜、重复度和排序相等键。
 
-Boundary 是合法边界；只有合同规定非法时才放入 Unhappy。
+边界路径只包含合法边界；只有合同规定非法时才放入异常路径。
 
-## 4. Unhappy Path 与失败原子性
+## 4. 异常路径（Unhappy Path）与失败原子性
 
 - 非法语法、类型、参数、组合、对象状态和权限。
 - duplicate/conflict/not found/already exists/unsupported/timeout/cancel/disconnect。
@@ -82,11 +82,11 @@ Boundary 是合法边界；只有合同规定非法时才放入 Unhappy。
 ## 12. 性能、规模与稳定性
 
 - 小数据是否进入相同计划/算法/资源路径。
-- memory/admission threshold、实际 spill、scale-dependent plan switch。
+- 内存/Admission 阈值、实际 spill、依赖规模的执行计划切换。
 - 高基数、倾斜、重复、NULL-heavy 和多轮 spill。
 - 并发 generation、soak duration、throughput/latency、peak memory、restart/OOM。
 - 性能测试必须同时验证结果，不以“查询结束”作为正确性证据。
 
-## Traceability
+## 可追溯性
 
 每个用例至少关联：验收目标、能力 ID、不变量、数据/状态对象、环境、测试层、预期结果、清理断言。每项能力不变量必须至少由一个用例或“不适用理由”覆盖。

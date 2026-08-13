@@ -26,9 +26,9 @@ HEADINGS = (
     "风险与关键不变量",
     "测试环境、拓扑、配置与数据",
     "功能测试矩阵",
-    "Happy Path",
-    "Boundary Path",
-    "Unhappy Path",
+    "正常路径（Happy Path）",
+    "边界路径（Boundary Path）",
+    "异常路径（Unhappy Path）",
     "事务与并发",
     "安全与租户隔离",
     "恢复与故障注入",
@@ -64,9 +64,9 @@ class TestDesignValidatorTest(unittest.TestCase):
 
     def test_rejects_missing_section(self):
         text = valid_design().replace(
-            "## Boundary Path\n\n已覆盖具体合同和预期结果。\n\n", ""
+            "## 边界路径（Boundary Path）\n\n已覆盖具体合同和预期结果。\n\n", ""
         )
-        self.assertTrue(any("Boundary Path" in e for e in self.module.validate_design(text)))
+        self.assertTrue(any("边界路径" in e for e in self.module.validate_design(text)))
 
     def test_rejects_missing_full_main_sha(self):
         text = valid_design().replace(
