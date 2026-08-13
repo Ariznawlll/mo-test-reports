@@ -1,4 +1,4 @@
 interface:
-  display_name: "MO Feature Test Design"
+  display_name: "MO Feature 测试设计"
   short_description: "基于正式产品能力生成 MatrixOne 测试设计"
-  default_prompt: "Use $mo-feature-test-design to create a complete test design for this MatrixOne feature."
+  default_prompt: "使用 $mo-feature-test-design 为这个 MatrixOne Feature 生成完整测试设计。"

@@ -1,179 +1,179 @@
 ---
 name: mo-feature-test-design
-description: Use when designing or reviewing test coverage for a new or changed MatrixOne feature, mapping a user-facing capability to UT/BVT/MOTR/big-data/stability/chaos/GPU/recovery layers, identifying cross-feature risks, or deciding whether scale and fault-injection coverage are required.
+description: 用于设计或评审 MatrixOne 新增、变更 Feature 的测试覆盖，判断 UT、BVT、MOTR、big-data、stability、Chaos、GPU、recovery 分层，分析跨能力风险，或决定是否需要规模与故障注入测试。
 ---
 
-# MatrixOne Feature Test Design
+# MatrixOne Feature 测试设计
 
-## Purpose
+## 目标
 
-Generate an evidence-backed test design from MatrixOne's formally supported user contract, capability invariants, architecture interactions, and existing regression assets. The catalog is a living baseline for the latest official `main`; it is not a substitute for checking current documentation and code.
+根据 MatrixOne 正式支持的用户合同、能力不变量、架构交互和已有回归资产，生成有证据支撑的测试设计。能力目录是官方最新 `main` 的持续维护基线，但不能替代对当前文档和代码的核验。
 
-Do not start from a generic test checklist. First establish what users are promised, then derive the smallest complete matrix that can prove that promise and protect its high-risk interactions.
+不要从通用测试清单直接开始。先确认产品向用户承诺了什么，再设计能够证明该承诺并保护高风险交互的最小完整测试矩阵。
 
-## Required Reading
+## 必须读取的资料
 
-Before producing a design, read these files in order:
+生成设计前，按顺序读取：
 
 1. `references/formal-support-policy.md`
 2. `references/capability-index.md`
-3. The selected `references/capability-*.md` files for the primary and interacting capabilities
+3. 主能力及关联能力对应的 `references/capability-*.md`
 4. `references/universal-test-dimensions.md`
 5. `references/interaction-map.md`
 6. `references/test-routing.md`
 7. `references/test-plan-template.md`
 
-Read `references/capability-entry-contract.md` when adding or updating catalog entries.
+新增或维护能力条目时，还必须读取 `references/capability-entry-contract.md`。
 
-## Workflow
+## 工作流程
 
-### 1. Establish the Feature contract
+### 1. 明确 Feature 合同
 
-Describe the public entry point, supported syntax or API, user-visible result, supported deployment forms, configuration, lifecycle, documented limitations, and explicit non-goals.
+描述公开入口、支持的语法或 API、用户可观察结果、支持的部署形态、配置、生命周期、文档限制和明确的非目标。
 
-Use the support hierarchy in `formal-support-policy.md`. A parser branch, merged implementation, hidden setting, internal UT, or issue comment is not sufficient on its own to declare a product capability supported.
+使用 `formal-support-policy.md` 中的证据层级。Parser 分支、已合并实现、隐藏配置、内部 UT 或 Issue 评论都不能单独证明产品正式支持。
 
-If public sources conflict, use the narrower contract and record the conflict as a product question. Do not silently broaden the scope.
+公开来源存在冲突时采用更窄的合同，并把冲突记录为产品待确认项，不能静默扩大范围。
 
-### 2. Run the freshness gate
+### 2. 执行新鲜度门禁
 
-Resolve the full SHA of official MatrixOne `main` and compare it with the catalog SHA in `formal-support-policy.md` and `capability-index.md`.
+获取 MatrixOne 官方 `main` 的完整 SHA，与 `formal-support-policy.md` 和 `capability-index.md` 中的目录 SHA 比较。
 
-- If unchanged, use the catalog normally.
-- If changed, inspect the target capability's documentation, public entry, implementation, and test paths between the two SHAs.
-- If relevant paths changed, update the affected capability entries, support evidence, conditions, limitations, interactions, catalog SHA, and date before designing tests.
-- If only unrelated paths changed, record that audit in the design; do not rewrite unrelated entries.
+- SHA 未变化：正常使用目录。
+- SHA 已变化：检查目标能力相关文档、公开入口、实现和测试路径的差异。
+- 相关路径已变化：先更新能力条目的支持证据、条件、限制、关联能力、目录 SHA 和日期，再设计测试。
+- 只有无关路径变化：在设计中记录审计结论，不改写无关条目。
 
-Never claim “latest main” with a short or unverified SHA.
+未核验完整 SHA 时，禁止宣称基于“最新 main”。
 
-### 3. Select capabilities
+### 3. 选择能力
 
-Choose one primary `capability_id`, then expand its `Interactions`:
+选择一个主 `capability_id`，再展开条目的“关联能力”：
 
-- `required`: always include.
-- `high-risk`: include unless the Feature contract demonstrably cannot reach it.
-- `common`: include when the public workflow uses it.
-- `conditional`: include only when the stated condition applies.
+- `必需`：必须纳入。
+- `高风险`：除非能证明 Feature 合同无法进入该路径，否则必须纳入。
+- `常见`：公开工作流使用时纳入。
+- `条件适用`：只有条件成立时纳入。
 
-Record excluded common, high-risk, or conditional interactions and the reason. Capability IDs provide traceability; internal component names provide architecture context, not acceptance criteria.
+未选择的常见、高风险或条件适用交互必须记录原因。能力 ID 用于可追溯性；内部组件名只作为架构背景，不直接作为用户验收目标。
 
-### 4. Model the system under test
+### 4. 建立被测系统模型
 
-Map:
+需要梳理：
 
-- public entry points and client/protocol variants;
-- data and control flow;
-- state objects such as rows, catalog metadata, indexes, transactions, sessions, locks, background tasks, checkpoints, objects, caches, and files;
-- topology and ownership boundaries such as CN, TN, Log Service, Proxy, object storage, account, tenant, role, or GPU worker;
-- synchronous and asynchronous completion signals.
+- 公开入口及客户端、协议变体；
+- 数据流和控制流；
+- 行、Catalog、索引、事务、会话、锁、后台任务、Checkpoint、对象、Cache、文件等状态对象；
+- CN、TN、Log Service、Proxy、对象存储、Account、Tenant、Role、GPU Worker 等拓扑与所有权边界；
+- 同步和异步完成信号。
 
-This model determines which outcomes must be observed immediately, after commit, after polling, after reconnect, and after restart or recovery.
+据此决定哪些结果要在操作后立即检查，哪些要在 commit、轮询、重连、重启或恢复后检查。
 
-### 5. Define risks and invariants
+### 5. 定义风险与不变量
 
-Turn the user contract into observable invariants. At minimum consider:
+把用户合同转化为可观察不变量，至少考虑：
 
-- result and metadata correctness;
-- atomicity and no partial mutation after rejection;
-- transaction visibility, isolation, lock release, and retry behavior;
-- durability and recovery;
-- tenant and privilege isolation;
-- deterministic error classification and post-error reuse;
-- resource, task, session, schema, lock, file, and port cleanup;
-- optimizer equivalence across eligible plans;
-- compatibility only where MatrixOne documents the compatible behavior.
+- 结果和 metadata 正确性；
+- 原子性，以及拒绝后不存在部分修改；
+- 事务可见性、隔离、锁释放和重试行为；
+- 持久性与恢复；
+- Tenant 和权限隔离；
+- 稳定的错误分类及错误后的复用能力；
+- 资源、任务、会话、Schema、锁、文件和端口清理；
+- 不同合法执行计划的结果等价性；
+- 只在 MatrixOne 正式兼容范围内验证兼容行为。
 
-Each important invariant must map to one or more test cases and a concrete oracle.
+每个重要不变量必须映射到至少一个用例和明确的判定依据。
 
-### 6. Build the functional matrix
+### 6. 构建功能测试矩阵
 
-Apply `universal-test-dimensions.md` by relevance, not mechanically:
+按相关性应用 `universal-test-dimensions.md`，不要机械全排列：
 
-- Happy Path proves each supported entry and meaningful variant.
-- Boundary Path covers legal limits such as NULL, empty input, precision, dimensions, time zones, identifiers, and batch boundaries.
-- Unhappy Path covers invalid input, conflicts, permissions, cancellation, disconnect, timeout, and failure atomicity.
-- Lifecycle covers create, use, alter, rebuild, drop, recreate, repeat, reconnect, and cleanup where available.
-- State-changing and error cases must verify state immediately before another successful operation can hide corruption.
+- 正常路径证明每个正式入口和有意义的变体。
+- 边界路径覆盖 NULL、空值、精度、维度、时区、标识符、批次边界等合法极限。
+- 异常路径覆盖非法输入、冲突、权限、取消、断连、超时和失败原子性。
+- 生命周期覆盖适用的 create、use、alter、rebuild、drop、recreate、repeat、reconnect 和 cleanup。
+- 修改状态或触发错误后要立即检查，不能先执行成功操作掩盖损坏。
 
-Use literal expected results or an independent oracle. “No panic” or “query succeeded” alone is not a correctness assertion.
+使用字面期望结果或独立 Oracle。“没有 panic”或“查询成功”本身不能证明结果正确。
 
-### 7. Decide scale, concurrency, and fault coverage
+### 7. 决定规模、并发与故障覆盖
 
-Do not add big-data merely because more rows look stronger. Require it when the defect or contract depends on at least one of:
+不能因为“数据更多看起来更强”就增加 big-data。只有合同或缺陷依赖以下条件时才需要：
 
-- crossing a memory, disk, batch, partition, block, object, or admission threshold;
-- exercising spill or external execution;
-- changing the optimizer plan or physical algorithm only at scale;
-- exposing a low-probability race through many fresh generations;
-- proving throughput, latency, resource ceiling, or long-soak behavior.
+- 跨越内存、磁盘、Batch、Partition、Block、Object 或 Admission 阈值；
+- 触发 spill 或外部执行；
+- 优化器计划或物理算法只在特定规模下切换；
+- 通过多次 fresh generation 暴露低概率竞态；
+- 验证吞吐、时延、资源上限或长时间稳定性。
 
-When small data can force the identical path through a supported configuration, use that deterministic case in regular regression and reserve production-scale validation for nightly evidence.
+如果能通过正式配置让小数据进入完全相同路径，则把小而确定的用例放入普通回归，生产规模验证保留在 Nightly。
 
-Use multi-client or multi-CN coverage when correctness depends on locks, visibility, cache invalidation, routing, session migration, or distributed ownership. Use Chaos only when the contract includes node, network, storage, process, or rolling-upgrade failure. Use GPU only for a formally supported GPU path. Explain every specialized environment gate.
+锁、可见性、Cache 失效、路由、会话迁移或分布式所有权相关能力需要多客户端或多 CN。只有节点、网络、存储、进程或滚动升级故障属于合同，才使用 Chaos。GPU 只用于正式支持的 GPU 路径。每个专用环境门禁都要说明原因。
 
-### 8. Route tests to the correct layer
+### 8. 选择正确测试层
 
-Follow `test-routing.md`:
+按照 `test-routing.md`：
 
-- UT for internal pure logic, ownership, error mapping, and deterministic fault injection.
-- BVT for fast, deterministic public SQL and metadata contracts.
-- MOTR for black-box protocol, multi-session, lifecycle, cross-feature, or environment-aware scenarios.
-- big-data/nightly for scale thresholds, spill, plan switches, performance, soak, and rare generations.
-- stability/Chaos/recovery/GPU for their explicit environmental contracts.
+- UT：内部纯逻辑、所有权、错误映射和确定性故障注入。
+- BVT：快速、确定性的公开 SQL 和 metadata 合同。
+- MOTR：黑盒协议、多会话、生命周期、跨 Feature 或依赖环境的场景。
+- big-data/Nightly：规模阈值、spill、计划切换、性能、长稳和低概率 generation。
+- stability、Chaos、recovery、GPU：各自明确的环境合同。
 
-Prefer extending an existing authoritative test. Do not duplicate a stable regression in a new PR unless the new layer proves a distinct contract.
+优先扩展已有权威测试。除非新测试层证明不同合同，否则不要在新 PR 中重复稳定回归。
 
-### 9. Define execution and evidence
+### 9. 定义执行与证据
 
-For every case specify prerequisites, operation, oracle, immediate state assertions, cleanup, repeat policy, timeout, and environment. For asynchronous features, poll a product-visible readiness signal with a bounded deadline; fixed sleeps are not readiness proof.
+每个用例都要说明前置条件、操作、Oracle、即时状态断言、清理、重复次数、超时和环境。异步能力使用产品可观察的就绪信号进行有界轮询；固定 sleep 不能证明已经就绪。
 
-Separate:
+必须区分：
 
-- product result;
-- fixture or environment failures;
-- unrelated suite failures;
-- untested conditions.
+- 产品测试结果；
+- 夹具或环境失败；
+- Suite 中的无关失败；
+- 尚未测试的条件。
 
-Do not convert partial coverage into a full pass.
+不能把部分覆盖写成完整通过。
 
-### 10. Write and validate the design
+### 10. 编写并校验设计
 
-Use every heading, in order, from `references/test-plan-template.md`. Every “不适用” item needs a specific reason. Include the full official `main` SHA, formal support URL, selected capability IDs, regression routing, existing asset paths, entry/exit criteria, remaining risks, and product questions.
+严格按照 `references/test-plan-template.md` 的标题和顺序编写。每个“不适用”项都要给出具体原因。必须包含官方 `main` 完整 SHA、正式支持 URL、能力 ID、回归分层、已有资产路径、准入和退出条件、剩余风险及产品待确认项。
 
-Run:
+运行：
 
 ```bash
 python3 scripts/validate_test_design.py <design.md>
 ```
 
-Fix every error before handing off the design.
+修复全部错误后才能交付。
 
-## Catalog Maintenance
+## 能力目录维护
 
-When a formally announced capability is added, changed, restricted, deprecated, or removed:
+正式宣布的能力新增、变更、受限、废弃或移除时：
 
-1. Update the relevant domain file using `capability-entry-contract.md`.
-2. Update cross-capability relations and existing test assets.
-3. Update catalog SHA and verification date only after auditing the affected paths.
-4. Run:
+1. 按 `capability-entry-contract.md` 更新对应能力域文件。
+2. 更新跨能力关系和已有测试资产。
+3. 审计受影响路径后，更新目录 SHA 和核验日期。
+4. 运行：
 
 ```bash
 python3 scripts/audit_capability_catalog.py --repo-root /path/to/matrixone
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
-Do not retain unsupported, preview, internal, debug-only, deprecated, or removed behavior in the current supported index. Preserve historical/version-specific information only as an explicit condition or maintenance record.
+当前正式能力索引不得保留 unsupported、preview、internal、debug-only、deprecated 或 removed 行为。历史或版本限定信息只能作为明确条件或维护记录保留。
 
-## Handoff Checklist
+## 交付检查
 
-Before stating that a test design is complete, verify:
+宣布测试设计完成前确认：
 
-- support evidence and current full `main` SHA are recorded;
-- primary and interacting capability IDs are traceable;
-- every acceptance goal maps to an invariant, case, oracle, and test layer;
-- Happy, Boundary, and Unhappy coverage are substantive;
-- transaction, concurrency, security, recovery, scale, compatibility, and observability are either covered or explicitly inapplicable with reasons;
-- big-data and Chaos decisions are justified by a concrete trigger;
-- existing tests and coverage gaps are named;
-- cleanup and post-failure state checks are explicit;
-- the design validator passes without secrets or credentials.
+- 已记录正式支持证据和当前官方 `main` 完整 SHA；
+- 主能力和关联能力 ID 可追溯；
+- 每个验收目标都映射到不变量、用例、Oracle 和测试层；
+- 正常、边界和异常路径都有实质覆盖；
+- 事务、并发、安全、恢复、规模、兼容性和可观测性已覆盖，或明确说明不适用原因；
+- big-data 和 Chaos 选择有具体触发条件；
+- 已列出现有测试和覆盖缺口；
+- 清理与失败后状态检查明确；
+- 测试设计校验器通过，且文档不含凭据。

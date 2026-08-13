@@ -7,7 +7,7 @@
 - [SKILL.md](SKILL.md)：完整测试设计工作流。
 - [能力索引](references/capability-index.md)：15 个能力域、44 个正式能力条目。
 - [正式支持判定策略](references/formal-support-policy.md)：能力准入、证据优先级和新鲜度审计规则。
-- [通用测试维度](references/universal-test-dimensions.md)：Happy、Boundary、Unhappy、事务、并发、恢复、安全、兼容性和清理等维度。
+- [通用测试维度](references/universal-test-dimensions.md)：正常、边界、异常、事务、并发、恢复、安全、兼容性和清理等维度。
 - [跨能力关系](references/interaction-map.md)：Feature 与事务、存储、会话、集群、恢复等能力的交互风险。
 - [测试分层规则](references/test-routing.md)：UT、BVT、MOTR、big-data、stability、Chaos、GPU 和 recovery 的选择标准。
 - [测试设计模板](references/test-plan-template.md)：输出测试设计时必须使用的章节和内容要求。
@@ -26,6 +26,13 @@ python3 测试模版/scripts/validate_test_design.py <design.md>
 python3 测试模版/scripts/audit_capability_catalog.py --repo-root /path/to/matrixone
 python3 -m unittest discover -s 测试模版/scripts -p 'test_*.py' -v
 ```
+
+## Python 工具说明
+
+- `audit_capability_catalog.py`：检查能力条目必需字段、状态、重复 ID 和 `repo:` 路径。
+- `validate_test_design.py`：检查测试设计章节、完整 main SHA、支持证据、能力映射、测试分层、不适用理由和敏感凭据。
+- `test_audit_capability_catalog.py`：验证能力目录审计器自身行为。
+- `test_validate_test_design.py`：验证测试设计校验器自身行为；文件内的假 Token 只用于确认敏感信息检测有效。
 
 ## 维护原则
 
