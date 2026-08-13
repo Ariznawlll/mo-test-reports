@@ -1,4 +1,7 @@
 import importlib.util
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -69,7 +72,7 @@ class TestDesignValidatorTest(unittest.TestCase):
         text = valid_design().replace(
             "0123456789abcdef0123456789abcdef01234567", "deadbeef"
         )
-        self.assertTrue(any("40-character" in e for e in self.module.validate_design(text)))
+        self.assertTrue(any("40 位完整 SHA" in e for e in self.module.validate_design(text)))
 
     def test_rejects_missing_capability_id(self):
         text = valid_design().replace("capability_id: `session.prepared-statement`", "会话能力")
@@ -77,11 +80,11 @@ class TestDesignValidatorTest(unittest.TestCase):
 
     def test_rejects_missing_support_evidence(self):
         text = valid_design().replace("https://docs.matrixorigin.cn/", "无")
-        self.assertTrue(any("support evidence" in e for e in self.module.validate_design(text)))
+        self.assertTrue(any("支持证据" in e for e in self.module.validate_design(text)))
 
     def test_rejects_missing_test_routing(self):
         text = valid_design().replace("- BVT：公开 SQL\n- MOTR：binary protocol", "尚未分层")
-        self.assertTrue(any("test routing" in e for e in self.module.validate_design(text)))
+        self.assertTrue(any("测试分层" in e for e in self.module.validate_design(text)))
 
     def test_rejects_bare_not_applicable(self):
         text = valid_design().replace(
@@ -95,7 +98,31 @@ class TestDesignValidatorTest(unittest.TestCase):
             "token=ghp_abcdefghijklmnopqrstuvwxyz1234567890",
             1,
         )
-        self.assertTrue(any("secret" in e for e in self.module.validate_design(text)))
+        self.assertTrue(any("敏感凭据" in e for e in self.module.validate_design(text)))
+
+    def test_cli_success_message_is_chinese(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".md", encoding="utf-8") as file:
+            file.write(valid_design())
+            file.flush()
+            result = subprocess.run(
+                [sys.executable, str(MODULE_PATH), file.name],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("通过：Feature 测试设计契约校验成功", result.stdout)
+
+    def test_cli_error_message_is_chinese(self):
+        result = subprocess.run(
+            [sys.executable, str(MODULE_PATH)],
+            input="## 不完整设计\n",
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("错误：缺少章节：Feature 背景与范围", result.stderr)
 
 
 if __name__ == "__main__":

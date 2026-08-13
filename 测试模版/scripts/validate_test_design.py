@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the structural contract of a MatrixOne feature test design."""
+"""校验 MatrixOne Feature 测试设计的结构契约。"""
 
 from __future__ import annotations
 
@@ -59,36 +59,36 @@ def validate_design(text: str) -> list[str]:
     for heading in REQUIRED_HEADINGS:
         match = re.search(rf"(?m)^## {re.escape(heading)}\s*$", text)
         if not match:
-            errors.append(f"missing section: {heading}")
+            errors.append(f"缺少章节：{heading}")
         else:
             positions.append(match.start())
             if not _section(text, heading):
-                errors.append(f"empty section: {heading}")
+                errors.append(f"章节内容为空：{heading}")
     if len(positions) == len(REQUIRED_HEADINGS) and positions != sorted(positions):
-        errors.append("sections are not in the required order")
+        errors.append("章节顺序不符合要求")
 
     baseline = _section(text, "支持证据与版本基线")
     if not SHA.search(baseline):
-        errors.append("missing 40-character official main SHA")
+        errors.append("缺少官方 main 的 40 位完整 SHA")
     if not URL.search(baseline):
-        errors.append("missing formal support evidence URL")
+        errors.append("缺少正式支持证据 URL")
 
     capabilities = _section(text, "涉及的 MatrixOne 能力")
     if not CAPABILITY.search(capabilities):
-        errors.append("missing capability_id mapping")
+        errors.append("缺少 capability_id 映射")
 
     routing = _section(text, "回归分层与已有资产")
     if not ROUTING.search(routing):
-        errors.append("missing concrete test routing")
+        errors.append("缺少明确的测试分层")
 
     not_applicable = _section(text, "不适用项及原因")
     for line in not_applicable.splitlines():
         stripped = line.strip()
         if "不适用" in stripped and "：" not in stripped and ":" not in stripped:
-            errors.append(f"不适用 item lacks a reason: {stripped}")
+            errors.append(f"不适用项缺少原因：{stripped}")
 
     if any(pattern.search(text) for pattern in SECRETS):
-        errors.append("design may contain a secret")
+        errors.append("测试设计可能包含敏感凭据")
     return errors
 
 
@@ -100,9 +100,9 @@ def main() -> int:
     errors = validate_design(text)
     if errors:
         for error in errors:
-            print(f"ERROR: {error}", file=sys.stderr)
+            print(f"错误：{error}", file=sys.stderr)
         return 1
-    print("OK: feature test design contract satisfied")
+    print("通过：Feature 测试设计契约校验成功")
     return 0
 
 

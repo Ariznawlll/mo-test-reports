@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the structure and repository links of the MO capability catalog."""
+"""审计 MatrixOne 能力目录的结构和仓库路径。"""
 
 from __future__ import annotations
 
@@ -9,14 +9,26 @@ from pathlib import Path
 
 
 REQUIRED_FIELDS = (
-    "Status",
-    "User entry",
-    "Support evidence",
-    "Scope",
-    "Limitations",
-    "State and invariants",
-    "Test routing",
+    "支持状态",
+    "用户入口",
+    "支持证据",
+    "支持范围",
+    "限制条件",
+    "状态与不变量",
+    "测试分层",
 )
+FIELD_ALIASES = {
+    "Status": "支持状态",
+    "User entry": "用户入口",
+    "Support evidence": "支持证据",
+    "Scope": "支持范围",
+    "Limitations": "限制条件",
+    "State and invariants": "状态与不变量",
+    "Test routing": "测试分层",
+    "Repository evidence": "仓库证据",
+    "Interactions": "关联能力",
+    "Coverage gaps": "覆盖缺口",
+}
 ALLOWED_STATUSES = {"supported", "supported-with-conditions"}
 NON_DOMAIN_FILES = {
     "capability-index.md",
@@ -38,7 +50,7 @@ def _entries(path: Path) -> list[tuple[str, str]]:
 
 
 def audit_catalog(skill_dir: Path, repo_root: Path | None = None) -> list[str]:
-    """Return catalog errors. An empty list means the catalog is structurally valid."""
+    """返回目录错误；空列表表示目录结构有效。"""
     errors: list[str] = []
     references = skill_dir / "references"
     files = sorted(
@@ -47,34 +59,37 @@ def audit_catalog(skill_dir: Path, repo_root: Path | None = None) -> list[str]:
         if path.name not in NON_DOMAIN_FILES
     )
     if not files:
-        return ["no capability domain files found"]
+        return ["未找到能力域文件"]
 
     seen: dict[str, Path] = {}
     for path in files:
         entries = _entries(path)
         if not entries:
-            errors.append(f"{path.name}: no capability entries")
+            errors.append(f"{path.name}：没有能力条目")
             continue
         for capability_id, body in entries:
             if capability_id in seen:
                 errors.append(
-                    f"{path.name}: duplicate capability id {capability_id} "
-                    f"(also in {seen[capability_id].name})"
+                    f"{path.name}：能力 ID {capability_id} 重复"
+                    f"（也存在于 {seen[capability_id].name}）"
                 )
             else:
                 seen[capability_id] = path
 
-            fields = {name.strip(): value.strip() for name, value in FIELD.findall(body)}
+            fields = {
+                FIELD_ALIASES.get(name.strip(), name.strip()): value.strip()
+                for name, value in FIELD.findall(body)
+            }
             for required in REQUIRED_FIELDS:
                 if not fields.get(required):
                     errors.append(
-                        f"{path.name}:{capability_id}: missing field {required}"
+                        f"{path.name}:{capability_id}：缺少字段 {required}"
                     )
 
-            status = fields.get("Status", "")
+            status = fields.get("支持状态", "")
             if status and status not in ALLOWED_STATUSES:
                 errors.append(
-                    f"{path.name}:{capability_id}: disallowed status {status}"
+                    f"{path.name}:{capability_id}：不允许的支持状态 {status}"
                 )
 
             if repo_root is not None:
@@ -82,7 +97,7 @@ def audit_catalog(skill_dir: Path, repo_root: Path | None = None) -> list[str]:
                     candidate = repo_root / relative
                     if not candidate.exists():
                         errors.append(
-                            f"{path.name}:{capability_id}: missing repository path {relative}"
+                            f"{path.name}:{capability_id}：仓库路径不存在 {relative}"
                         )
     return errors
 
@@ -99,9 +114,9 @@ def main() -> int:
     errors = audit_catalog(Path(args.skill_dir), args.repo_root)
     if errors:
         for error in errors:
-            print(f"ERROR: {error}")
+            print(f"错误：{error}")
         return 1
-    print("OK: capability catalog contract satisfied")
+    print("通过：能力目录契约校验成功")
     return 0
 
 
