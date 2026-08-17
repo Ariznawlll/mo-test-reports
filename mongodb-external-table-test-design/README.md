@@ -4,9 +4,9 @@
 
 本 Feature 为 MatrixOne 增加 MongoDB 原生外部表读取能力。用户先创建 MongoDB connection，再以显式 MatrixOne schema 创建 `ENGINE=MONGODB` external table；执行链路为 `MongoDB find/getMore → CN MongoScan → MatrixOne batch/vector → Filter/Join/Aggregate/Window/Insert/Replace`。
 
-本设计以 Issue [#26229](https://github.com/matrixorigin/matrixone/issues/26229)、研发文档 [matrixone_mongodb_external_table_user_guide.md](https://github.com/user-attachments/files/30577010/matrixone_mongodb_external_table_user_guide.md)、实现 PR [#26424](https://github.com/matrixorigin/matrixone/pull/26424) 和合入后审查 Issue [#26485](https://github.com/matrixorigin/matrixone/issues/26485) 为输入，同时以当前 MatrixOne main 的实现、正式文档和现有测试资产校正支持边界。
+本设计以 Issue [#26229](https://github.com/matrixorigin/matrixone/issues/26229)、研发文档 [matrixone_mongodb_external_table_user_guide.md](https://github.com/user-attachments/files/30577010/matrixone_mongodb_external_table_user_guide.md)、实现 PR [#26424](https://github.com/matrixorigin/matrixone/pull/26424)、修复 PR [#26495](https://github.com/matrixorigin/matrixone/pull/26495) 和 review comment [#5314509639](https://github.com/matrixorigin/matrixone/issues/26229#issuecomment-5314509639) 为输入，同时以当前 MatrixOne main 的实现、正式文档和现有测试资产校正支持边界。
 
-测试范围不是单独验证一张 MongoDB 外表能否 `SELECT`，而是验证它作为 MatrixOne 只读数据源，与 MatrixOne 正式支持的表对象、列属性、目标表约束、数据类型、查询算子、事务、权限和恢复能力组合后，结果仍然正确且失败原子。
+测试范围不是单独验证一张 MongoDB 外表能否 `SELECT`，而是验证它作为 MatrixOne 只读数据源，与 MatrixOne 正式支持的表对象、列属性、目标表约束、数据类型、查询算子、事务、权限和恢复能力组合后，结果仍然正确且失败原子。测试结果拆成三个独立判定套件：MongoDB Connector Contract、MatrixOne Integration、NESR Cutover Gate；前两者通过不能替代真实 NESR 上线门禁。
 
 覆盖对象包括：
 
@@ -47,8 +47,9 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 5. projection/predicate 下推只能减少远端返回数据，不得改变 MatrixOne residual 语义；所有结果与禁用下推的独立 Oracle 等价。
 6. `INSERT/REPLACE ... SELECT`、CTAS、Join、Group、Window、TimeWindow、`max_by`、GAPFILL 使用普通 MatrixOne operator，并保持类型、NULL、key 和事务语义。
 7. connection/table 的 tenant、权限、版本、启停、删除和 plan/client cache 生命周期正确；旧 plan/client 不得越过新状态。
-8. cancel、find/getMore 错误、target 写失败、CN 重启、secret rotation 和重放后，cursor、lease、semaphore、transaction、lock、vector 全部释放。
-9. big-data 场景有明确规模、数据分布、测量项、资源阈值和通过标准，可直接转化为 nightly/stability 用例。
+8. NESR 四 collection、嵌套字段、UNION ALL、control/progress/watermark/run/fence 状态机、overlap 删除语义和客户峰值模型均有独立可执行的验收证据。
+9. cancel、find/getMore 错误、target 写失败、CN 重启、secret rotation 和重放后，cursor、lease、semaphore、transaction、lock、vector 全部释放。
+10. big-data 场景有明确规模、数据分布、测量项、资源阈值和通过标准，可直接转化为 nightly/stability 用例。
 
 非目标：
 
@@ -312,7 +313,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 |
 |---|---|---|---|---|---|---|---|
 | QRY-001 | `query.optimizer-and-plan` | projection 不丢列/错 path | 宽 schema、重复 BSON path | `*`、单列、重排、重复表达式、alias | 结果与 full projection 后 MO 投影一致 | source projection 可观测且脱敏 | BVT+plan UT |
-| QRY-002 | `query.optimizer-and-plan` | 安全比较下推等价 | bool/int/decimal/time/string fixture | `= != < <= > >= BETWEEN IN` | pushed+residual 与 residual-only hash 相同 | 记录 pushed shape | differential E2E |
+| QRY-002 | `query.optimizer-and-plan` | 安全比较下推等价且差分可执行 | bool/int/time fixture；同一语义准备 pushed candidate 与 residual-only candidate | `= != < <= >= IN`；先用 EXPLAIN 确认 `pushed>0`/`pushed=0` | 两条路径都与独立 BSON oracle 一致；若实现没有关闭 pushdown 开关，则只使用自然产生 `pushed=0` 的等价 SQL，不把“导入本地表后比较”当作 converter 独立 oracle | 保存 plan、pushed count、residual digest、source candidate 结果 | P0 differential E2E |
 | QRY-003 | `query.optimizer-and-plan` | NULL 候选不排除 malformed | missing/null/undefined/wrong type | IS NULL/IS NOT NULL、AND/OR/NOT | strict/try_null 各自与 Oracle 一致，无 false negative | cursor释放 | P0 differential E2E |
 | QRY-004 | `query.optimizer-and-plan` | 低精度 temporal 下推安全 | 10.000～10.999s BSON DateTime | DATETIME/TIMESTAMP(0/1/2) equality/range/IN | candidate range覆盖所有 residual 命中；无 false negative | plan含residual | P0 regression UT+BVT |
 | QRY-005 | `query.optimizer-and-plan` | 不安全表达式只在 MO 求值 | float/collation/function/JSON/array | 函数、cast、LIKE、复杂 OR、JSON expr | 不支持部分 residual-only；不能因不可推而拒绝合法 SQL | Mongo command无敏感 literal | BVT+E2E |
@@ -375,7 +376,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | CROSS-GAP-007 | Mongo External × target PK/UNIQUE/FK/CHECK/GENERATED × INSERT/REPLACE/constraint failure | R | 同 batch/跨 batch/已有行冲突、affected rows、索引和 statement rollback |
 | CROSS-GAP-008 | CTAS × DEFAULT/PK/UNIQUE/CHECK/GENERATED/INDEX × source conversion/cancel | GAP/R | 成功时 schema/constraint/index 完整生成；失败时不留半表、隐藏对象或序列副作用 |
 | CROSS-GAP-009 | CREATE TABLE LIKE × PK/UNIQUE/FK/CHECK/GENERATED/INDEX × Mongo source/普通 source | GAP | 明确哪些属性复制、哪些不复制；不能复制 Mongo connection、secret 或 runtime mapping |
-| CROSS-GAP-010 | 任意 external × DROP/recreate × Snapshot/PITR | GAP/C | external table 被跳过、拒绝或重建的 policy 必须冻结；不能留下 orphan mapping/dependency |
+| CROSS-GAP-010 | 任意 external × DROP/recreate × Snapshot/PITR | P0/R | 按 #26495 已冻结策略验证 bulk restore 跳过 table/mapping、direct restore 拒绝、connection 按 scope 复制，且无 orphan mapping/dependency |
 
 #### 6.4 交叉覆盖执行规则
 
@@ -385,6 +386,51 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 4. `N` 必须验证拒绝时机、错误分类、无 catalog/target/index/sequence 残留和同连接复用；仅验证 parser 拒绝不够。
 5. `GAP` 在产品确认前不得计入 Feature 通过率；发布前必须改成 `P/R/C/N` 之一，或在“非目标”中明确记录并获得产品确认。
 
+### 6.5 NESR Cutover Gate：真实四集合增量链路
+
+普通 MongoDB E2E 只证明连接器可用，不能替代 NESR 的真实切换验收。NESR Gate 使用四个 MongoDB time-series collection，通过 `UNION ALL` 形成一条业务查询链路；每个 collection 至少包含 `event_time`、`meta.crew`、`meta.subject_id`、`mnemonic`、`value`、`uom`、`quality`、`seq`，并使用不均匀分布、一个空 collection、跨 collection 重复 natural key、嵌套字段和 schema drift fixture。
+
+#### NESR-STATE-001：可重放的控制状态机
+
+```mermaid
+stateDiagram-v2
+    [*] --> LockControl: FOR UPDATE
+    LockControl --> StableHighWatermark
+    StableHighWatermark --> OverlapWindow
+    OverlapWindow --> AggregateAndWriteTarget
+    AggregateAndWriteTarget --> UpdateBackfillProgress
+    UpdateBackfillProgress --> UpdateIngestionWatermark
+    UpdateIngestionWatermark --> RecordSuccessfulRun
+    RecordSuccessfulRun --> CommitFence
+    CommitFence --> [*]
+    AggregateAndWriteTarget --> FailedRun: source/target error
+    FailedRun --> RollbackAll: rollback target/watermark/control
+    RollbackAll --> [*]
+```
+
+每轮必须锁定 control row，计算稳定 high watermark，按 `[low, high)` 加 overlap 扫描，聚合并写入 target，再在同一事务中更新 backfill progress、ingestion watermark、successful run 和 fence。断言如下：
+
+| ID | 场景与 Oracle | 通过标准 |
+|---|---|---|
+| NESR-STATE-001 | main/shadow/legacy 三套 watermark 同时存在 | 查询和推进只使用当前 suite 的 control row；其他 suite 的 watermark、secret、mapping 不污染结果 |
+| NESR-STATE-002 | 成功跑次，含 overlap 和 late arrival | `pending_low/pending_high` 清空；target、progress、committed watermark、successful run、fence 一致提交 |
+| NESR-STATE-003 | source cursor、转换、target constraint 或 commit 前失败 | target、watermark、control 和 successful run 全部回滚；FAILED run 可独立留痕，不能伪装成成功 |
+| NESR-STATE-004 | 成功重放同一 bounded range | target 幂等；successful replay 使 fence 只增加一次；没有新数据时 committed watermark 不推进 |
+| NESR-STATE-005 | 修改 `batch_filter` 后继续增量 | 必须拒绝增量或强制 full rebuild；不能用旧 watermark 产生不可解释的混合结果 |
+| NESR-STATE-006 | 两个 worker 并发推进同一 control row | `FOR UPDATE` 串行化；只有一个成功 fence，另一个等待后重读状态或按稳定冲突错误退出 |
+
+#### NESR-DATA-001：四集合、删除和部分失败
+
+至少覆盖以下变体：一个 collection 为空；四个 collection 数据量明显不均；同一 natural key 跨 collection 重复；单个 collection cursor 失败；单个 collection 缺少 mapping 或无权限；nested `meta.crew`/`meta.subject_id` 发生类型或 schema drift。任一 collection 失败时，target、watermark、control 和 successful run 不得出现部分提交。
+
+overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必须触发 full/range rebuild。若某一分钟内 source 文档被物理删除，仅执行 `REPLACE` 不能删除已存在的 target 行，必须明确采用 source append/update-only 约束，或实现 range-delete/rebuild。用例至少包括：overlap 内单文档删除、整分钟删除、overlap 前历史修正、full rebuild、range rebuild，并校验 target 不留幽灵行。
+
+#### NESR-CUTOVER-PERF：客户峰值阻塞门
+
+约 300 万行只保留为 nightly smoke；正式切换必须补充四 collection 客户峰值 fixture（约 18,032,280 rows/10 min），目标 600 秒内完成，即约 30,054 rows/s。该数据模型不是 MatrixOne 公共仓库现成 fixture，正式报告必须记录 NESR 脚本仓库 URL、NESR git SHA、配置和 fixture manifest hash；缺少这些材料时只能标记为 `BLOCKED`，不能标记通过。
+
+每个 collection、`UNION ALL` scan、聚合、target write 分别计时，并记录 rows/s、峰值 CN/mempool、MongoDB `docsExamined`/`keysExamined`、legacy Python 与 external-table 的 key/value/watermark 差异。四 collection 的单项失败、部分失败和完整重跑均属于阻塞门。
+
 ## 7. 当前未覆盖项汇总
 
 ### P0 缺口
@@ -392,7 +438,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 - 普通用户通过 generic external metadata/`rel_createsql` 注入 Mongo marker，绕过 account-admin 的真实 E2E 交叉场景。
 - MongoDB External 的 NOT NULL、`try_null` 与 JOIN、CTAS、INSERT/REPLACE、事务回滚的全操作交叉；目前有核心用例，但未覆盖完整组合。
 - MongoDB External 作为 source 写入带 PK/UNIQUE/FK/CHECK/GENERATED 的 target 时，转换失败与约束失败叠加的原子性组合。
-- Snapshot/PITR 与 TEMPORARY、CLUSTER、VIEW、普通 External、Mongo External 的 mapping 生命周期交叉。
+- Snapshot/PITR 与 TEMPORARY、CLUSTER、VIEW、普通 External、Mongo External 的 mapping 生命周期交叉；Mongo External 的 #26495 修复需要做确定性回归。
 
 ### P1 缺口
 
@@ -407,7 +453,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 
 - Mongo External 是否允许非 NULL DEFAULT、FK、AUTO_INCREMENT、GENERATED、ON UPDATE；当前设计暂按拒绝处理。
 - CLUSTER TABLE、Partition、Dynamic Table、Stream、Materialized View 是否属于本 Feature 的正式交互范围。
-- Snapshot/PITR 对外部表 mapping 的最终策略：跳过、拒绝还是重建 mapping。
+- #26495 已冻结 Mongo External 恢复策略：database/account bulk restore 跳过 external table 和 mapping；connection 按 scope 复制；direct external-table restore 明确拒绝；必须回归验证无 orphan mapping。
 
 ## 正常路径（Happy Path）
 
@@ -417,13 +463,14 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 |---|---|---|---|
 | HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 |
 | HP-002 | 显式 schema scan | 创建包含 scalar、dotted path、ObjectID、DateTime、Decimal128、Binary、JSON 的 external table，分别执行全列/部分列/重排列 SELECT | 逐值与 canonical Extended JSON 独立 oracle 一致；缺失 nullable path 为 SQL NULL；source collection 不变 |
-| HP-003 | pushdown + residual | 对 try_null 的 bool/整数/DATETIME(3+) 执行比较、IN、IS NOT NULL；对 strict、浮点、字符串、IS NULL 执行同样 SQL | pushdown 只能减少候选集；含 residual 的最终 multiset 与 residual-only 结果一致；不支持下推的合法 SQL 不失败 |
+| HP-003 | pushdown + residual differential | 对 try_null 的 bool/整数/DATETIME(3+) 执行比较、IN、IS NOT NULL；对 strict、浮点、字符串、IS NULL 执行同样 SQL；用 test-only residual-only 开关，若无开关则使用 EXPLAIN 可证明 `pushed=0` 的自然等价 SQL | 保存两份 EXPLAIN、pushed predicate 数量、residual shape digest、source candidate 结果和最终 multiset；pushdown 只能减少候选集，`pushed>0` 与 `pushed=0` 结果一致；本地物化不能作为独立 BSON→MO converter Oracle |
 | HP-004 | 下游算子链 | MongoScan → Filter → TimeWindow/Group → `max_by`/`max_by_non_null` → `GAPFILL(PARTITION)` → target | 与 materialized local copy 结果一致；相同 `(ts,_id)` tie 选择最大 `_id`；空 partition 不凭空生成 |
 | HP-005 | 写入普通目标表 | `INSERT ... SELECT`、`REPLACE ... SELECT`、CTAS 分别写入无约束、PK/UNIQUE、NOT NULL、CHECK、FK、generated/index target | 结果、affected rows、约束副作用与本地 source 对照一致；MongoDB 侧只读 |
 | HP-006 | 周期增量 | 控制表有 committed watermark，按 `[low, high)` 执行 procedure；加入 overlap 与 late arrival 后再次执行 | target key 与结果粒度一致；watermark 在 target 成功后同事务推进；重放幂等且不产生重复 |
 | HP-007 | tenant/admin 使用 | account admin 创建 connection/table；普通用户仅持有 target table SELECT 权限查询 external table 或 view | DDL 权限符合合同；普通用户不能创建/改变 connection 或 mapping；metadata 不泄露 connection secret |
+| HP-008 | NESR 四集合 cutover | 四 collection `UNION ALL`、nested metadata、空 collection、跨 collection duplicate key、单 collection cursor/auth/schema failure；按 NESR state machine 执行增量、重放、失败回滚 | 任一 collection 失败无 partial target；watermark/progress/run/fence 满足状态断言；overlap 外删除进入 rebuild/range-delete 语义 |
 
-重复执行要求：HP-001～HP-007 至少 3 轮；E2/E3 的多 CN、TLS/SRV 和权限用例至少 3 轮；任何失败后先做即时状态复核，再进入清理和下一轮。
+重复执行要求：HP-001～HP-008 至少 3 轮；E2/E3 的多 CN、TLS/SRV 和权限用例至少 3 轮；任何失败后先做即时状态复核，再进入清理和下一轮。
 
 ## 边界路径（Boundary Path）
 
@@ -455,7 +502,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | UH-007 | 目标约束失败 | source 中途产生 target PK/UNIQUE/FK/CHECK/NOT NULL 冲突 | 按语句合同失败或替换；失败路径不留半写入、错误索引、错误 watermark；auto_increment 仅允许文档化的 gap |
 | UH-008 | 取消/断连 | 等待 source semaphore、find、getMore、decode、下游聚合和 commit 前分别取消；客户端断连 | 有界返回；关闭 cursor/killCursors、释放 lease/semaphore/lock/vector；同连接或重连后可继续查询 |
 | UH-009 | stale mapping/client | plan 后 ALTER/DISABLE/ENABLE/DROP connection 或 table mapping | 执行期检测 version/generation；新 statement 不使用 stale client；旧 lease 完成或取消后才退休 |
-| UH-010 | Snapshot/PITR 冲突 | 恢复包含/不包含 external table 的 database/account scope，随后 DROP connection、重建 table、查询 target/control | 按冻结恢复策略成功或明确拒绝；不产生 orphan `mo_mongodb_tables`；源 Mongo collection 不被 restore 改写 |
+| UH-010 | Snapshot/PITR 冲突 | 分别执行 database/account bulk restore、direct external-table restore；检查 table/mapping、按 scope 复制的 connection、DROP/recreate 和 orphan mapping | 按 #26495：bulk restore 跳过 MongoDB external table 和 mapping，connection 按 scope 复制；direct restore 明确拒绝；无 orphan `mo_mongodb_tables`，源 Mongo collection 不被 restore 改写 |
 
 ## 事务与并发
 
@@ -482,6 +529,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | SEC-004 | host egress | seed、SRV 结果、ReplicaSet member 每次 socket dial 均重新校验 suffix/CIDR；loopback、link-local、multicast、metadata endpoint 默认拒绝 |
 | SEC-005 | least privilege source | Mongo 只读账号只可读目标 database/collection；尝试写入、读其他 database/collection、使用错误 auth_source 均失败，collection hash 不变 |
 | SEC-006 | marker injection | generic external table 元数据中出现 `MO_MONGODB:` 或类似文本不能改变对象类型或权限；应有非 admin 真实 E2E 回归 |
+| SEC-007 | true tenant E2E 与 secret precedence | account admin 创建；普通用户 SELECT/ingest；account-scoped secret rotation；system/tenant secret precedence；跨租户同名对象和失败日志检查 | 真实 tenant 身份下权限、mapping、secret resolver 均隔离；轮换后新旧 generation 行为符合合同；日志不含 credential/URI/namespace |
 
 ## 恢复与故障注入
 
@@ -511,6 +559,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | 场景 | 数据与配置 | 必采集指标 | 通过标准 |
 |---|---|---|---|
 | BD-LOAD | 约 300 万 raw rows，时间有序/乱序、NULL-heavy、skew partition、索引 `{ts:1,_id:1}` | rows/bytes、p50/p95、peak CN memory/mpool、Mongo CPU/lag、目标 hash | 无 OOM/restart；结果和独立 oracle 一致；达到产品约定耗时/资源门槛 |
+| NESR-CUTOVER-PERF | 4 个 MongoDB time-series collection，约 18,032,280 rows/10 min，目标 600s（约 30,054 rows/s） | 每 collection scan、`UNION ALL`、aggregate、target write 时延；rows/s、peak memory、`docsExamined`/`keysExamined`、legacy Python vs external key/value/watermark diff | blocking release gate；任一 collection 不达标、部分提交或缺少 NESR URL/SHA/config/fixture manifest 均为 BLOCKED/失败；3m 仅作为 nightly smoke |
 | BD-WIDE | 近 `max-value-bytes` document，重复同一长 path 到多列，宽 schema | raw bytes、decoded/vector bytes、max batch、budget errors、清理后 mpool | decoded/vector budget 生效，不因 raw batch limit 误放行而 OOM；失败后状态干净 |
 | BD-MAXBY | 多分组（至少 8,192 group）、大 varlen winner、反复更新 winner、多 chunk | wall time 随 winners/groups、peak memory、live/stale varlen bytes、结果 hash | 结果正确；时间/内存无异常平方增长；compaction 不破坏 winner 状态 |
 | STAB-CURSOR | 长 cursor、重复 failover/cancel、10–20 fresh generations | cursor open/close、getMore/error/cancel、pool checkout、lease、goroutine、FD | 每轮 close= open；资源回到基线；无 stale client、增长趋势或重启 |
@@ -558,10 +607,11 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 | big-data | 300 万 raw rows、宽/长 varlen、scan/decoded budget、GAPFILL 大窗口、many-group max_by | Nightly 专用 MongoDB/MatrixOne 环境；报告必须含资源与结果摘要 |
 | stability | 长 cursor、重复 cancel/failover、10–20 fresh generation、pool/lease/FD/goroutine 趋势 | Stability/Soak workflow；以资源回基线为准 |
 | Chaos | CN/TN kill、Mongo primary failover、网络/DNS/TLS/外部服务故障、commit-ack 不确定 | 专用 recovery/Chaos workflow；不在普通 BVT 中重启共享集群 |
-| recovery | Snapshot/PITR/backup restore mapping policy、target/control 一致性、orphan dependency | Snapshot/PITR dedicated workflow；隔离 account/database |
+| recovery | 按 #26495 回归 Snapshot/PITR/backup restore mapping policy、target/control 一致性、orphan dependency | Snapshot/PITR dedicated workflow；隔离 account/database；bulk skip/direct reject/connection scope copy 均有断言 |
+| NESR Cutover Gate | 四 collection incremental state machine、删除/overlap、partial failure、customer peak | NESR 脚本仓库 URL/SHA、配置和 fixture manifest；没有真实资产只能 BLOCKED |
 | ecosystem | MySQL text protocol、正式 Driver/Proxy（若版本在兼容矩阵） | 真实客户端 scenario；不把 CN 内 Go Driver 当作用户客户端合同 |
 
-准入顺序：先修复并纳入 P0（权限、NOT NULL、时间、失败原子、secret 脱敏）→ 跑 `make test-mongodb-unit` → 跑 `make test-mongodb-e2e-local` → 跑所在 BVT/MOTR suite → 再进入 big-data/recovery/chaos。#26485 中已指出的升级兼容性 job 曾被跳过，release gate 需要补跑并记录结果。
+准入顺序：先修复并纳入 P0（权限、NOT NULL、时间、失败原子、secret 脱敏、pushdown/residual differential、NESR 状态机）→ 跑 `make test-mongodb-unit` → 跑 `make test-mongodb-e2e-local` → 跑所在 BVT/MOTR suite → 再进入 big-data/recovery/chaos 和 NESR Cutover Gate。#26495 已合入的 Snapshot/PITR 修复必须按固定策略回归；升级兼容性 job 曾被跳过，release gate 需要补跑并记录结果。
 
 ## 不适用项及原因
 
@@ -581,8 +631,9 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 1. 使用当前 main 完整 SHA `177a149f457be15f5bb14c723bdf0ea94254fea7` 构建；相关 MongoDB 路径与 `test/mongodb` 已完成新鲜度审计。
 2. MongoDB 8.0.12、官方 Go Driver v2.8.0、Docker/Go/Python/OpenSSL 可用；E1 至少可运行，E2～E6 按用例启用。
 3. 所有测试 secret 使用临时 account-scoped `secret://` reference，报告/log/artifact 已脱敏；不把凭据写入 SQL 或 fixture。
-4. 修复并验证 #26485 的 P0 条件：可信类型 discriminator/权限边界、低精度时间不误下推、时间域校验与 scale、decoded/vector budget、恢复 policy、`max_by` 多组复杂度。
+4. 回归验证已合入 #26495 的 P0 条件：可信类型 discriminator/权限边界、低精度时间不误下推、时间域校验与 scale、decoded/vector budget、Snapshot/PITR bulk skip/direct reject/connection scope copy、`max_by` 多组复杂度。
 5. `make test-mongodb-unit` 和 `make test-mongodb-e2e-local` 可执行；失败需区分产品失败、夹具失败和无关 suite 失败。
+6. 每份正式报告必须记录并校验：MatrixOne git SHA、MatrixOne build flags、MongoDB version/FCV、MatrixOne configuration hash、NESR git SHA、test-data manifest hash；任一 SHA 或 hash 不匹配即拒绝生成正式 acceptance report。
 
 ### 退出/通过条件
 
@@ -596,7 +647,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 
 - MongoDB server 版本、TLS/SRV、mongos/ReplicaSet topology、read preference/read concern、容量/延迟和 musl 支持矩阵尚未从“PR E2E 基线”升级为正式 release 合同。
 - connection object 的独立 `USAGE` 权限尚未提供；当前创建 external table 仍要求 account admin，需产品确认后再扩展普通用户授权模型。
-- Snapshot/PITR 对 external mapping 的最终 policy（跳过、拒绝还是重建 mapping）必须在 release 前冻结，并为每个 scope 提供可重复 workflow。
+- Snapshot/PITR policy 已按 #26495 冻结，但仍需在每个 database/account scope 做可重复回归：bulk skip table/mapping、direct restore reject、connection scope copy、无 orphan mapping。
 - mutable collection、源端物理删除、overlap 之前的 late correction 需要业务侧选择 snapshot/dedup/range-delete/backfill 策略；不能由 external table 无状态扫描自动保证。
-- `GAPFILL` 上限、`max_by` 浮点 tolerance、300 万 raw rows 的性能门槛、source protection 和最大 cursor 时长需要产品/运维给出明确数值。
+- `GAPFILL` 上限、`max_by` 浮点 tolerance、300 万 raw rows 的 nightly 门槛、NESR 客户峰值门槛、source protection 和最大 cursor 时长需要产品/运维给出明确数值。
 - 当前文档与 main README 在“功能默认 enable”描述上曾有差异；以当前 main README 为实现基线，同时要求 release 文档、配置参考和错误合同统一后再宣称正式支持。
