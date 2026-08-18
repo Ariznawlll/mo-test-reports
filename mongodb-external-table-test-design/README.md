@@ -24,8 +24,8 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 
 ## 支持证据与版本基线
 
-- MatrixOne main SHA：`177a149f457be15f5bb14c723bdf0ea94254fea7`。
-- 核验日期：2026-08-17。
+- MatrixOne main SHA：`ccb37f591b07e9901da2e0e7b5cb1733485e8771`。
+- 核验日期：2026-08-18。
 - Feature 证据：Issue #26229、PR #26424、研发用户指南和 `pkg/sql/mongodb/`、`pkg/sql/colexec/mongoscan/`、`pkg/sql/plan/`、`test/mongodb/`。
 - MatrixOne 表对象证据：[CREATE TABLE](https://docs.matrixorigin.cn/en/dev/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-table/)、[CREATE TEMPORARY TABLE](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Develop/schema-design/create-temporary-table/)、[CREATE CLUSTER TABLE](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-cluster-table/)、[CREATE EXTERNAL TABLE](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-external-table/)、[CREATE VIEW](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-view/)。
 - Schema/constraint 证据：现有 `test/distributed/cases/ddl/`、`table/`、`foreign_key/`、`auto_increment/`、`temporary/`、`view/` 和 [Primary Key](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Develop/schema-design/data-integrity/primary-key-constraints/)、[foreign_key_checks](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/Variable/system-variables/foreign_key_checks/)。
@@ -94,35 +94,35 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 
 ## 风险与关键不变量
 
-| 风险 | 关键不变量 | 优先级 |
-|---|---|---|
-| 类型错误 | 每个 BSON value 只能按公开映射转换；不能隐式放宽 String→Number、String→Date 等 | P0 |
-| NULL/约束 | missing/null/undefined/type-error 与 NULL、NOT NULL、try_null 的组合结果确定 | P0 |
-| 目标约束 | PK/UNIQUE/FK/CHECK/NOT NULL 失败时整条 source DML 回滚 | P0 |
-| 时间下推 | BSON 毫秒精度与 DATETIME/TIMESTAMP(0..6) 比较不得产生 false negative | P0 |
-| 表类型 | 不同对象的可读、可写、会话、租户和 owner 语义不串线 | P0 |
-| 安全 | secret/URI/endpoint/query literal 不进入 SHOW、plan、日志、错误和 artifact | P0 |
-| catalog 分类 | generic external metadata 不能伪装成 Mongo mapping 或借用高权限 connection | P0 |
-| 事务 | source scan、target mutation、constraint side effect 和 watermark 同成同败 | P0 |
-| 资源 | raw/decoded/vector 均受预算约束；超限 fail-fast，不 OOM/restart | P0 |
-| 推下正确性 | pushed filter 是候选过滤，最终结果始终由 MO residual 语义保证 | P1 |
-| 确定性 | 相同时间使用稳定 tie key；聚合 partial merge 不依赖 batch 到达顺序 | P1 |
-| 生命周期 | ALTER/DISABLE/DROP/rotation 后新语句不能使用 stale mapping/client | P1 |
-| 恢复 | 重启、Snapshot/PITR 后无 orphan mapping，已提交 target/control 一致 | P1 |
-| 大规模复杂度 | 高 cardinality、宽 schema、长 varlen、低选择率不能导致非预期平方复杂度 | P1 |
+| 风险 | 关键不变量 | 优先级 | 测试结果 |
+|---|---|---|---|
+| 类型错误 | 每个 BSON value 只能按公开映射转换；不能隐式放宽 String→Number、String→Date 等 | P0 | ◐ 代表性转换已测，完整类型参数化未完成 |
+| NULL/约束 | missing/null/undefined/type-error 与 NULL、NOT NULL、try_null 的组合结果确定 | P0 | ✅ 核心 NULL/NOT NULL/target 约束已通过 |
+| 目标约束 | PK/UNIQUE/FK/CHECK/NOT NULL 失败时整条 source DML 回滚 | P0 | ✅ |
+| 时间下推 | BSON 毫秒精度与 DATETIME/TIMESTAMP(0..6) 比较不得产生 false negative | P0 | ⏸️ |
+| 表类型 | 不同对象的可读、可写、会话、租户和 owner 语义不串线 | P0 | ◐ Mongo/普通表核心已测，temp/cluster/tenant 未完成 |
+| 安全 | secret/URI/endpoint/query literal 不进入 SHOW、plan、日志、错误和 artifact | P0 | ◐ EXPLAIN/权限 marker 已测，全链路脱敏未完成 |
+| catalog 分类 | generic external metadata 不能伪装成 Mongo mapping 或借用高权限 connection | P0 | ✅ |
+| 事务 | source scan、target mutation、constraint side effect 和 watermark 同成同败 | P0 | ◐ statement 原子性已测，watermark 未完成 |
+| 资源 | raw/decoded/vector 均受预算约束；超限 fail-fast，不 OOM/restart | P0 | ⏸️ |
+| 推下正确性 | pushed filter 是候选过滤，最终结果始终由 MO residual 语义保证 | P1 | ◐ EXPLAIN/代表性 predicate 已测 |
+| 确定性 | 相同时间使用稳定 tie key；聚合 partial merge 不依赖 batch 到达顺序 | P1 | ✅ max_by/GAPFILL 代表性结果已通过 |
+| 生命周期 | ALTER/DISABLE/DROP/rotation 后新语句不能使用 stale mapping/client | P1 | ◐ disable/enable 已测，stale/rotation 未完成 |
+| 恢复 | 重启、Snapshot/PITR 后无 orphan mapping，已提交 target/control 一致 | P1 | ⏸️ |
+| 大规模复杂度 | 高 cardinality、宽 schema、长 varlen、低选择率不能导致非预期平方复杂度 | P1 | ⏸️ |
 
 ## 测试环境、拓扑、配置与数据
 
 ### 环境矩阵
 
-| 环境 | MatrixOne | MongoDB | 用途 |
-|---|---|---|---|
-| E1 单机功能 | 当前 main，1 CN/1 TN | 8.0.12 单节点 ReplicaSet | BVT、类型、DDL、查询、DML |
-| E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 |
-| E3 TLS/SRV | 1–3 CN | TLS 私有 CA、SRV/TXT、hostname | 网络、安全、发现和 allowlist |
-| E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope |
-| E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 |
-| E6 big-data | Nightly 独占环境 | 有索引的千万级 collection | 容量、稳定性、资源、性能 |
+| 环境 | MatrixOne | MongoDB | 用途 | 测试结果 |
+|---|---|---|---|---|
+| E1 单机功能 | 当前 main，1 CN/1 TN | 8.0.12 单节点 ReplicaSet | BVT、类型、DDL、查询、DML | ⏸️ 本轮未使用 |
+| E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 | ◐ TKE MO/连接生命周期已测，3 节点 Mongo 及故障未完成 |
+| E3 TLS/SRV | 1–3 CN | TLS 私有 CA、SRV/TXT、hostname | 网络、安全、发现和 allowlist | ⏸️ 环境未提供 |
+| E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope | ⏸️ 环境未提供 |
+| E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ⏸️ 未执行，避免影响共享集群 |
+| E6 big-data | Nightly 独占环境 | 有索引的千万级 collection | 容量、稳定性、资源、性能 | ⏸️ 环境未提供 |
 
 配置覆盖：默认 enable、省略 allowlist、显式 enable/disable、account allowlist、host suffix/CIDR、loopback、timeout、batch rows/bytes、max value/scan/decoded bytes、conversion error count/rate、source concurrency。所有 secret 使用随机测试值和 reference，不写进 SQL fixture。
 
@@ -145,143 +145,147 @@ Oracle 使用 Go Driver 或 mongosh 导出的 canonical Extended JSON，加独�
 
 ## 功能测试矩阵
 
+### 测试结果列说明
+
+各测试表新增“测试结果”列：`✅` 表示本轮在指定 TKE 环境中已执行且通过；`❌` 表示已执行但未通过；`◐` 表示只完成部分组合，不能视为整项通过；`⏸️` 表示尚未执行或依赖当前未提供的环境。未标记为 `✅` 的项目不计入已完成覆盖。
+
 ### 1. 表对象和角色全集
 
 状态含义：`P` 为 Mongo Feature 正向准入；`I` 为互操作覆盖；`N` 为必须拒绝；`C` 为仅在对应正式能力环境中执行；`E` 为实验能力，不进入准入。
 
-| MO 表对象/构造方式 | Mongo source | Join/Union 对端 | 写入目标 | 设计结论 |
-|---|---:|---:|---:|---|
-| MongoDB external table | P | P（自连接/多 collection） | N | 只读；直接 DML 必须拒绝 |
-| 普通永久表 | 不适用 | P | P | 覆盖全部目标约束和数据类型赋值 |
-| TEMPORARY TABLE | 不适用 | P | P | 仅当前 session 可见；断连自动清理 |
-| CLUSTER TABLE | 不适用 | C | C | system admin 创建；tenant 只读范围按正式合同验证 |
-| VIEW | 不适用 | P | 不作为基础写入目标 | DEFINER/INVOKER、嵌套 view、权限撤销 |
-| 普通 external table（INFILE/S3） | I | I | N | 只读 Join/Union；不要求跨源 pushdown |
-| Iceberg external table | I | I | N | 有 Iceberg 环境才执行只读 Join/Union |
-| `CREATE TABLE AS SELECT` | 不适用 | 不适用 | P | 新建普通表并物化 Mongo 查询结果 |
-| `CREATE TABLE LIKE` | 不适用 | 不适用 | I | 验证普通目标 schema 构造；不复制 Mongo runtime connection |
-| 分区表 | E | E | E | 当前正式矩阵不承诺；仅确认不会误当 Mongo mapping |
-| Dynamic Table/Stream/Source | E | E | E | 不进入本 Feature 准入，另立实验专项 |
+| MO 表对象/构造方式 | Mongo source | Join/Union 对端 | 写入目标 | 设计结论 | 测试结果 |
+|---|---|---|---|---|---|
+| MongoDB external table | P | P（自连接/多 collection） | N | 只读；直接 DML 必须拒绝 | ◐ 核心 SELECT/Join 已通过，Union/直接 DML 未完整覆盖 |
+| 普通永久表 | 不适用 | P | P | 覆盖全部目标约束和数据类型赋值 | ✅ 目标约束核心组合已通过 |
+| TEMPORARY TABLE | 不适用 | P | P | 仅当前 session 可见；断连自动清理 | ⏸️ |
+| CLUSTER TABLE | 不适用 | C | C | system admin 创建；tenant 只读范围按正式合同验证 | ⏸️ |
+| VIEW | 不适用 | P | 不作为基础写入目标 | DEFINER/INVOKER、嵌套 view、权限撤销 | ◐ 基础 view 查询已覆盖，权限交叉未完成 |
+| 普通 external table（INFILE/S3） | I | I | N | 只读 Join/Union；不要求跨源 pushdown | ⏸️ |
+| Iceberg external table | I | I | N | 有 Iceberg 环境才执行只读 Join/Union | ⏸️ 环境未提供 |
+| `CREATE TABLE AS SELECT` | 不适用 | 不适用 | P | 新建普通表并物化 Mongo 查询结果 | ✅ 成功与失败原子性已通过 |
+| `CREATE TABLE LIKE` | 不适用 | 不适用 | I | 验证普通目标 schema 构造；不复制 Mongo runtime connection | ✅ 普通表 LIKE 成功，Mongo 外表 LIKE 按预期拒绝 |
+| 分区表 | E | E | E | 当前正式矩阵不承诺；仅确认不会误当 Mongo mapping | ⏸️ |
+| Dynamic Table/Stream/Source | E | E | E | 不进入本 Feature 准入，另立实验专项 | ⏸️ |
 
 #### 表对象详细用例
 
-| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 |
-|---|---|---|---|---|---|---|---|
-| OBJ-001 | `dataio.stage-and-external-data` | Mongo 外表只读且结果稳定 | E1，合法 connection/mapping | 连续 3 次 SELECT 全列/部分列 | 与 Oracle 完全一致，Mongo source 不变 | cursor/lease=0；DROP mapping 不删 collection | BVT+E2E |
-| OBJ-002 | `query.optimizer-and-plan` | 两个 Mongo mapping 不串 collection | 同 connection 下 collection A/B | JOIN、UNION ALL、自连接别名 | 行数/key 与 Oracle 一致；各 scan 的 projection/filter 独立 | 两个 cursor 均释放 | BVT+E2E |
-| OBJ-003 | `query.optimizer-and-plan` | 普通表与 Mongo 外表互操作 | 普通表维表和 target | 两种 join order、semi/anti/left join | 结果与本地快照对照一致 | 普通表不被 SELECT 修改 | BVT |
-| OBJ-004 | `schema.ddl-lifecycle` | 临时表 session 隔离 | session A/B | A 建 temp 并 `INSERT SELECT`；B 同名访问；A 断连 | A 可见、B 不可见/可建独立同名；断连后清理 | 无持久 temp catalog/data | BVT+MOTR |
-| OBJ-005 | `security.authorization-and-isolation` | cluster table 租户可见性不越界 | E4，sys 创建 cluster target | sys 写入 Mongo 结果；tenant A/B 查询 | sys 可见全部；租户只见自己的可见行；tenant 不可直接写 | cluster row/account key 正确 | 多租户 MOTR |
-| OBJ-006 | `security.authorization-and-isolation` | view security 不泄露 connection | DEFINER/INVOKER 两个 view，低权用户 | SELECT、SHOW CREATE VIEW、revoke base grant | 按 security mode 成功/拒绝；均不显示 secret/endpoint | DROP view 后 dependency 正常 | BVT+MOTR |
-| OBJ-007 | `query.optimizer-and-plan` | 其他 external source 只参与 MO 层组合 | file/S3 external + Mongo external | JOIN/UNION/CTE | 结果正确；无错误跨源 predicate pushdown | 两类 reader 都释放 | BVT/条件 E2E |
-| OBJ-008 | `transaction.statement-atomicity` | CTAS 全成全败 | 空 schema；Mongo fixture 含合法/非法行 | CTAS 成功；strict 转换中途失败 | 成功表 schema/rows 正确；失败不留半表/部分行 | catalog 与 storage 无残留 | BVT+MOTR |
-| OBJ-009 | `schema.ddl-lifecycle` | LIKE 不复制 Mongo 私有映射 | Mongo 外表和普通模板表 | `CREATE TABLE LIKE` 两种来源 | 仅正式允许的路径成功；不得生成可绕过 connection 的 Mongo mapping | SHOW CREATE 无 secret/marker 注入 | BVT |
-| OBJ-010 | `schema.ddl-lifecycle` | 实验对象不污染正式合同 | 默认关闭实验能力 | 尝试 partition/dynamic/stream 与 Mongo 组合 | 稳定拒绝或标记实验；不创建半对象 | catalog 无残留 | Parser/plan UT+BVT |
+| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
+|---|---|---|---|---|---|---|---|---|
+| OBJ-001 | `dataio.stage-and-external-data` | Mongo 外表只读且结果稳定 | E1，合法 connection/mapping | 连续 3 次 SELECT 全列/部分列 | 与 Oracle 完全一致，Mongo source 不变 | cursor/lease=0；DROP mapping 不删 collection | BVT+E2E | ✅ |
+| OBJ-002 | `query.optimizer-and-plan` | 两个 Mongo mapping 不串 collection | 同 connection 下 collection A/B | JOIN、UNION ALL、自连接别名 | 行数/key 与 Oracle 一致；各 scan 的 projection/filter 独立 | 两个 cursor 均释放 | BVT+E2E | ◐ Join 已通过，Union/多 mapping 未完整覆盖 |
+| OBJ-003 | `query.optimizer-and-plan` | 普通表与 Mongo 外表互操作 | 普通表维表和 target | 两种 join order、semi/anti/left join | 结果与本地快照对照一致 | 普通表不被 SELECT 修改 | BVT | ✅ |
+| OBJ-004 | `schema.ddl-lifecycle` | 临时表 session 隔离 | session A/B | A 建 temp 并 `INSERT SELECT`；B 同名访问；A 断连 | A 可见、B 不可见/可建独立同名；断连后清理 | 无持久 temp catalog/data | BVT+MOTR | ⏸️ |
+| OBJ-005 | `security.authorization-and-isolation` | cluster table 租户可见性不越界 | E4，sys 创建 cluster target | sys 写入 Mongo 结果；tenant A/B 查询 | sys 可见全部；租户只见自己的可见行；tenant 不可直接写 | cluster row/account key 正确 | 多租户 MOTR | ⏸️ |
+| OBJ-006 | `security.authorization-and-isolation` | view security 不泄露 connection | DEFINER/INVOKER 两个 view，低权用户 | SELECT、SHOW CREATE VIEW、revoke base grant | 按 security mode 成功/拒绝；均不显示 secret/endpoint | DROP view 后 dependency 正常 | BVT+MOTR | ◐ 基础 view 查询已覆盖，安全交叉未完成 |
+| OBJ-007 | `query.optimizer-and-plan` | 其他 external source 只参与 MO 层组合 | file/S3 external + Mongo external | JOIN/UNION/CTE | 结果正确；无错误跨源 predicate pushdown | 两类 reader 都释放 | BVT/条件 E2E | ⏸️ 环境未提供 |
+| OBJ-008 | `transaction.statement-atomicity` | CTAS 全成全败 | 空 schema；Mongo fixture 含合法/非法行 | CTAS 成功；strict 转换中途失败 | 成功表 schema/rows 正确；失败不留半表/部分行 | catalog 与 storage 无残留 | BVT+MOTR | ✅ |
+| OBJ-009 | `schema.ddl-lifecycle` | LIKE 不复制 Mongo 私有映射 | Mongo 外表和普通模板表 | `CREATE TABLE LIKE` 两种来源 | 仅正式允许的路径成功；不得生成可绕过 connection 的 Mongo mapping | SHOW CREATE 无 secret/marker 注入 | BVT | ✅ |
+| OBJ-010 | `schema.ddl-lifecycle` | 实验对象不污染正式合同 | 默认关闭实验能力 | 尝试 partition/dynamic/stream 与 Mongo 组合 | 稳定拒绝或标记实验；不创建半对象 | catalog 无残留 | Parser/plan UT+BVT | ⏸️ |
 
 ### 2. Mongo external source 列属性和约束
 
 Mongo 外表是远端只读映射，不是本地约束存储表。源表列属性必须与运行时读取语义一致。
 
-| 列属性/约束 | 预期合同 | 需要验证的语义 |
-|---|---|---|
-| 省略 NULL/显式 NULL | 支持 | missing、null、undefined 输出 SQL NULL |
-| NOT NULL | 支持 | 上述值及 try_null 转换失败均使 statement 失败 |
-| `DEFAULT NULL` | 支持/SHOW round-trip | 仅是 schema metadata；不改变 missing→NULL |
-| 非 NULL DEFAULT | 待确认，准入先按拒绝 | 不得为远端 missing 字段静默合成默认值 |
-| COMMENT | metadata 支持 | SHOW round-trip，不影响 mapping/runtime |
-| COLLATE（字符串列） | metadata/比较条件支持 | SHOW round-trip；不扩大安全下推范围 |
-| PK/KEY/UNIQUE/INDEX/FULLTEXT | 明确拒绝 | create 原子失败，无 index metadata |
-| CHECK | 明确拒绝 | 不把远端脏数据隐藏为已满足约束 |
-| FOREIGN KEY | 待确认，准入先按拒绝 | 外表不能成为可依赖的受约束 parent/child |
-| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 |
-| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 |
-| ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 |
-| ALTER ADD/DROP/MODIFY/RENAME COLUMN | 明确拒绝 | 提示 drop/recreate；mapping/version 不变 |
+| 列属性/约束 | 预期合同 | 需要验证的语义 | 测试结果 |
+|---|---|---|---|
+| 省略 NULL/显式 NULL | 支持 | missing、null、undefined 输出 SQL NULL | ✅ |
+| NOT NULL | 支持 | 上述值及 try_null 转换失败均使 statement 失败 | ◐ 核心组合已测，四维全组合未完成 |
+| `DEFAULT NULL` | 支持/SHOW round-trip | 仅是 schema metadata；不改变 missing→NULL | ⏸️ |
+| 非 NULL DEFAULT | 待确认，准入先按拒绝 | 不得为远端 missing 字段静默合成默认值 | ⏸️ |
+| COMMENT | metadata 支持 | SHOW round-trip，不影响 mapping/runtime | ⏸️ |
+| COLLATE（字符串列） | metadata/比较条件支持 | SHOW round-trip；不扩大安全下推范围 | ⏸️ |
+| PK/KEY/UNIQUE/INDEX/FULLTEXT | 明确拒绝 | create 原子失败，无 index metadata | ⏸️ |
+| CHECK | 明确拒绝 | 不把远端脏数据隐藏为已满足约束 | ⏸️ |
+| FOREIGN KEY | 待确认，准入先按拒绝 | 外表不能成为可依赖的受约束 parent/child | ⏸️ |
+| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ⏸️ |
+| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ⏸️ |
+| ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 | ⏸️ |
+| ALTER ADD/DROP/MODIFY/RENAME COLUMN | 明确拒绝 | 提示 drop/recreate；mapping/version 不变 | ⏸️ |
 
-| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 |
-|---|---|---|---|---|---|---|---|
-| SRC-C01 | `sql.data-types-and-conversion` | 默认 nullable 与显式 NULL 等价 | missing/null/undefined fixture | 建两张 mapping 并查询 | 三类值均为 SQL NULL；其他行相等 | conversion error 不增加 | BVT+converter UT |
-| SRC-C02 | `sql.data-types-and-conversion` | NOT NULL 不能被 try_null 弱化 | strict/try_null × NOT NULL | 查询 missing/null/undefined/wrong type | 四类均失败；错误定位列/path/cause 且不泄值 | 当前 row/vector 回滚；连接可复用 | P0 UT+E2E |
-| SRC-C03 | `schema.ddl-lifecycle` | DEFAULT 不伪造远端数据 | default null/非 null 两种 DDL | SHOW CREATE 并读 missing 字段 | default null 仍输出 NULL；非 null default 按确认口径拒绝 | 无 synthesized value/半 mapping | BVT |
-| SRC-C04 | `schema.ddl-lifecycle` | COMMENT/COLLATE 仅为 metadata | 字符串列 | 建表、SHOW、大小写/Unicode过滤 | metadata round-trip；结果由 MO 比较语义兜底 | plan 不将不安全 collation 比较下推 | BVT+plan UT |
-| SRC-C05 | `schema.ddl-lifecycle` | 外表不创建本地索引约束 | 无 mapping | 分别使用 inline/table PK、KEY、UNIQUE、INDEX、FULLTEXT | 全部稳定拒绝 `cannot create index on external table` | catalog/index/mapping 无残留 | BVT+plan UT |
-| SRC-C06 | `schema.ddl-lifecycle` | CHECK 不伪装远端完整性 | 远端有违反 check 的数据 | column/table CHECK DDL | 明确拒绝，不创建 mapping | 无 catalog dependency | BVT+plan UT |
-| SRC-C07 | `schema.ddl-lifecycle` | 未声明属性 fail-closed | FK、AUTO_INCREMENT、GENERATED、ON UPDATE DDL | 逐项和组合创建 | release 合同确认前期望明确拒绝；若当前意外接受则登记 contract bug | 不生成序列/FK/生成列状态 | P0 BVT |
-| SRC-C08 | `schema.ddl-lifecycle` | mapping schema 只能 drop/recreate | 已创建外表 | ADD/DROP/MODIFY/CHANGE/RENAME COLUMN/TABLE | 全部拒绝 Mongo external ALTER；原 mapping/version 不变 | 原表继续可查询 | BVT+plan UT |
+| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
+|---|---|---|---|---|---|---|---|---|
+| SRC-C01 | `sql.data-types-and-conversion` | 默认 nullable 与显式 NULL 等价 | missing/null/undefined fixture | 建两张 mapping 并查询 | 三类值均为 SQL NULL；其他行相等 | conversion error 不增加 | BVT+converter UT | ✅ |
+| SRC-C02 | `sql.data-types-and-conversion` | NOT NULL 不能被 try_null 弱化 | strict/try_null × NOT NULL | 查询 missing/null/undefined/wrong type | 四类均失败；错误定位列/path/cause 且不泄值 | 当前 row/vector 回滚；连接可复用 | P0 UT+E2E | ◐ NOT NULL/strict 核心已测，四维全组合未完成 |
+| SRC-C03 | `schema.ddl-lifecycle` | DEFAULT 不伪造远端数据 | default null/非 null 两种 DDL | SHOW CREATE 并读 missing 字段 | default null 仍输出 NULL；非 null default 按确认口径拒绝 | 无 synthesized value/半 mapping | BVT | ⏸️ |
+| SRC-C04 | `schema.ddl-lifecycle` | COMMENT/COLLATE 仅为 metadata | 字符串列 | 建表、SHOW、大小写/Unicode过滤 | metadata round-trip；结果由 MO 比较语义兜底 | plan 不将不安全 collation 比较下推 | BVT+plan UT | ⏸️ |
+| SRC-C05 | `schema.ddl-lifecycle` | 外表不创建本地索引约束 | 无 mapping | 分别使用 inline/table PK、KEY、UNIQUE、INDEX、FULLTEXT | 全部稳定拒绝 `cannot create index on external table` | catalog/index/mapping 无残留 | BVT+plan UT | ⏸️ |
+| SRC-C06 | `schema.ddl-lifecycle` | CHECK 不伪装远端完整性 | 远端有违反 check 的数据 | column/table CHECK DDL | 明确拒绝，不创建 mapping | 无 catalog dependency | BVT+plan UT | ⏸️ |
+| SRC-C07 | `schema.ddl-lifecycle` | 未声明属性 fail-closed | FK、AUTO_INCREMENT、GENERATED、ON UPDATE DDL | 逐项和组合创建 | release 合同确认前期望明确拒绝；若当前意外接受则登记 contract bug | 不生成序列/FK/生成列状态 | P0 BVT | ⏸️ |
+| SRC-C08 | `schema.ddl-lifecycle` | mapping schema 只能 drop/recreate | 已创建外表 | ADD/DROP/MODIFY/CHANGE/RENAME COLUMN/TABLE | 全部拒绝 Mongo external ALTER；原 mapping/version 不变 | 原表继续可查询 | BVT+plan UT | ⏸️ |
 
 ### 3. 普通/临时/集群目标表约束交叉
 
 以下约束验证的是 Mongo 外表作为 source 写入 MatrixOne target 的行为。普通表全量执行；临时表执行 NOT NULL、DEFAULT、PK/UNIQUE、CHECK、AUTO_INCREMENT 代表组合；集群表仅在 system admin 支持路径执行租户键、PK/NOT NULL 组合。
 
-| 目标约束 | 正向数据 | 反向数据 | 高风险交叉 |
-|---|---|---|---|
-| 无约束/NULL | 正常值、NULL、missing | 类型赋值失败 | 全部支持源类型 |
-| NOT NULL | 全部非 NULL | source null/missing/try_null | strict/try_null × target NOT NULL |
-| DEFAULT | INSERT 省略目标列 | 显式 source NULL | DEFAULT 不应覆盖显式 NULL |
-| 单列/复合 PK | 唯一 key | 同 batch/跨 batch/已有行重复 | INSERT vs REPLACE、NULL key、时间/字符串 key |
-| 单列/复合 UNIQUE | 唯一值、多个 NULL | 重复非 NULL | 同 statement 后段冲突回滚 |
-| FOREIGN KEY | parent 已存在 | parent 缺失/事务中删除 | `foreign_key_checks` 0/1、复合 FK |
-| CHECK | 值满足边界 | `<`、`=`、`>` 临界违反 | try_null 结果与三值逻辑 |
-| AUTO_INCREMENT | 省略 id | 显式冲突/回滚 | source failure 后序列允许 gap，但不能有 partial row |
-| GENERATED | base 值合法 | 表达式溢出/非法 | 结果从目标表达式产生，不从 Mongo 同名字段产生 |
-| 二级索引/CLUSTER BY | 正常插入和查询 | 约束失败 | 写后索引查询与全扫一致 |
+| 目标约束 | 正向数据 | 反向数据 | 高风险交叉 | 测试结果 |
+|---|---|---|---|---|
+| 无约束/NULL | 正常值、NULL、missing | 类型赋值失败 | 全部支持源类型 | ◐ 代表类型已测 |
+| NOT NULL | 全部非 NULL | source null/missing/try_null | strict/try_null × target NOT NULL | ✅ |
+| DEFAULT | INSERT 省略目标列 | 显式 source NULL | DEFAULT 不应覆盖显式 NULL | ✅ |
+| 单列/复合 PK | 唯一 key | 同 batch/跨 batch/已有行重复 | INSERT vs REPLACE、NULL key、时间/字符串 key | ◐ 单列 PK/REPLACE 已测 |
+| 单列/复合 UNIQUE | 唯一值、多个 NULL | 重复非 NULL | 同 statement 后段冲突回滚 | ◐ 单列 UNIQUE 已测 |
+| FOREIGN KEY | parent 已存在 | parent 缺失/事务中删除 | `foreign_key_checks` 0/1、复合 FK | ✅ |
+| CHECK | 值满足边界 | `<`、`=`、`>` 临界违反 | try_null 结果与三值逻辑 | ✅ |
+| AUTO_INCREMENT | 省略 id | 显式冲突/回滚 | source failure 后序列允许 gap，但不能有 partial row | ⏸️ |
+| GENERATED | base 值合法 | 表达式溢出/非法 | 结果从目标表达式产生，不从 Mongo 同名字段产生 | ⏸️ |
+| 二级索引/CLUSTER BY | 正常插入和查询 | 约束失败 | 写后索引查询与全扫一致 | ⏸️ |
 
-| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 |
-|---|---|---|---|---|---|---|---|
-| TGT-C01 | `transaction.statement-atomicity` | 无约束赋值覆盖全部源类型 | 每个支持类型一列的宽 target | `INSERT SELECT` 全量 | row/type/null 与 Oracle 一致 | target count/hash 正确 | BVT+E2E |
-| TGT-C02 | `transaction.statement-atomicity` | target NOT NULL 在写入边界生效 | source nullable，target NOT NULL | 合法批次和中途 NULL 批次 | 合法成功；含 NULL 整条失败且 target 不变 | auto txn/locks 释放 | P0 MOTR |
-| TGT-C03 | `sql.data-types-and-conversion` | DEFAULT 不覆盖显式 NULL | target 有常量/表达式 default | INSERT 指定列、遗漏列、SELECT NULL | 遗漏列取 default；显式 NULL 保持 NULL或触发 NOT NULL | default expression 次数正确 | BVT |
-| TGT-C04 | `transaction.statement-atomicity` | PK 冲突整句原子 | 目标已有 key，source 同/跨 batch 重复 | INSERT 和 REPLACE | INSERT 全句失败；REPLACE 按 MO 合同替换且无重复 | target hash/row count 确定 | P0 BVT+MOTR |
-| TGT-C05 | `transaction.statement-atomicity` | 复合 PK/UNIQUE NULL 语义正确 | `(tenant_id,event_id)` PK、复合 unique | 合法、重复、NULL 组合 | 与 MO 本地 INSERT 对照一致 | index scan=full scan | BVT |
-| TGT-C06 | `transaction.statement-atomicity` | FK 检查不因 external source 绕过 | parent 预置；child target | parent 存在/缺失，checks=1/0 | checks=1 孤儿行整句失败；checks=0 行为与本地 source 一致 | FK metadata/target 无半状态 | MOTR |
-| TGT-C07 | `transaction.statement-atomicity` | CHECK 三值和临界正确 | `CHECK(v>=0 AND v<=100)` | -1/0/100/101/NULL/try_null | 与本地 INSERT 对照；违反时整句回滚 | target/control 不变 | BVT+MOTR |
-| TGT-C08 | `transaction.statement-atomicity` | auto_increment side effect 可解释 | target auto id，source 不含 id | 成功、转换中途失败、PK 冲突后重试 | 成功 id 唯一；失败无 partial row；允许已声明的 sequence gap | current value 单调且不回退 | MOTR |
-| TGT-C09 | `sql.data-types-and-conversion` | generated 列只由 target 表达式计算 | source 有同名伪造字段 | 插入 base 列，查询 generated | generated 与表达式一致，忽略 source 同名字段 | SHOW/metadata 正确 | BVT |
-| TGT-C10 | `query.optimizer-and-plan` | index/cluster 排布不改结果 | PK+secondary index+cluster by target | 写入后 point/range/index hint可用路径查询 | 与 full scan hash 一致 | 无 dangling index row | BVT+MOTR |
-| TGT-C11 | `schema.ddl-lifecycle` | 临时目标约束与会话一致 | session temp target | 执行 C02/C04/C07/C08 代表组 | 约束语义与普通表一致，session 隔离 | 断连后对象消失 | BVT |
-| TGT-C12 | `security.authorization-and-isolation` | cluster target 自动租户列不串租户 | E4 system admin | system 写入 tenant-tagged source；租户查询 | 可见性/约束与 cluster table 合同一致 | tenant A/B hash 分离 | 多租户 MOTR |
+| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
+|---|---|---|---|---|---|---|---|---|
+| TGT-C01 | `transaction.statement-atomicity` | 无约束赋值覆盖全部源类型 | 每个支持类型一列的宽 target | `INSERT SELECT` 全量 | row/type/null 与 Oracle 一致 | target count/hash 正确 | BVT+E2E | ◐ 代表类型已测 |
+| TGT-C02 | `transaction.statement-atomicity` | target NOT NULL 在写入边界生效 | source nullable，target NOT NULL | 合法批次和中途 NULL 批次 | 合法成功；含 NULL 整条失败且 target 不变 | auto txn/locks 释放 | P0 MOTR | ✅ |
+| TGT-C03 | `sql.data-types-and-conversion` | DEFAULT 不覆盖显式 NULL | target 有常量/表达式 default | INSERT 指定列、遗漏列、SELECT NULL | 遗漏列取 default；显式 NULL 保持 NULL或触发 NOT NULL | default expression 次数正确 | BVT | ✅ |
+| TGT-C04 | `transaction.statement-atomicity` | PK 冲突整句原子 | 目标已有 key，source 同/跨 batch 重复 | INSERT 和 REPLACE | INSERT 全句失败；REPLACE 按 MO 合同替换且无重复 | target hash/row count 确定 | P0 BVT+MOTR | ✅ |
+| TGT-C05 | `transaction.statement-atomicity` | 复合 PK/UNIQUE NULL 语义正确 | `(tenant_id,event_id)` PK、复合 unique | 合法、重复、NULL 组合 | 与 MO 本地 INSERT 对照一致 | index scan=full scan | BVT | ⏸️ |
+| TGT-C06 | `transaction.statement-atomicity` | FK 检查不因 external source 绕过 | parent 预置；child target | parent 存在/缺失，checks=1/0 | checks=1 孤儿行整句失败；checks=0 行为与本地 source 一致 | FK metadata/target 无半状态 | MOTR | ✅ |
+| TGT-C07 | `transaction.statement-atomicity` | CHECK 三值和临界正确 | `CHECK(v>=0 AND v<=100)` | -1/0/100/101/NULL/try_null | 与本地 INSERT 对照；违反时整句回滚 | target/control 不变 | BVT+MOTR | ✅ |
+| TGT-C08 | `transaction.statement-atomicity` | auto_increment side effect 可解释 | target auto id，source 不含 id | 成功、转换中途失败、PK 冲突后重试 | 成功 id 唯一；失败无 partial row；允许已声明的 sequence gap | current value 单调且不回退 | MOTR | ⏸️ |
+| TGT-C09 | `sql.data-types-and-conversion` | generated 列只由 target 表达式计算 | source 有同名伪造字段 | 插入 base 列，查询 generated | generated 与表达式一致，忽略 source 同名字段 | SHOW/metadata 正确 | BVT | ⏸️ |
+| TGT-C10 | `query.optimizer-and-plan` | index/cluster 排布不改结果 | PK+secondary index+cluster by target | 写入后 point/range/index hint可用路径查询 | 与 full scan hash 一致 | 无 dangling index row | BVT+MOTR | ⏸️ |
+| TGT-C11 | `schema.ddl-lifecycle` | 临时目标约束与会话一致 | session temp target | 执行 C02/C04/C07/C08 代表组 | 约束语义与普通表一致，session 隔离 | 断连后对象消失 | BVT | ⏸️ |
+| TGT-C12 | `security.authorization-and-isolation` | cluster target 自动租户列不串租户 | E4 system admin | system 写入 tenant-tagged source；租户查询 | 可见性/约束与 cluster table 合同一致 | tenant A/B hash 分离 | 多租户 MOTR | ⏸️ |
 
 ### 4. 全部 MatrixOne 数据类型的 Mongo 映射合同
 
 下表按当前 main 的公开/可建表类型全集分类。`支持`必须完成 DDL、转换、边界、NULL、strict/try_null 和 target 写入；`拒绝`必须在建表/plan 阶段给出稳定错误，不能延迟到扫描半途。
 
-| 类型 ID | MO SQL 类型 | Mongo 映射 | 接受的 BSON 类 | 必测边界/反例 |
-|---|---|---|---|---|
-| DT-01 | BOOL/BOOLEAN | 支持 | Boolean | true/false；0/1/String 必须拒绝 |
-| DT-02 | TINYINT | 支持 | Int32/Int64/整数 Double | -128/127；-129/128；非整数/NaN/Inf |
-| DT-03 | SMALLINT | 支持 | Int32/Int64/整数 Double | -32768/32767 与越界 |
-| DT-04 | INT/INTEGER | 支持 | Int32/Int64/整数 Double | MinInt32/MaxInt32 与越界 |
-| DT-05 | BIGINT | 支持 | Int32/Int64/整数 Double | MinInt64/MaxInt64；Double `2^63` 必拒绝 |
-| DT-06 | TINYINT UNSIGNED | 支持 | 非负 Int32/Int64/整数 Double | 0/255；-1/256 |
-| DT-07 | SMALLINT UNSIGNED | 支持 | 同上 | 0/65535；-1/65536 |
-| DT-08 | INT UNSIGNED | 支持 | 同上 | 0/4294967295；负数/越界 |
-| DT-09 | BIGINT UNSIGNED | 支持 | 非负 BSON integer | 0/MaxInt64；负数；BSON 无法表达的 >MaxInt64 不伪造支持 |
-| DT-10 | FLOAT | 支持 | BSON numeric | ±0、subnormal、MaxFloat32；超范围、NaN/Inf 行为 |
-| DT-11 | DOUBLE | 支持 | BSON numeric | ±0、有限极值、NaN/Inf；结果/下推语义 |
-| DT-12 | DECIMAL(p,s)，decimal64 路径 | 支持 | Int32/Int64/Double/Decimal128 | p=1/18、s=0/p；舍入、precision overflow、NaN/Inf |
-| DT-13 | DECIMAL(p,s)，decimal128 路径 | 支持 | 同上 | p=19/38；正负、scale、overflow |
-| DT-14 | DECIMAL(p,s)，decimal256 路径 | 支持 | 同上 | p=39/65；Decimal128 source 精度上限、target padding/overflow |
-| DT-15 | DATE | 支持 | BSON DateTime | epoch 前后、日边界、MO 年范围、非 DateTime拒绝 |
-| DT-16 | DATETIME(0..6) | 支持 | BSON DateTime | ms 000/001/099/100/999；scale 0/1/2/3/6；截断规则 |
-| DT-17 | TIMESTAMP(0..6) | 支持 | BSON DateTime | UTC/session timezone、scale、domain、DST 显示不改 instant |
-| DT-18 | CHAR(n) | 支持 | String/ObjectID→24 hex | n-1/n/n+1 Unicode code point；padding/compare |
-| DT-19 | VARCHAR(n) | 支持 | String/ObjectID→24 hex | 空串、中文、emoji、NUL、n±1 |
-| DT-20 | TEXT | 支持 | String/ObjectID→24 hex | 空/大值/max-value-bytes；PK target N/A |
-| DT-21 | BINARY(n) | 支持 | Binary/ObjectID→12 bytes | subtype、0/n/n+1 bytes、padding/compare |
-| DT-22 | VARBINARY(n) | 支持 | Binary/ObjectID→12 bytes | 空、NUL、n±1 |
-| DT-23 | BLOB | 支持 | Binary/ObjectID→12 bytes | 大值/max-value；PK target N/A |
-| DT-24 | JSON | 支持 | 任意可解码 BSON value | canonical Extended JSON 保留 Int32/Int64/Decimal/Date/Binary；嵌套/数组 |
-| DT-U01 | BIT(n) | 拒绝 | 无 | n=1/64，DDL fail-closed |
-| DT-U02 | TIME(p) | 拒绝 | 无 | 即使 BSON String/DateTime 也拒绝 mapping |
-| DT-U03 | YEAR | 拒绝 | 无 | Int32/String 不接受 |
-| DT-U04 | UUID | 拒绝 | 无 | String/Binary subtype 4 均不接受 |
-| DT-U05 | ENUM | 拒绝 | 无 | String 不接受 |
-| DT-U06 | SET | 拒绝 | 无 | String/Array 不接受 |
-| DT-U07 | DATALINK | 拒绝 | 无 | String 不接受 |
-| DT-U08 | GEOMETRY/GEOMETRY32 及具体 geometry 类型 | 拒绝 | 无 | GeoJSON/Binary 均不接受 |
-| DT-U09 | VECF32/VECF64 | 拒绝 | 无 | BSON Array/Binary 均不接受 |
-| DT-U10 | VECBF16/VECF16/VECINT8/VECUINT8 | 拒绝 | 无 | BSON Array/Binary 均不接受 |
-| DT-U11 | TS/ROWID/BLOCKID/OBJECTID 等内部类型 | 不可作为用户 schema | 无 | parser/catalog 不允许伪造 internal type ID |
+| 类型 ID | MO SQL 类型 | Mongo 映射 | 接受的 BSON 类 | 必测边界/反例 | 测试结果 |
+|---|---|---|---|---|---|
+| DT-01 | BOOL/BOOLEAN | 支持 | Boolean | true/false；0/1/String 必须拒绝 | ⏸️ |
+| DT-02 | TINYINT | 支持 | Int32/Int64/整数 Double | -128/127；-129/128；非整数/NaN/Inf | ⏸️ |
+| DT-03 | SMALLINT | 支持 | Int32/Int64/整数 Double | -32768/32767 与越界 | ⏸️ |
+| DT-04 | INT/INTEGER | 支持 | Int32/Int64/整数 Double | MinInt32/MaxInt32 与越界 | ⏸️ |
+| DT-05 | BIGINT | 支持 | Int32/Int64/整数 Double | MinInt64/MaxInt64；Double `2^63` 必拒绝 | ⏸️ |
+| DT-06 | TINYINT UNSIGNED | 支持 | 非负 Int32/Int64/整数 Double | 0/255；-1/256 | ⏸️ |
+| DT-07 | SMALLINT UNSIGNED | 支持 | 同上 | 0/65535；-1/65536 | ⏸️ |
+| DT-08 | INT UNSIGNED | 支持 | 同上 | 0/4294967295；负数/越界 | ⏸️ |
+| DT-09 | BIGINT UNSIGNED | 支持 | 非负 BSON integer | 0/MaxInt64；负数；BSON 无法表达的 >MaxInt64 不伪造支持 | ⏸️ |
+| DT-10 | FLOAT | 支持 | BSON numeric | ±0、subnormal、MaxFloat32；超范围、NaN/Inf 行为 | ⏸️ |
+| DT-11 | DOUBLE | 支持 | BSON numeric | ±0、有限极值、NaN/Inf；结果/下推语义 | ⏸️ |
+| DT-12 | DECIMAL(p,s)，decimal64 路径 | 支持 | Int32/Int64/Double/Decimal128 | p=1/18、s=0/p；舍入、precision overflow、NaN/Inf | ⏸️ |
+| DT-13 | DECIMAL(p,s)，decimal128 路径 | 支持 | 同上 | p=19/38；正负、scale、overflow | ⏸️ |
+| DT-14 | DECIMAL(p,s)，decimal256 路径 | 支持 | 同上 | p=39/65；Decimal128 source 精度上限、target padding/overflow | ⏸️ |
+| DT-15 | DATE | 支持 | BSON DateTime | epoch 前后、日边界、MO 年范围、非 DateTime拒绝 | ◐ 时间算子已测，完整边界未完成 |
+| DT-16 | DATETIME(0..6) | 支持 | BSON DateTime | ms 000/001/099/100/999；scale 0/1/2/3/6；截断规则 | ◐ 时间算子已测，完整 scale 未完成 |
+| DT-17 | TIMESTAMP(0..6) | 支持 | BSON DateTime | UTC/session timezone、scale、domain、DST 显示不改 instant | ⏸️ |
+| DT-18 | CHAR(n) | 支持 | String/ObjectID→24 hex | n-1/n/n+1 Unicode code point；padding/compare | ⏸️ |
+| DT-19 | VARCHAR(n) | 支持 | String/ObjectID→24 hex | 空串、中文、emoji、NUL、n±1 | ⏸️ |
+| DT-20 | TEXT | 支持 | String/ObjectID→24 hex | 空/大值/max-value-bytes；PK target N/A | ⏸️ |
+| DT-21 | BINARY(n) | 支持 | Binary/ObjectID→12 bytes | subtype、0/n/n+1 bytes、padding/compare | ⏸️ |
+| DT-22 | VARBINARY(n) | 支持 | Binary/ObjectID→12 bytes | 空、NUL、n±1 | ⏸️ |
+| DT-23 | BLOB | 支持 | Binary/ObjectID→12 bytes | 大值/max-value；PK target N/A | ⏸️ |
+| DT-24 | JSON | 支持 | 任意可解码 BSON value | canonical Extended JSON 保留 Int32/Int64/Decimal/Date/Binary；嵌套/数组 | ⏸️ |
+| DT-U01 | BIT(n) | 拒绝 | 无 | n=1/64，DDL fail-closed | ✅ 3/3 拒绝 |
+| DT-U02 | TIME(p) | 拒绝 | 无 | 即使 BSON String/DateTime 也拒绝 mapping | ✅ 3/3 拒绝 |
+| DT-U03 | YEAR | 拒绝 | 无 | Int32/String 不接受 | ✅ 3/3 拒绝 |
+| DT-U04 | UUID | 拒绝 | 无 | String/Binary subtype 4 均不接受 | ✅ 3/3 拒绝 |
+| DT-U05 | ENUM | 拒绝 | 无 | String 不接受 | ✅ 3/3 拒绝 |
+| DT-U06 | SET | 拒绝 | 无 | String/Array 不接受 | ❌ 3/3 建表成功，扫描时报转换错误；见 #27259 |
+| DT-U07 | DATALINK | 拒绝 | 无 | String 不接受 | ⏸️ |
+| DT-U08 | GEOMETRY/GEOMETRY32 及具体 geometry 类型 | 拒绝 | 无 | GeoJSON/Binary 均不接受 | ⏸️ |
+| DT-U09 | VECF32/VECF64 | 拒绝 | 无 | BSON Array/Binary 均不接受 | ⏸️ |
+| DT-U10 | VECBF16/VECF16/VECINT8/VECUINT8 | 拒绝 | 无 | BSON Array/Binary 均不接受 | ⏸️ |
+| DT-U11 | TS/ROWID/BLOCKID/OBJECTID 等内部类型 | 不可作为用户 schema | 无 | parser/catalog 不允许伪造 internal type ID | ⏸️ |
 
 #### 参数化全类型执行规则
 
@@ -295,38 +299,38 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 
 参数化基础组合约 `24 × 4 × 8 = 768` 个转换单元格；SQL 层不机械展开为 768 个脚本，而由 fixture manifest 和 table-driven runner 生成，并输出每个单元格的 `type/mode/nullability/value_class` 结果，任何遗漏都使矩阵检查失败。
 
-| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 |
-|---|---|---|---|---|---|---|---|
-| TYPE-001 | `sql.data-types-and-conversion` | DT-01～24 canonical 全覆盖 | canonical fixture | 生成 24 类 mapping 并 SELECT/INSERT | 每类值和 target 类型与 Oracle 一致 | mpool/cursor=0 | converter UT+BVT |
-| TYPE-002 | `sql.data-types-and-conversion` | 整数不接受隐式截断/wrap | DT-02～09 边界 | min/max/±1、fractional Double、2^63 | 合法精确；非法按 mode 失败/NULL；绝不 wrap | row append 原子 | P0 UT+E2E |
-| TYPE-003 | `sql.data-types-and-conversion` | 浮点只按声明精度转换 | DT-10～11 | finite/NaN/Inf/Float32 overflow | 与 converter 合同一致；FLOAT overflow 不静默 Inf | decoded budget 回收 | UT+BVT |
-| TYPE-004 | `sql.data-types-and-conversion` | DECIMAL precision/scale 正确 | DT-12～14 | p/s 边界、四种 numeric BSON、NaN/Inf | 精确格式/舍入按 MO decimal parser；overflow fail/NULL | 无部分 vector | P0 UT+BVT |
-| TYPE-005 | `sql.data-types-and-conversion` | temporal instant/domain/scale 正确 | DT-15～17 | 各 timezone session、scale 0..6、越界 | DATE/DATETIME/TIMESTAMP 结果和显示语义正确；无 overflow/wrap | 同连接后续查询成功 | P0 UT+E2E |
-| TYPE-006 | `sql.data-types-and-conversion` | 字符宽度按 Unicode code point | DT-18～20 | ASCII/CJK/emoji/组合字符 n±1 | 合法保留；超宽按 mode；ObjectID 为小写 24 hex | value/decoded budget正确 | UT+BVT |
-| TYPE-007 | `sql.data-types-and-conversion` | 二进制与 ObjectID 字节不损坏 | DT-21～23 | subtype、NUL、ObjectID、n±1 | bytes逐字节相等；ObjectID 12 bytes | 无编码二次转换 | UT+BVT |
-| TYPE-008 | `sql.data-types-and-conversion` | JSON 保留 BSON 类型区别 | DT-24 全 BSON fixture | 读取 scalar/document/array/special values | canonical Extended JSON 可解码且类型标签正确 | 单值上限生效 | UT+E2E |
-| TYPE-009 | `schema.ddl-lifecycle` | 所有 unsupported MO 类型早拒绝 | DT-U01～11 DDL | 逐类 × mode/nullability 建表 | 全部 scan 前拒绝，错误指出 unsupported type | catalog/mapping/client=0 | P0 plan UT+BVT |
-| TYPE-010 | `transaction.statement-atomicity` | source/target 隐式赋值不额外放宽 | 支持 source 类型→相同/兼容/不兼容 target | INSERT SELECT | 相同类型成功；兼容转换与本地 source 对照；不兼容整句失败 | target hash保持 | BVT+MOTR |
+| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
+|---|---|---|---|---|---|---|---|---|
+| TYPE-001 | `sql.data-types-and-conversion` | DT-01～24 canonical 全覆盖 | canonical fixture | 生成 24 类 mapping 并 SELECT/INSERT | 每类值和 target 类型与 Oracle 一致 | mpool/cursor=0 | converter UT+BVT | ⏸️ |
+| TYPE-002 | `sql.data-types-and-conversion` | 整数不接受隐式截断/wrap | DT-02～09 边界 | min/max/±1、fractional Double、2^63 | 合法精确；非法按 mode 失败/NULL；绝不 wrap | row append 原子 | P0 UT+E2E | ⏸️ |
+| TYPE-003 | `sql.data-types-and-conversion` | 浮点只按声明精度转换 | DT-10～11 | finite/NaN/Inf/Float32 overflow | 与 converter 合同一致；FLOAT overflow 不静默 Inf | decoded budget 回收 | UT+BVT | ⏸️ |
+| TYPE-004 | `sql.data-types-and-conversion` | DECIMAL precision/scale 正确 | DT-12～14 | p/s 边界、四种 numeric BSON、NaN/Inf | 精确格式/舍入按 MO decimal parser；overflow fail/NULL | 无部分 vector | P0 UT+BVT | ⏸️ |
+| TYPE-005 | `sql.data-types-and-conversion` | temporal instant/domain/scale 正确 | DT-15～17 | 各 timezone session、scale 0..6、越界 | DATE/DATETIME/TIMESTAMP 结果和显示语义正确；无 overflow/wrap | 同连接后续查询成功 | P0 UT+E2E | ◐ 时间查询已通过，完整 timezone/scale 未完成 |
+| TYPE-006 | `sql.data-types-and-conversion` | 字符宽度按 Unicode code point | DT-18～20 | ASCII/CJK/emoji/组合字符 n±1 | 合法保留；超宽按 mode；ObjectID 为小写 24 hex | value/decoded budget正确 | UT+BVT | ⏸️ |
+| TYPE-007 | `sql.data-types-and-conversion` | 二进制与 ObjectID 字节不损坏 | DT-21～23 | subtype、NUL、ObjectID、n±1 | bytes逐字节相等；ObjectID 12 bytes | 无编码二次转换 | UT+BVT | ⏸️ |
+| TYPE-008 | `sql.data-types-and-conversion` | JSON 保留 BSON 类型区别 | DT-24 全 BSON fixture | 读取 scalar/document/array/special values | canonical Extended JSON 可解码且类型标签正确 | 单值上限生效 | UT+E2E | ⏸️ |
+| TYPE-009 | `schema.ddl-lifecycle` | 所有 unsupported MO 类型早拒绝 | DT-U01～11 DDL | 逐类 × mode/nullability 建表 | 全部 scan 前拒绝，错误指出 unsupported type | catalog/mapping/client=0 | P0 plan UT+BVT | ❌ SET 例外；BIT/TIME/YEAR/ENUM/UUID 已通过 |
+| TYPE-010 | `transaction.statement-atomicity` | source/target 隐式赋值不额外放宽 | 支持 source 类型→相同/兼容/不兼容 target | INSERT SELECT | 相同类型成功；兼容转换与本地 source 对照；不兼容整句失败 | target hash保持 | BVT+MOTR | ◐ 已覆盖约束失败和代表类型 |
 
 ### 5. 查询、下推和 DML 组合
 
-| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 |
-|---|---|---|---|---|---|---|---|
-| QRY-001 | `query.optimizer-and-plan` | projection 不丢列/错 path | 宽 schema、重复 BSON path | `*`、单列、重排、重复表达式、alias | 结果与 full projection 后 MO 投影一致 | source projection 可观测且脱敏 | BVT+plan UT |
-| QRY-002 | `query.optimizer-and-plan` | 安全比较下推等价且差分可执行 | bool/int/time fixture；同一语义准备 pushed candidate 与 residual-only candidate | `= != < <= >= IN`；先用 EXPLAIN 确认 `pushed>0`/`pushed=0` | 两条路径都与独立 BSON oracle 一致；若实现没有关闭 pushdown 开关，则只使用自然产生 `pushed=0` 的等价 SQL，不把“导入本地表后比较”当作 converter 独立 oracle | 保存 plan、pushed count、residual digest、source candidate 结果 | P0 differential E2E |
-| QRY-003 | `query.optimizer-and-plan` | NULL 候选不排除 malformed | missing/null/undefined/wrong type | IS NULL/IS NOT NULL、AND/OR/NOT | strict/try_null 各自与 Oracle 一致，无 false negative | cursor释放 | P0 differential E2E |
-| QRY-004 | `query.optimizer-and-plan` | 低精度 temporal 下推安全 | 10.000～10.999s BSON DateTime | DATETIME/TIMESTAMP(0/1/2) equality/range/IN | candidate range覆盖所有 residual 命中；无 false negative | plan含residual | P0 regression UT+BVT |
-| QRY-005 | `query.optimizer-and-plan` | 不安全表达式只在 MO 求值 | float/collation/function/JSON/array | 函数、cast、LIKE、复杂 OR、JSON expr | 不支持部分 residual-only；不能因不可推而拒绝合法 SQL | Mongo command无敏感 literal | BVT+E2E |
-| QRY-006 | `query.optimizer-and-plan` | dotted path 不遍历 array | nested/missing/scalar/array intermediate | projection和各 predicate | 文档路径正常；scalar/array按 strict/try_null；不自动展开 | 无 panic/cursor leak | P0 E2E |
-| QRY-007 | `query.optimizer-and-plan` | CTE/subquery set 语义正确 | Mongo+local fixture | CTE、derived table、EXISTS/IN、UNION/UNION ALL | 与物化本地副本结果一致 | 临时执行状态释放 | BVT |
-| QRY-008 | `query.optimizer-and-plan` | Join 类型和 NULL 语义正确 | Mongo fact+local dimension | inner/left/right/semi/anti，多 key | 行数/key/null extension 与 Oracle 一致 | 两侧状态释放 | BVT+MOTR |
-| QRY-009 | `query.optimizer-and-plan` | aggregate/window 不依赖 batch | 多 batch、skew/null fixture | GROUP BY、distinct、count/sum/avg/min/max、window | 与不同 batch size、本地副本一致 | agg memory回收 | BVT+big-data |
-| QRY-010 | `query.optimizer-and-plan` | 时间算子和 tie 稳定 | 多 partition、相同 ts/不同 `_id` | TimeWindow、max_by/non_null、GAPFILL | 与 reference一致；tie 使用声明的稳定 key | gap/window limit可观测 | P1 MOTR |
-| DML-001 | `transaction.statement-atomicity` | CTAS schema/rows 原子 | 空 database | CTAS含projection/filter/expr | schema推导和rows正确；失败无表 | catalog/storage一致 | BVT+MOTR |
-| DML-002 | `transaction.statement-atomicity` | INSERT SELECT 原子 | 各约束 target | 单/多 batch写入，后段错误 | 成功全写；失败0写 | target/control不变 | P0 MOTR |
-| DML-003 | `transaction.statement-atomicity` | REPLACE SELECT 冲突处理确定 | 目标预置PK，source重复 | 单/复合PK、跨batch冲突 | 最终行与本地 source REPLACE 对照一致 | 无重复/index orphan | P0 MOTR |
-| DML-004 | `dataio.stage-and-external-data` | Mongo source 永不被写 | 已建外表 | 直接 INSERT/UPDATE/DELETE/REPLACE/TRUNCATE | 全部明确拒绝；Mongo collection hash不变 | mapping仍可查询 | P0 BVT |
-| DML-005 | `transaction.explicit-transaction` | bounded ingest 幂等 | target+control committed_high | `[low,high)`、overlap、late arrival、重复执行 | key稳定、watermark单调、重复范围结果不变 | source不变，lock释放 | MOTR+nightly |
+| ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
+|---|---|---|---|---|---|---|---|---|
+| QRY-001 | `query.optimizer-and-plan` | projection 不丢列/错 path | 宽 schema、重复 BSON path | `*`、单列、重排、重复表达式、alias | 结果与 full projection 后 MO 投影一致 | source projection 可观测且脱敏 | BVT+plan UT | ◐ projection/EXPLAIN 已测，宽 schema 未完成 |
+| QRY-002 | `query.optimizer-and-plan` | 安全比较下推等价且差分可执行 | bool/int/time fixture；同一语义准备 pushed candidate 与 residual-only candidate | `= != < <= >= IN`；先用 EXPLAIN 确认 `pushed>0`/`pushed=0` | 两条路径都与独立 BSON oracle 一致；若实现没有关闭 pushdown 开关，则只使用自然产生 `pushed=0` 的等价 SQL，不把“导入本地表后比较”当作 converter 独立 oracle | 保存 plan、pushed count、residual digest、source candidate 结果 | P0 differential E2E | ◐ 已验证 point predicate；全操作符未完成 |
+| QRY-003 | `query.optimizer-and-plan` | NULL 候选不排除 malformed | missing/null/undefined/wrong type | IS NULL/IS NOT NULL、AND/OR/NOT | strict/try_null 各自与 Oracle 一致，无 false negative | cursor释放 | P0 differential E2E | ◐ IS NULL/IS NOT NULL 已通过，复杂布尔组合未完成 |
+| QRY-004 | `query.optimizer-and-plan` | 低精度 temporal 下推安全 | 10.000～10.999s BSON DateTime | DATETIME/TIMESTAMP(0/1/2) equality/range/IN | candidate range覆盖所有 residual 命中；无 false negative | plan含residual | P0 regression UT+BVT | ⏸️ |
+| QRY-005 | `query.optimizer-and-plan` | 不安全表达式只在 MO 求值 | float/collation/function/JSON/array | 函数、cast、LIKE、复杂 OR、JSON expr | 不支持部分 residual-only；不能因不可推而拒绝合法 SQL | Mongo command无敏感 literal | BVT+E2E | ◐ CTE/窗口等算子已测，JSON/collation residual 未完成 |
+| QRY-006 | `query.optimizer-and-plan` | dotted path 不遍历 array | nested/missing/scalar/array intermediate | projection和各 predicate | 文档路径正常；scalar/array按 strict/try_null；不自动展开 | 无 panic/cursor leak | P0 E2E | ⏸️ |
+| QRY-007 | `query.optimizer-and-plan` | CTE/subquery set 语义正确 | Mongo+local fixture | CTE、derived table、EXISTS/IN、UNION/UNION ALL | 与物化本地副本结果一致 | 临时执行状态释放 | BVT | ◐ CTE/EXISTS/IN 已通过，UNION 未完成 |
+| QRY-008 | `query.optimizer-and-plan` | Join 类型和 NULL 语义正确 | Mongo fact+local dimension | inner/left/right/semi/anti，多 key | 行数/key/null extension 与 Oracle 一致 | 两侧状态释放 | BVT+MOTR | ◐ inner/left/semi/anti 已测，right/多 key 未完成 |
+| QRY-009 | `query.optimizer-and-plan` | aggregate/window 不依赖 batch | 多 batch、skew/null fixture | GROUP BY、distinct、count/sum/avg/min/max、window | 与不同 batch size、本地副本一致 | agg memory回收 | BVT+big-data | ✅ Group/Window 结果已通过 |
+| QRY-010 | `query.optimizer-and-plan` | 时间算子和 tie 稳定 | 多 partition、相同 ts/不同 `_id` | TimeWindow、max_by/non_null、GAPFILL | 与 reference一致；tie 使用声明的稳定 key | gap/window limit可观测 | P1 MOTR | ✅ max_by/max_by_non_null/GAPFILL 已通过 |
+| DML-001 | `transaction.statement-atomicity` | CTAS schema/rows 原子 | 空 database | CTAS含projection/filter/expr | schema推导和rows正确；失败无表 | catalog/storage一致 | BVT+MOTR | ✅ |
+| DML-002 | `transaction.statement-atomicity` | INSERT SELECT 原子 | 各约束 target | 单/多 batch写入，后段错误 | 成功全写；失败0写 | target/control不变 | P0 MOTR | ✅ |
+| DML-003 | `transaction.statement-atomicity` | REPLACE SELECT 冲突处理确定 | 目标预置PK，source重复 | 单/复合PK、跨batch冲突 | 最终行与本地 source REPLACE 对照一致 | 无重复/index orphan | P0 MOTR | ◐ 单列 PK 已通过，复合 PK/跨 batch 未完成 |
+| DML-004 | `dataio.stage-and-external-data` | Mongo source 永不被写 | 已建外表 | 直接 INSERT/UPDATE/DELETE/REPLACE/TRUNCATE | 全部明确拒绝；Mongo collection hash不变 | mapping仍可查询 | P0 BVT | ⏸️ |
+| DML-005 | `transaction.explicit-transaction` | bounded ingest 幂等 | target+control committed_high | `[low,high)`、overlap、late arrival、重复执行 | key稳定、watermark单调、重复范围结果不变 | source不变，lock释放 | MOTR+nightly | ⏸️ |
 
 ### 6. 表类型 × 约束 × 操作交叉覆盖
 
@@ -334,49 +338,49 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 
 #### 6.1 表类型与约束交叉矩阵
 
-| 表类型 | NULL/NOT NULL | DEFAULT | PK/UNIQUE | FK | CHECK | AUTO_INCREMENT | GENERATED | INDEX/CLUSTER BY | COMMENT/COLLATE | ALTER/恢复 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 普通永久表 | P | P | P | P | P | P | P | P | P | P |
-| TEMPORARY TABLE | R | R | R | GAP | GAP | R | GAP | GAP | R | GAP |
-| CLUSTER TABLE | R | GAP | R | GAP | GAP | GAP | GAP | R | GAP | C |
-| VIEW（基于本地/Mongo 外表） | P | N/只读语义 | N/写入目标不适用 | N/依赖权限 | N/由底层表承担 | N | N | N | R | R/C |
-| 普通 External/Iceberg External | R | GAP | N/按外表合同 | GAP | N/按外表合同 | N | N | C | GAP | C |
-| MongoDB External Table | P | GAP（非 NULL DEFAULT） | N | N | N | N | N | N | R | P/C |
-| CTAS 生成的普通表 | R | GAP | R | GAP | GAP | GAP | GAP | GAP | GAP | P |
-| CREATE TABLE LIKE | R | GAP | GAP | GAP | GAP | GAP | GAP | GAP | GAP | P |
-| Partition/Dynamic Table/Stream | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 |
+| 表类型 | NULL/NOT NULL | DEFAULT | PK/UNIQUE | FK | CHECK | AUTO_INCREMENT | GENERATED | INDEX/CLUSTER BY | COMMENT/COLLATE | ALTER/恢复 | 测试结果 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 普通永久表 | P | P | P | P | P | P | P | P | P | P | ✅ 核心约束已通过 |
+| TEMPORARY TABLE | R | R | R | GAP | GAP | R | GAP | GAP | R | GAP | ⏸️ |
+| CLUSTER TABLE | R | GAP | R | GAP | GAP | GAP | GAP | R | GAP | C | ⏸️ |
+| VIEW（基于本地/Mongo 外表） | P | N/只读语义 | N/写入目标不适用 | N/依赖权限 | N/由底层表承担 | N | N | N | R | R/C | ◐ 基础查询已测 |
+| 普通 External/Iceberg External | R | GAP | N/按外表合同 | GAP | N/按外表合同 | N | N | C | GAP | C | ⏸️ |
+| MongoDB External Table | P | GAP（非 NULL DEFAULT） | N | N | N | N | N | N | R | P/C | ◐ 核心列约束已测，属性全组合未完成 |
+| CTAS 生成的普通表 | R | GAP | R | GAP | GAP | GAP | GAP | GAP | GAP | P | ✅ CTAS 成功/失败已通过 |
+| CREATE TABLE LIKE | R | GAP | GAP | GAP | GAP | GAP | GAP | GAP | GAP | P | ✅ |
+| Partition/Dynamic Table/Stream | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | N/实验 | ⏸️ |
 
 这里的 `GAP` 不是指产品一定支持，而是指当前设计没有形成可执行的交叉用例。对外表的 PK/FK/CHECK/AUTO_INCREMENT/GENERATED 等组合，若产品合同确定为拒绝，则应把 `GAP` 改成 `N`，并补充“建表失败、无 catalog/mapping 残留、错误后原连接可复用”的负向用例。
 
 #### 6.2 表类型与操作交叉矩阵
 
-| 表类型 | CREATE/SHOW | SELECT/JOIN | INSERT/REPLACE SELECT | CTAS/LIKE | 失败原子性 | 权限/租户 | DROP/重建 | Snapshot/PITR |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 普通永久表 | P | P | P | P | P | P | P | P |
-| TEMPORARY TABLE | R | R | R | GAP | GAP | R | R | GAP |
-| CLUSTER TABLE | R | R | C | GAP | GAP | R | C | GAP |
-| VIEW | P | P | N | N/视图只读 | R | P | R/C | GAP |
-| 普通 External/Iceberg External | R | R | N/条件 | GAP | GAP | C | R | C |
-| MongoDB External Table | P | P | N（source 只读） | P（作为 source） | P | P/C | P | C |
-| CTAS 生成的普通表 | P | P | P | N/A | R | R | P | GAP |
-| CREATE TABLE LIKE | P | P | P | N/A | GAP | R | P | GAP |
+| 表类型 | CREATE/SHOW | SELECT/JOIN | INSERT/REPLACE SELECT | CTAS/LIKE | 失败原子性 | 权限/租户 | DROP/重建 | Snapshot/PITR | 测试结果 |
+|---|---|---|---|---|---|---|---|---|---|
+| 普通永久表 | P | P | P | P | P | P | P | P | ✅ 核心写入/约束已通过 |
+| TEMPORARY TABLE | R | R | R | GAP | GAP | R | R | GAP | ⏸️ |
+| CLUSTER TABLE | R | R | C | GAP | GAP | R | C | GAP | ⏸️ |
+| VIEW | P | P | N | N/视图只读 | R | P | R/C | GAP | ◐ 基础查询已测 |
+| 普通 External/Iceberg External | R | R | N/条件 | GAP | GAP | C | R | C | ⏸️ |
+| MongoDB External Table | P | P | N（source 只读） | P（作为 source） | P | P/C | P | C | ◐ 核心路径已测，恢复未完成 |
+| CTAS 生成的普通表 | P | P | P | N/A | R | R | P | GAP | ✅ |
+| CREATE TABLE LIKE | P | P | P | N/A | GAP | R | P | GAP | ✅ |
 
 #### 6.3 必须补齐的关键三维组合
 
 以下组合是当前设计的明确缺口或仅代表性覆盖，不能只依赖表类型、约束和操作各自已有用例来替代：
 
-| ID | 三维组合 | 当前状态 | 需要补充的验证 |
-|---|---|---|---|
-| CROSS-GAP-001 | TEMPORARY × FK/CHECK/GENERATED/二级索引 × INSERT/REPLACE SELECT | GAP | session A/B 可见性、约束失败回滚、断连自动清理、重连后对象不存在 |
-| CROSS-GAP-002 | TEMPORARY × DEFAULT/AUTO_INCREMENT/PK/UNIQUE × source conversion error | R | source 中途转换失败时 target、临时表序列和索引状态原子 |
-| CROSS-GAP-003 | CLUSTER × DEFAULT/FK/CHECK/GENERATED/INDEX × tenant DML | GAP/C | system 创建、tenant 读写边界、自动租户列、跨租户越权和约束错误 |
-| CROSS-GAP-004 | VIEW × Mongo External × DEFINER/INVOKER × revoke/drop/recreate | R | view 依赖、权限撤销即时生效、SHOW/EXPLAIN 脱敏和 base table 重建 |
-| CROSS-GAP-005 | Mongo External × NOT NULL/try_null × SELECT/JOIN/CTAS/INSERT/rollback | P/R | missing/null/undefined/type error 四类输入在每个操作边界都不能输出隐式 NULL 或部分行 |
-| CROSS-GAP-006 | Mongo External × non-NULL DEFAULT/FK/AUTO_INCREMENT/GENERATED × CREATE/SHOW/scan | GAP | 产品确认后统一标记支持或拒绝；若拒绝，验证 fail-fast 与无 metadata 残留 |
-| CROSS-GAP-007 | Mongo External × target PK/UNIQUE/FK/CHECK/GENERATED × INSERT/REPLACE/constraint failure | R | 同 batch/跨 batch/已有行冲突、affected rows、索引和 statement rollback |
-| CROSS-GAP-008 | CTAS × DEFAULT/PK/UNIQUE/CHECK/GENERATED/INDEX × source conversion/cancel | GAP/R | 成功时 schema/constraint/index 完整生成；失败时不留半表、隐藏对象或序列副作用 |
-| CROSS-GAP-009 | CREATE TABLE LIKE × PK/UNIQUE/FK/CHECK/GENERATED/INDEX × Mongo source/普通 source | GAP | 明确哪些属性复制、哪些不复制；不能复制 Mongo connection、secret 或 runtime mapping |
-| CROSS-GAP-010 | 任意 external × DROP/recreate × Snapshot/PITR | P0/R | 按 #26495 已冻结策略验证 bulk restore 跳过 table/mapping、direct restore 拒绝、connection 按 scope 复制，且无 orphan mapping/dependency |
+| ID | 三维组合 | 当前状态 | 需要补充的验证 | 测试结果 |
+|---|---|---|---|---|
+| CROSS-GAP-001 | TEMPORARY × FK/CHECK/GENERATED/二级索引 × INSERT/REPLACE SELECT | GAP | session A/B 可见性、约束失败回滚、断连自动清理、重连后对象不存在 | ⏸️ |
+| CROSS-GAP-002 | TEMPORARY × DEFAULT/AUTO_INCREMENT/PK/UNIQUE × source conversion error | R | source 中途转换失败时 target、临时表序列和索引状态原子 | ⏸️ |
+| CROSS-GAP-003 | CLUSTER × DEFAULT/FK/CHECK/GENERATED/INDEX × tenant DML | GAP/C | system 创建、tenant 读写边界、自动租户列、跨租户越权和约束错误 | ⏸️ |
+| CROSS-GAP-004 | VIEW × Mongo External × DEFINER/INVOKER × revoke/drop/recreate | R | view 依赖、权限撤销即时生效、SHOW/EXPLAIN 脱敏和 base table 重建 | ⏸️ |
+| CROSS-GAP-005 | Mongo External × NOT NULL/try_null × SELECT/JOIN/CTAS/INSERT/rollback | P/R | missing/null/undefined/type error 四类输入在每个操作边界都不能输出隐式 NULL 或部分行 | ◐ 核心 SELECT/CTAS/INSERT 已测，完整交叉未完成 |
+| CROSS-GAP-006 | Mongo External × non-NULL DEFAULT/FK/AUTO_INCREMENT/GENERATED × CREATE/SHOW/scan | GAP | 产品确认后统一标记支持或拒绝；若拒绝，验证 fail-fast 与无 metadata 残留 | ⏸️ |
+| CROSS-GAP-007 | Mongo External × target PK/UNIQUE/FK/CHECK/GENERATED × INSERT/REPLACE/constraint failure | R | 同 batch/跨 batch/已有行冲突、affected rows、索引和 statement rollback | ◐ PK/UNIQUE/FK/CHECK 已测，GENERATED/复合键未完成 |
+| CROSS-GAP-008 | CTAS × DEFAULT/PK/UNIQUE/CHECK/GENERATED/INDEX × source conversion/cancel | GAP/R | 成功时 schema/constraint/index 完整生成；失败时不留半表、隐藏对象或序列副作用 | ◐ CTAS 成功/转换失败已测，其余约束未完成 |
+| CROSS-GAP-009 | CREATE TABLE LIKE × PK/UNIQUE/FK/CHECK/GENERATED/INDEX × Mongo source/普通 source | GAP | 明确哪些属性复制、哪些不复制；不能复制 Mongo connection、secret 或 runtime mapping | ◐ Mongo/普通 LIKE 核心行为已测，完整属性未完成 |
+| CROSS-GAP-010 | 任意 external × DROP/recreate × Snapshot/PITR | P0/R | 按 #26495 已冻结策略验证 bulk restore 跳过 table/mapping、direct restore 拒绝、connection 按 scope 复制，且无 orphan mapping/dependency | ⏸️ |
 
 #### 6.4 交叉覆盖执行规则
 
@@ -410,14 +414,14 @@ stateDiagram-v2
 
 每轮必须锁定 control row，计算稳定 high watermark，按 `[low, high)` 加 overlap 扫描，聚合并写入 target，再在同一事务中更新 backfill progress、ingestion watermark、successful run 和 fence。断言如下：
 
-| ID | 场景与 Oracle | 通过标准 |
-|---|---|---|
-| NESR-STATE-001 | main/shadow/legacy 三套 watermark 同时存在 | 查询和推进只使用当前 suite 的 control row；其他 suite 的 watermark、secret、mapping 不污染结果 |
-| NESR-STATE-002 | 成功跑次，含 overlap 和 late arrival | `pending_low/pending_high` 清空；target、progress、committed watermark、successful run、fence 一致提交 |
-| NESR-STATE-003 | source cursor、转换、target constraint 或 commit 前失败 | target、watermark、control 和 successful run 全部回滚；FAILED run 可独立留痕，不能伪装成成功 |
-| NESR-STATE-004 | 成功重放同一 bounded range | target 幂等；successful replay 使 fence 只增加一次；没有新数据时 committed watermark 不推进 |
-| NESR-STATE-005 | 修改 `batch_filter` 后继续增量 | 必须拒绝增量或强制 full rebuild；不能用旧 watermark 产生不可解释的混合结果 |
-| NESR-STATE-006 | 两个 worker 并发推进同一 control row | `FOR UPDATE` 串行化；只有一个成功 fence，另一个等待后重读状态或按稳定冲突错误退出 |
+| ID | 场景与 Oracle | 通过标准 | 测试结果 |
+|---|---|---|---|
+| NESR-STATE-001 | main/shadow/legacy 三套 watermark 同时存在 | 查询和推进只使用当前 suite 的 control row；其他 suite 的 watermark、secret、mapping 不污染结果 | ⏸️ |
+| NESR-STATE-002 | 成功跑次，含 overlap 和 late arrival | `pending_low/pending_high` 清空；target、progress、committed watermark、successful run、fence 一致提交 | ⏸️ |
+| NESR-STATE-003 | source cursor、转换、target constraint 或 commit 前失败 | target、watermark、control 和 successful run 全部回滚；FAILED run 可独立留痕，不能伪装成成功 | ⏸️ |
+| NESR-STATE-004 | 成功重放同一 bounded range | target 幂等；successful replay 使 fence 只增加一次；没有新数据时 committed watermark 不推进 | ⏸️ |
+| NESR-STATE-005 | 修改 `batch_filter` 后继续增量 | 必须拒绝增量或强制 full rebuild；不能用旧 watermark 产生不可解释的混合结果 | ⏸️ |
+| NESR-STATE-006 | 两个 worker 并发推进同一 control row | `FOR UPDATE` 串行化；只有一个成功 fence，另一个等待后重读状态或按稳定冲突错误退出 | ⏸️ |
 
 #### NESR-DATA-001：四集合、删除和部分失败
 
@@ -459,16 +463,16 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 正常路径以 E1 单节点 ReplicaSet 为最小准入集，使用 MongoDB 8.0.12、SCRAM-SHA-256、majority read concern、显式 schema 和只读账号。每个 case 使用独立 account/database/collection/table/connection 名称，执行后立即校验结果，再执行清理。
 
-| ID | 场景 | 操作与 Oracle | 通过标准 |
-|---|---|---|---|
-| HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 |
-| HP-002 | 显式 schema scan | 创建包含 scalar、dotted path、ObjectID、DateTime、Decimal128、Binary、JSON 的 external table，分别执行全列/部分列/重排列 SELECT | 逐值与 canonical Extended JSON 独立 oracle 一致；缺失 nullable path 为 SQL NULL；source collection 不变 |
-| HP-003 | pushdown + residual differential | 对 try_null 的 bool/整数/DATETIME(3+) 执行比较、IN、IS NOT NULL；对 strict、浮点、字符串、IS NULL 执行同样 SQL；用 test-only residual-only 开关，若无开关则使用 EXPLAIN 可证明 `pushed=0` 的自然等价 SQL | 保存两份 EXPLAIN、pushed predicate 数量、residual shape digest、source candidate 结果和最终 multiset；pushdown 只能减少候选集，`pushed>0` 与 `pushed=0` 结果一致；本地物化不能作为独立 BSON→MO converter Oracle |
-| HP-004 | 下游算子链 | MongoScan → Filter → TimeWindow/Group → `max_by`/`max_by_non_null` → `GAPFILL(PARTITION)` → target | 与 materialized local copy 结果一致；相同 `(ts,_id)` tie 选择最大 `_id`；空 partition 不凭空生成 |
-| HP-005 | 写入普通目标表 | `INSERT ... SELECT`、`REPLACE ... SELECT`、CTAS 分别写入无约束、PK/UNIQUE、NOT NULL、CHECK、FK、generated/index target | 结果、affected rows、约束副作用与本地 source 对照一致；MongoDB 侧只读 |
-| HP-006 | 周期增量 | 控制表有 committed watermark，按 `[low, high)` 执行 procedure；加入 overlap 与 late arrival 后再次执行 | target key 与结果粒度一致；watermark 在 target 成功后同事务推进；重放幂等且不产生重复 |
-| HP-007 | tenant/admin 使用 | account admin 创建 connection/table；普通用户仅持有 target table SELECT 权限查询 external table 或 view | DDL 权限符合合同；普通用户不能创建/改变 connection 或 mapping；metadata 不泄露 connection secret |
-| HP-008 | NESR 四集合 cutover | 四 collection `UNION ALL`、nested metadata、空 collection、跨 collection duplicate key、单 collection cursor/auth/schema failure；按 NESR state machine 执行增量、重放、失败回滚 | 任一 collection 失败无 partial target；watermark/progress/run/fence 满足状态断言；overlap 外删除进入 rebuild/range-delete 语义 |
+| ID | 场景 | 操作与 Oracle | 通过标准 | 测试结果 |
+|---|---|---|---|---|
+| HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 | ◐ DISABLE/ENABLE 3 轮及基线恢复已通过，创建/SHOW/DROP 未完成 |
+| HP-002 | 显式 schema scan | 创建包含 scalar、dotted path、ObjectID、DateTime、Decimal128、Binary、JSON 的 external table，分别执行全列/部分列/重排列 SELECT | 逐值与 canonical Extended JSON 独立 oracle 一致；缺失 nullable path 为 SQL NULL；source collection 不变 | ◐ 核心类型/NULL 查询已通过，完整类型集合未完成 |
+| HP-003 | pushdown + residual differential | 对 try_null 的 bool/整数/DATETIME(3+) 执行比较、IN、IS NOT NULL；对 strict、浮点、字符串、IS NULL 执行同样 SQL；用 test-only residual-only 开关，若无开关则使用 EXPLAIN 可证明 `pushed=0` 的自然等价 SQL | 保存两份 EXPLAIN、pushed predicate 数量、residual shape digest、source candidate 结果和最终 multiset；pushdown 只能减少候选集，`pushed>0` 与 `pushed=0` 结果一致；本地物化不能作为独立 BSON→MO converter Oracle | ◐ EXPLAIN/predicate 核心已测，全操作符差分未完成 |
+| HP-004 | 下游算子链 | MongoScan → Filter → TimeWindow/Group → `max_by`/`max_by_non_null` → `GAPFILL(PARTITION)` → target | 与 materialized local copy 结果一致；相同 `(ts,_id)` tie 选择最大 `_id`；空 partition 不凭空生成 | ◐ max_by/GAPFILL 已通过，完整链路落 target 未完成 |
+| HP-005 | 写入普通目标表 | `INSERT ... SELECT`、`REPLACE ... SELECT`、CTAS 分别写入无约束、PK/UNIQUE、NOT NULL、CHECK、FK、generated/index target | 结果、affected rows、约束副作用与本地 source 对照一致；MongoDB 侧只读 | ◐ 无约束/PK/UNIQUE/NOT NULL/CHECK/FK 已通过，generated/index 未完成 |
+| HP-006 | 周期增量 | 控制表有 committed watermark，按 `[low, high)` 执行 procedure；加入 overlap 与 late arrival 后再次执行 | target key 与结果粒度一致；watermark 在 target 成功后同事务推进；重放幂等且不产生重复 | ⏸️ |
+| HP-007 | tenant/admin 使用 | account admin 创建 connection/table；普通用户仅持有 target table SELECT 权限查询 external table 或 view | DDL 权限符合合同；普通用户不能创建/改变 connection 或 mapping；metadata 不泄露 connection secret | ✅ 真实 Mongo DDL 权限边界及 marker injection 已通过 |
+| HP-008 | NESR 四集合 cutover | 四 collection `UNION ALL`、nested metadata、空 collection、跨 collection duplicate key、单 collection cursor/auth/schema failure；按 NESR state machine 执行增量、重放、失败回滚 | 任一 collection 失败无 partial target；watermark/progress/run/fence 满足状态断言；overlap 外删除进入 rebuild/range-delete 语义 | ⏸️ |
 
 重复执行要求：HP-001～HP-008 至少 3 轮；E2/E3 的多 CN、TLS/SRV 和权限用例至少 3 轮；任何失败后先做即时状态复核，再进入清理和下一轮。
 
@@ -476,73 +480,73 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 边界只验证合同允许的值；非法值放入异常路径。时间边界必须覆盖 BSON 毫秒精度与 MatrixOne scale 的交界，尤其是 DATETIME/TIMESTAMP(0..2) 不应使用未经证明的原始时间等值下推。
 
-| ID | 边界 | 输入 | 预期 |
-|---|---|---|---|
-| BD-001 | 空/单行/多 batch | 空 collection、1 document、恰好 batch-1/batch/batch+1 行 | 空结果不创建伪 partition；单行及跨 batch 行数、顺序（显式 ORDER BY 时）和 NULL 语义正确 |
-| BD-002 | BSON path | path 为列名、三层 dotted path；中间节点 missing、null、scalar、array | document path 正常取值；中间 scalar/array 不自动展开，按 strict/try_null 合同处理 |
-| BD-003 | 数值边界 | 各整数 min/max、±1、整数 Double、非整数 Double、unsigned 负数、Decimal precision/scale 边界 | 合法值精确转换；overflow、负 unsigned、非整数按 mode 失败或 NULL，不 wrap/truncate |
-| BD-004 | 时间边界 | epoch 前后、毫秒 000/001/099/100/999、DATETIME/TIMESTAMP scale 0/1/2/3/6、合法域最小/最大及越界 | 先做域校验再运算；scale 按合同截断/归一化；越界不 wrap；session timezone 不改变 instant 的合同结果 |
-| BD-005 | 字符/二进制 | 空值、ASCII、中文、emoji、组合字符、NUL、长度 n-1/n/n+1、Binary/ObjectID | Unicode 宽度、ObjectID 24 字符/12 字节和二进制逐字节正确；超宽按模式处理 |
-| BD-006 | NULL 组合 | missing、BSON null、undefined、nullable/NOT NULL、strict/try_null | nullable 三类均为 SQL NULL；NOT NULL 三类均失败；try_null 不能弱化 NOT NULL |
-| BD-007 | GAPFILL | 每 partition 只有首尾数据、缺 1/多分钟、单分钟、无输入、100 万窗口边界 | 只在 observed min/max 内补点；无输入不生成 partition；超过上限 fail-fast 且无部分 target |
-| BD-008 | 配置阈值 | batch rows/bytes、max-value-bytes、scan rows/bytes、conversion count/rate 恰好达到和超过阈值 | 达到阈值结果正确；超过阈值稳定报错；statement、cursor、vector、target 均清理 |
+| ID | 边界 | 输入 | 预期 | 测试结果 |
+|---|---|---|---|---|
+| BD-001 | 空/单行/多 batch | 空 collection、1 document、恰好 batch-1/batch/batch+1 行 | 空结果不创建伪 partition；单行及跨 batch 行数、顺序（显式 ORDER BY 时）和 NULL 语义正确 | ⏸️ |
+| BD-002 | BSON path | path 为列名、三层 dotted path；中间节点 missing、null、scalar、array | document path 正常取值；中间 scalar/array 不自动展开，按 strict/try_null 合同处理 | ◐ missing/null 核心已测，三层 dotted/array 未完成 |
+| BD-003 | 数值边界 | 各整数 min/max、±1、整数 Double、非整数 Double、unsigned 负数、Decimal precision/scale 边界 | 合法值精确转换；overflow、负 unsigned、非整数按 mode 失败或 NULL，不 wrap/truncate | ⏸️ |
+| BD-004 | 时间边界 | epoch 前后、毫秒 000/001/099/100/999、DATETIME/TIMESTAMP scale 0/1/2/3/6、合法域最小/最大及越界 | 先做域校验再运算；scale 按合同截断/归一化；越界不 wrap；session timezone 不改变 instant 的合同结果 | ◐ 时间值/算子已测，完整边界未完成 |
+| BD-005 | 字符/二进制 | 空值、ASCII、中文、emoji、组合字符、NUL、长度 n-1/n/n+1、Binary/ObjectID | Unicode 宽度、ObjectID 24 字符/12 字节和二进制逐字节正确；超宽按模式处理 | ⏸️ |
+| BD-006 | NULL 组合 | missing、BSON null、undefined、nullable/NOT NULL、strict/try_null | nullable 三类均为 SQL NULL；NOT NULL 三类均失败；try_null 不能弱化 NOT NULL | ✅ 核心 NULL/NOT NULL 结果已通过 |
+| BD-007 | GAPFILL | 每 partition 只有首尾数据、缺 1/多分钟、单分钟、无输入、100 万窗口边界 | 只在 observed min/max 内补点；无输入不生成 partition；超过上限 fail-fast 且无部分 target | ◐ 基础 GAPFILL 已通过，极限窗口未完成 |
+| BD-008 | 配置阈值 | batch rows/bytes、max-value-bytes、scan rows/bytes、conversion count/rate 恰好达到和超过阈值 | 达到阈值结果正确；超过阈值稳定报错；statement、cursor、vector、target 均清理 | ⏸️ |
 
 ## 异常路径（Unhappy Path）
 
 所有异常 case 的共同规则：错误返回后立即读取 target 全量、watermark、catalog/SHOW、同连接复用状态，并检查 MongoDB collection 未被修改；不能先执行成功 SQL 掩盖失败后的污染。
 
-| ID | 异常 | 操作 | 预期与失败后断言 |
-|---|---|---|---|
-| UH-001 | 功能开关/allowlist | enable 关闭、account 不在 allowed-accounts、loopback/host/CIDR 不匹配、discovered member 不匹配 | fail-closed；不打开 Mongo socket；无 client/catalog 半状态 |
-| UH-002 | DDL 参数 | hosts 与 srv_host 同时/同时缺失、URI/userinfo、错误 scheme、未知 option、非法 path/mode/type、max_parallelism≠1 | CREATE/ALTER 在 scan 前拒绝；原 connection/table/version 不变；不能注入 generic external metadata |
-| UH-003 | 权限绕过 | 普通用户创建 generic external table，其 filepath/option/rel_createsql 含 Mongo marker，尝试复用 admin connection | 必须按可信 catalog discriminator 拒绝；普通用户不能借 generic metadata 使用 Mongo connection；这是 P0 必测回归 |
-| UH-004 | 认证/TLS/发现 | secret 缺失或格式错误、SCRAM 错误、CA/hostname/过期证书、SRV/TXT/DNS 失败、ReplicaSet member 不可达 | 错误可定位但不泄露 credential/URI；无 stale client、cursor、lease；同连接可再次执行 |
-| UH-005 | 转换错误 | strict 类型错误；try_null nullable 类型错误/overflow；try_null 超出 error count/rate；invalid BSON | strict 整句失败；try_null 只在 nullable 时转 NULL；超限失败；已 append 行全部回滚 |
-| UH-006 | 游标中途失败 | find 成功后 getMore/network/timeout/failover 失败 | 不在 operator 内从头重读；statement 失败，target/watermark 不推进；重跑完整旧 `[low,high)` 可恢复 |
-| UH-007 | 目标约束失败 | source 中途产生 target PK/UNIQUE/FK/CHECK/NOT NULL 冲突 | 按语句合同失败或替换；失败路径不留半写入、错误索引、错误 watermark；auto_increment 仅允许文档化的 gap |
-| UH-008 | 取消/断连 | 等待 source semaphore、find、getMore、decode、下游聚合和 commit 前分别取消；客户端断连 | 有界返回；关闭 cursor/killCursors、释放 lease/semaphore/lock/vector；同连接或重连后可继续查询 |
-| UH-009 | stale mapping/client | plan 后 ALTER/DISABLE/ENABLE/DROP connection 或 table mapping | 执行期检测 version/generation；新 statement 不使用 stale client；旧 lease 完成或取消后才退休 |
-| UH-010 | Snapshot/PITR 冲突 | 分别执行 database/account bulk restore、direct external-table restore；检查 table/mapping、按 scope 复制的 connection、DROP/recreate 和 orphan mapping | 按 #26495：bulk restore 跳过 MongoDB external table 和 mapping，connection 按 scope 复制；direct restore 明确拒绝；无 orphan `mo_mongodb_tables`，源 Mongo collection 不被 restore 改写 |
+| ID | 异常 | 操作 | 预期与失败后断言 | 测试结果 |
+|---|---|---|---|---|
+| UH-001 | 功能开关/allowlist | enable 关闭、account 不在 allowed-accounts、loopback/host/CIDR 不匹配、discovered member 不匹配 | fail-closed；不打开 Mongo socket；无 client/catalog 半状态 | ⏸️ |
+| UH-002 | DDL 参数 | hosts 与 srv_host 同时/同时缺失、URI/userinfo、错误 scheme、未知 option、非法 path/mode/type、max_parallelism≠1 | CREATE/ALTER 在 scan 前拒绝；原 connection/table/version 不变；不能注入 generic external metadata | ◐ unsupported type/部分 DDL 已测，参数全集未完成 |
+| UH-003 | 权限绕过 | 普通用户创建 generic external table，其 filepath/option/rel_createsql 含 Mongo marker，尝试复用 admin connection | 必须按可信 catalog discriminator 拒绝；普通用户不能借 generic metadata 使用 Mongo connection；这是 P0 必测回归 | ✅ |
+| UH-004 | 认证/TLS/发现 | secret 缺失或格式错误、SCRAM 错误、CA/hostname/过期证书、SRV/TXT/DNS 失败、ReplicaSet member 不可达 | 错误可定位但不泄露 credential/URI；无 stale client、cursor、lease；同连接可再次执行 | ⏸️ |
+| UH-005 | 转换错误 | strict 类型错误；try_null nullable 类型错误/overflow；try_null 超出 error count/rate；invalid BSON | strict 整句失败；try_null 只在 nullable 时转 NULL；超限失败；已 append 行全部回滚 | ✅ 核心 strict/try_null/overflow 已通过 |
+| UH-006 | 游标中途失败 | find 成功后 getMore/network/timeout/failover 失败 | 不在 operator 内从头重读；statement 失败，target/watermark 不推进；重跑完整旧 `[low,high)` 可恢复 | ⏸️ |
+| UH-007 | 目标约束失败 | source 中途产生 target PK/UNIQUE/FK/CHECK/NOT NULL 冲突 | 按语句合同失败或替换；失败路径不留半写入、错误索引、错误 watermark；auto_increment 仅允许文档化的 gap | ✅ PK/UNIQUE/FK/CHECK/NOT NULL 核心组合已通过 |
+| UH-008 | 取消/断连 | 等待 source semaphore、find、getMore、decode、下游聚合和 commit 前分别取消；客户端断连 | 有界返回；关闭 cursor/killCursors、释放 lease/semaphore/lock/vector；同连接或重连后可继续查询 | ⏸️ |
+| UH-009 | stale mapping/client | plan 后 ALTER/DISABLE/ENABLE/DROP connection 或 table mapping | 执行期检测 version/generation；新 statement 不使用 stale client；旧 lease 完成或取消后才退休 | ◐ disable/enable 生命周期已测，stale plan 未完成 |
+| UH-010 | Snapshot/PITR 冲突 | 分别执行 database/account bulk restore、direct external-table restore；检查 table/mapping、按 scope 复制的 connection、DROP/recreate 和 orphan mapping | 按 #26495：bulk restore 跳过 MongoDB external table 和 mapping，connection 按 scope 复制；direct restore 明确拒绝；无 orphan `mo_mongodb_tables`，源 Mongo collection 不被 restore 改写 | ⏸️ |
 
 ## 事务与并发
 
 事务测试必须区分“source 只读游标”和“MatrixOne target/control 写入”。MongoDB 外表没有自己的 watermark/checkpoint；只有控制表、target 和 fence 行需要事务保护。
 
-| ID | 并发/时序 | 预期 |
-|---|---|---|
-| TX-001 | autocommit 与显式 BEGIN/COMMIT/ROLLBACK 的 scan-only SELECT | SELECT 不产生本地持久修改；提交/回滚后结果和 catalog 一致 |
-| TX-002 | `REPLACE ... SELECT` 与 watermark update 同事务 | target 成功且 commit 后 watermark 才推进；source scan、转换、写入、commit 任一失败均不推进 |
-| TX-003 | 两 scheduler 同时锁同一 control row | 仅一个 generation 推进 watermark；另一个有界等待/拒绝/重试；无重复推进和 orphan lock |
-| TX-004 | 并发读与 connection ALTER/DISABLE/credential rotation | 已开始 statement 按旧 lease 合同完成或取消；新 statement 使用新 generation；不发生 session 串线 |
-| TX-005 | 多客户端读/写同一 target | 约束、可见性、冲突和 rollback 与本地 source 等价；错误后所有连接均可复用 |
-| TX-006 | commit 前断连、commit ack 不确定、CN migration | 恢复后 target/watermark 只能出现一次已提交状态；必要时进入专用 recovery/chaos workflow，不以客户端重试次数判断结果 |
+| ID | 并发/时序 | 预期 | 测试结果 |
+|---|---|---|---|
+| TX-001 | autocommit 与显式 BEGIN/COMMIT/ROLLBACK 的 scan-only SELECT | SELECT 不产生本地持久修改；提交/回滚后结果和 catalog 一致 | ⏸️ |
+| TX-002 | `REPLACE ... SELECT` 与 watermark update 同事务 | target 成功且 commit 后 watermark 才推进；source scan、转换、写入、commit 任一失败均不推进 | ⏸️ |
+| TX-003 | 两 scheduler 同时锁同一 control row | 仅一个 generation 推进 watermark；另一个有界等待/拒绝/重试；无重复推进和 orphan lock | ⏸️ |
+| TX-004 | 并发读与 connection ALTER/DISABLE/credential rotation | 已开始 statement 按旧 lease 合同完成或取消；新 statement 使用新 generation；不发生 session 串线 | ◐ disable/enable 已测，并发 generation 未完成 |
+| TX-005 | 多客户端读/写同一 target | 约束、可见性、冲突和 rollback 与本地 source 等价；错误后所有连接均可复用 | ◐ 10 路并发只读已通过，读写冲突未完成 |
+| TX-006 | commit 前断连、commit ack 不确定、CN migration | 恢复后 target/watermark 只能出现一次已提交状态；必要时进入专用 recovery/chaos workflow，不以客户端重试次数判断结果 | ⏸️ |
 
 并发类至少 10 轮；低概率 generation、cursor failover、commit-ack 场景使用 10–20 个 fresh generation。固定 sleep 不作为就绪判断，使用 version、lease、cursor、watermark 和最终数据作为信号。
 
 ## 安全与租户隔离
 
-| ID | 角色/边界 | 验证 |
-|---|---|---|
-| SEC-001 | system account、tenant admin、普通用户 | 只有合同规定角色可 CREATE/ALTER/DROP/SHOW connection/table；普通用户经 GRANT 只能 SELECT |
-| SEC-002 | tenant A/B 同名 connection/table/secret | connection ID、mapping、secret resolver、Mongo database/collection 按 tenant 隔离；A 不能查 B |
-| SEC-003 | metadata/plan/log/EXPLAIN | SHOW CONNECTIONS、SHOW CREATE TABLE、EXPLAIN、pipeline、query history、CN/Mongo command monitor 和 report 均不得出现 password、URI userinfo、endpoint、CA PEM 或 query literal |
-| SEC-004 | host egress | seed、SRV 结果、ReplicaSet member 每次 socket dial 均重新校验 suffix/CIDR；loopback、link-local、multicast、metadata endpoint 默认拒绝 |
-| SEC-005 | least privilege source | Mongo 只读账号只可读目标 database/collection；尝试写入、读其他 database/collection、使用错误 auth_source 均失败，collection hash 不变 |
-| SEC-006 | marker injection | generic external table 元数据中出现 `MO_MONGODB:` 或类似文本不能改变对象类型或权限；应有非 admin 真实 E2E 回归 |
-| SEC-007 | true tenant E2E 与 secret precedence | account admin 创建；普通用户 SELECT/ingest；account-scoped secret rotation；system/tenant secret precedence；跨租户同名对象和失败日志检查 | 真实 tenant 身份下权限、mapping、secret resolver 均隔离；轮换后新旧 generation 行为符合合同；日志不含 credential/URI/namespace |
+| ID | 角色/边界 | 验证 | 测试结果 |
+|---|---|---|---|
+| SEC-001 | system account、tenant admin、普通用户 | 只有合同规定角色可 CREATE/ALTER/DROP/SHOW connection/table；普通用户经 GRANT 只能 SELECT | ✅ 低权限真实 Mongo DDL 边界已通过 |
+| SEC-002 | tenant A/B 同名 connection/table/secret | connection ID、mapping、secret resolver、Mongo database/collection 按 tenant 隔离；A 不能查 B | ⏸️ |
+| SEC-003 | metadata/plan/log/EXPLAIN | SHOW CONNECTIONS、SHOW CREATE TABLE、EXPLAIN、pipeline、query history、CN/Mongo command monitor 和 report 均不得出现 password、URI userinfo、endpoint、CA PEM 或 query literal | ◐ EXPLAIN 脱敏已通过，日志/全链路未完成 |
+| SEC-004 | host egress | seed、SRV 结果、ReplicaSet member 每次 socket dial 均重新校验 suffix/CIDR；loopback、link-local、multicast、metadata endpoint 默认拒绝 | ⏸️ |
+| SEC-005 | least privilege source | Mongo 只读账号只可读目标 database/collection；尝试写入、读其他 database/collection、使用错误 auth_source 均失败，collection hash 不变 | ⏸️ |
+| SEC-006 | marker injection | generic external table 元数据中出现 `MO_MONGODB:` 或类似文本不能改变对象类型或权限；应有非 admin 真实 E2E 回归 | ✅ |
+| SEC-007 | true tenant E2E 与 secret precedence | account admin 创建；普通用户 SELECT/ingest；account-scoped secret rotation；system/tenant secret precedence；跨租户同名对象和失败日志检查 | 真实 tenant 身份下权限、mapping、secret resolver 均隔离；轮换后新旧 generation 行为符合合同；日志不含 credential/URI/namespace | ⏸️ |
 
 ## 恢复与故障注入
 
 普通 BVT 覆盖 SQL 错误、重连和重放；只有合同依赖节点、网络、存储或外部 Mongo 服务故障时才进入 Chaos/Recovery 专用环境。
 
-| ID | 故障 | 环境/操作 | 预期 |
-|---|---|---|---|
-| REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 |
-| REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 |
-| REC-003 | 网络断流/超时 | find 后断 socket、DNS/SRV 不可达、仅 member 不可达 | 有界错误；target/watermark 原子；连接和 CN 后续查询恢复 |
-| REC-004 | Snapshot | 在 external table 存在/被 drop 前后创建 snapshot，按正式 scope restore 到隔离目标 | 外部 collection 不被伪造恢复；mapping 与 table ID 一致或按明确 policy 跳过/拒绝；无 orphan dependency |
-| REC-005 | PITR | 在 mapping/target/control 变更前后恢复到时点 | target/control/catalog 与时点一致；恢复范围外对象不变；恢复后 connection 可管理、可重建、可清理 |
-| REC-006 | 清理失败/重试 | 注入 cursor close、client retirement、remote fanout 失败后重试 | 失败可观测且最终可清理；不提前删除仍有 lease 的 client；不遗留连接/文件/lock |
+| ID | 故障 | 环境/操作 | 预期 | 测试结果 |
+|---|---|---|---|---|
+| REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 | ⏸️ |
+| REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ⏸️ |
+| REC-003 | 网络断流/超时 | find 后断 socket、DNS/SRV 不可达、仅 member 不可达 | 有界错误；target/watermark 原子；连接和 CN 后续查询恢复 | ⏸️ |
+| REC-004 | Snapshot | 在 external table 存在/被 drop 前后创建 snapshot，按正式 scope restore 到隔离目标 | 外部 collection 不被伪造恢复；mapping 与 table ID 一致或按明确 policy 跳过/拒绝；无 orphan dependency | ⏸️ |
+| REC-005 | PITR | 在 mapping/target/control 变更前后恢复到时点 | target/control/catalog 与时点一致；恢复范围外对象不变；恢复后 connection 可管理、可重建、可清理 | ⏸️ |
+| REC-006 | 清理失败/重试 | 注入 cursor close、client retirement、remote fanout 失败后重试 | 失败可观测且最终可清理；不提前删除仍有 lease 的 client；不遗留连接/文件/lock | ⏸️ |
 
 ## 性能、规模与稳定性
 
@@ -556,14 +560,14 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 ### big-data / stability
 
-| 场景 | 数据与配置 | 必采集指标 | 通过标准 |
-|---|---|---|---|
-| BD-LOAD | 约 300 万 raw rows，时间有序/乱序、NULL-heavy、skew partition、索引 `{ts:1,_id:1}` | rows/bytes、p50/p95、peak CN memory/mpool、Mongo CPU/lag、目标 hash | 无 OOM/restart；结果和独立 oracle 一致；达到产品约定耗时/资源门槛 |
-| NESR-CUTOVER-PERF | 4 个 MongoDB time-series collection，约 18,032,280 rows/10 min，目标 600s（约 30,054 rows/s） | 每 collection scan、`UNION ALL`、aggregate、target write 时延；rows/s、peak memory、`docsExamined`/`keysExamined`、legacy Python vs external key/value/watermark diff | blocking release gate；任一 collection 不达标、部分提交或缺少 NESR URL/SHA/config/fixture manifest 均为 BLOCKED/失败；3m 仅作为 nightly smoke |
-| BD-WIDE | 近 `max-value-bytes` document，重复同一长 path 到多列，宽 schema | raw bytes、decoded/vector bytes、max batch、budget errors、清理后 mpool | decoded/vector budget 生效，不因 raw batch limit 误放行而 OOM；失败后状态干净 |
-| BD-MAXBY | 多分组（至少 8,192 group）、大 varlen winner、反复更新 winner、多 chunk | wall time 随 winners/groups、peak memory、live/stale varlen bytes、结果 hash | 结果正确；时间/内存无异常平方增长；compaction 不破坏 winner 状态 |
-| STAB-CURSOR | 长 cursor、重复 failover/cancel、10–20 fresh generations | cursor open/close、getMore/error/cancel、pool checkout、lease、goroutine、FD | 每轮 close= open；资源回到基线；无 stale client、增长趋势或重启 |
-| STAB-CONC | 每 account/connection 并发接近 `max-source-concurrency`，超额请求取消 | semaphore wait/cancel、latency、error rate、pool usage | 上限有效、等待可取消、无请求饥饿和跨租户串线 |
+| 场景 | 数据与配置 | 必采集指标 | 通过标准 | 测试结果 |
+|---|---|---|---|---|
+| BD-LOAD | 约 300 万 raw rows，时间有序/乱序、NULL-heavy、skew partition、索引 `{ts:1,_id:1}` | rows/bytes、p50/p95、peak CN memory/mpool、Mongo CPU/lag、目标 hash | 无 OOM/restart；结果和独立 oracle 一致；达到产品约定耗时/资源门槛 | ⏸️ |
+| NESR-CUTOVER-PERF | 4 个 MongoDB time-series collection，约 18,032,280 rows/10 min，目标 600s（约 30,054 rows/s） | 每 collection scan、`UNION ALL`、aggregate、target write 时延；rows/s、peak memory、`docsExamined`/`keysExamined`、legacy Python vs external key/value/watermark diff | blocking release gate；任一 collection 不达标、部分提交或缺少 NESR URL/SHA/config/fixture manifest 均为 BLOCKED/失败；3m 仅作为 nightly smoke | ⏸️ |
+| BD-WIDE | 近 `max-value-bytes` document，重复同一长 path 到多列，宽 schema | raw bytes、decoded/vector bytes、max batch、budget errors、清理后 mpool | decoded/vector budget 生效，不因 raw batch limit 误放行而 OOM；失败后状态干净 | ⏸️ |
+| BD-MAXBY | 多分组（至少 8,192 group）、大 varlen winner、反复更新 winner、多 chunk | wall time 随 winners/groups、peak memory、live/stale varlen bytes、结果 hash | 结果正确；时间/内存无异常平方增长；compaction 不破坏 winner 状态 | ⏸️ |
+| STAB-CURSOR | 长 cursor、重复 failover/cancel、10–20 fresh generations | cursor open/close、getMore/error/cancel、pool checkout、lease、goroutine、FD | 每轮 close= open；资源回到基线；无 stale client、增长趋势或重启 | ⏸️ |
+| STAB-CONC | 每 account/connection 并发接近 `max-source-concurrency`，超额请求取消 | semaphore wait/cancel、latency、error rate、pool usage | 上限有效、等待可取消、无请求饥饿和跨租户串线 | ◐ 10 路并发只读已通过，资源阈值/取消未完成 |
 
 big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、关键计划、peak memory、spill/临时文件、结果摘要和清理结果；不以“查询结束”代替正确性。
 
@@ -599,17 +603,17 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 
 ### 路由与拟新增覆盖
 
-| 层级 | 放入内容 | 资产/门禁 |
-|---|---|---|
-| UT | BSON path、类型转换、时间域/scale、NOT NULL、pushdown candidate、budget reservation、max_by ownership/complexity、envelope trusted discriminator | `pkg/sql/mongodb/*_test.go`、`pkg/sql/colexec/mongoscan/*_test.go`、`pkg/sql/colexec/aggexec/*maxby*_test.go`；关键用例 `-race -count=10` |
-| BVT | connection/table DDL、SHOW/EXPLAIN 脱敏、全类型代表值、只读、失败原子、target constraints、推下残差控制 | `test/mongodb/sql/` 或 `test/distributed/cases/mongodb/`；每个 case ≥3 轮 |
-| MOTR | 多连接、tenant/admin/普通用户、view/temp/cluster target、Join/CTAS/REPLACE、并发 fence、cancel/断连/stale generation | `test/mongodb/mongodb_e2e_local_test.go` 扩展或 `motr/suites/14_issue_regression`；并发 ≥10 轮 |
-| big-data | 300 万 raw rows、宽/长 varlen、scan/decoded budget、GAPFILL 大窗口、many-group max_by | Nightly 专用 MongoDB/MatrixOne 环境；报告必须含资源与结果摘要 |
-| stability | 长 cursor、重复 cancel/failover、10–20 fresh generation、pool/lease/FD/goroutine 趋势 | Stability/Soak workflow；以资源回基线为准 |
-| Chaos | CN/TN kill、Mongo primary failover、网络/DNS/TLS/外部服务故障、commit-ack 不确定 | 专用 recovery/Chaos workflow；不在普通 BVT 中重启共享集群 |
-| recovery | 按 #26495 回归 Snapshot/PITR/backup restore mapping policy、target/control 一致性、orphan dependency | Snapshot/PITR dedicated workflow；隔离 account/database；bulk skip/direct reject/connection scope copy 均有断言 |
-| NESR Cutover Gate | 四 collection incremental state machine、删除/overlap、partial failure、customer peak | NESR 脚本仓库 URL/SHA、配置和 fixture manifest；没有真实资产只能 BLOCKED |
-| ecosystem | MySQL text protocol、正式 Driver/Proxy（若版本在兼容矩阵） | 真实客户端 scenario；不把 CN 内 Go Driver 当作用户客户端合同 |
+| 层级 | 放入内容 | 资产/门禁 | 测试结果 |
+|---|---|---|---|
+| UT | BSON path、类型转换、时间域/scale、NOT NULL、pushdown candidate、budget reservation、max_by ownership/complexity、envelope trusted discriminator | `pkg/sql/mongodb/*_test.go`、`pkg/sql/colexec/mongoscan/*_test.go`、`pkg/sql/colexec/aggexec/*maxby*_test.go`；关键用例 `-race -count=10` | ⏸️ 本轮未执行源码 UT |
+| BVT | connection/table DDL、SHOW/EXPLAIN 脱敏、全类型代表值、只读、失败原子、target constraints、推下残差控制 | `test/mongodb/sql/` 或 `test/distributed/cases/mongodb/`；每个 case ≥3 轮 | ◐ 本轮 TKE BVT 代表组合已通过 |
+| MOTR | 多连接、tenant/admin/普通用户、view/temp/cluster target、Join/CTAS/REPLACE、并发 fence、cancel/断连/stale generation | `test/mongodb/mongodb_e2e_local_test.go` 扩展或 `motr/suites/14_issue_regression`；并发 ≥10 轮 | ◐ 权限/Join/CTAS/并发读已测，完整 MOTR 未完成 |
+| big-data | 300 万 raw rows、宽/长 varlen、scan/decoded budget、GAPFILL 大窗口、many-group max_by | Nightly 专用 MongoDB/MatrixOne 环境；报告必须含资源与结果摘要 | ⏸️ |
+| stability | 长 cursor、重复 cancel/failover、10–20 fresh generation、pool/lease/FD/goroutine 趋势 | Stability/Soak workflow；以资源回基线为准 | ⏸️ |
+| Chaos | CN/TN kill、Mongo primary failover、网络/DNS/TLS/外部服务故障、commit-ack 不确定 | 专用 recovery/Chaos workflow；不在普通 BVT 中重启共享集群 | ⏸️ |
+| recovery | 按 #26495 回归 Snapshot/PITR/backup restore mapping policy、target/control 一致性、orphan dependency | Snapshot/PITR dedicated workflow；隔离 account/database；bulk skip/direct reject/connection scope copy 均有断言 | ⏸️ |
+| NESR Cutover Gate | 四 collection incremental state machine、删除/overlap、partial failure、customer peak | NESR 脚本仓库 URL/SHA、配置和 fixture manifest；没有真实资产只能 BLOCKED | ⏸️ |
+| ecosystem | MySQL text protocol、正式 Driver/Proxy（若版本在兼容矩阵） | 真实客户端 scenario；不把 CN 内 Go Driver 当作用户客户端合同 | ✅ MySQL text protocol 已作为 TKE 入口验证 |
 
 准入顺序：先修复并纳入 P0（权限、NOT NULL、时间、失败原子、secret 脱敏、pushdown/residual differential、NESR 状态机）→ 跑 `make test-mongodb-unit` → 跑 `make test-mongodb-e2e-local` → 跑所在 BVT/MOTR suite → 再进入 big-data/recovery/chaos 和 NESR Cutover Gate。#26495 已合入的 Snapshot/PITR 修复必须按固定策略回归；升级兼容性 job 曾被跳过，release gate 需要补跑并记录结果。
 
