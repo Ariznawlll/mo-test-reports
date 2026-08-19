@@ -155,9 +155,9 @@ Oracle 使用 Go Driver 或 mongosh 导出的 canonical Extended JSON，加独�
 
 | MO 表对象/构造方式 | Mongo source | Join/Union 对端 | 写入目标 | 设计结论 | 测试结果 |
 |---|---|---|---|---|---|
-| MongoDB external table | P | P（自连接/多 collection） | N | 只读；直接 DML 必须拒绝 | ◐ 核心 SELECT/Join 已通过，Union/直接 DML 未完整覆盖 |
+| MongoDB external table | P | P（自连接/多 collection） | N | 只读；直接 DML 必须拒绝 | ◐ 核心 SELECT/Union/Join 已覆盖；正向多 collection Join 需重建 fixture 后复核；TRUNCATE 未按预期拒绝 |
 | 普通永久表 | 不适用 | P | P | 覆盖全部目标约束和数据类型赋值 | ✅ 目标约束核心组合已通过 |
-| TEMPORARY TABLE | 不适用 | P | P | 仅当前 session 可见；断连自动清理 | ⏸️ |
+| TEMPORARY TABLE | 不适用 | P | P | 仅当前 session 可见；断连自动清理 | ✅ 当前 session 可见、另一 session 不可见、显式 DROP 后无 catalog 残留 |
 | CLUSTER TABLE | 不适用 | C | C | system admin 创建；tenant 只读范围按正式合同验证 | ⏸️ |
 | VIEW | 不适用 | P | 不作为基础写入目标 | DEFINER/INVOKER、嵌套 view、权限撤销 | ◐ 基础 view 查询已覆盖，权限交叉未完成 |
 | 普通 external table（INFILE/S3） | I | I | N | 只读 Join/Union；不要求跨源 pushdown | ⏸️ |
@@ -172,9 +172,9 @@ Oracle 使用 Go Driver 或 mongosh 导出的 canonical Extended JSON，加独�
 | ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
 |---|---|---|---|---|---|---|---|---|
 | OBJ-001 | `dataio.stage-and-external-data` | Mongo 外表只读且结果稳定 | E1，合法 connection/mapping | 连续 3 次 SELECT 全列/部分列 | 与 Oracle 完全一致，Mongo source 不变 | cursor/lease=0；DROP mapping 不删 collection | BVT+E2E | ✅ |
-| OBJ-002 | `query.optimizer-and-plan` | 两个 Mongo mapping 不串 collection | 同 connection 下 collection A/B | JOIN、UNION ALL、自连接别名 | 行数/key 与 Oracle 一致；各 scan 的 projection/filter 独立 | 两个 cursor 均释放 | BVT+E2E | ◐ Join 已通过，Union/多 mapping 未完整覆盖 |
+| OBJ-002 | `query.optimizer-and-plan` | 两个 Mongo mapping 不串 collection | 同 connection 下 collection A/B | JOIN、UNION ALL、自连接别名 | 行数/key 与 Oracle 一致；各 scan 的 projection/filter 独立 | 两个 cursor 均释放 | BVT+E2E | ◐ UNION ALL 已通过；主节点切换后两 mapping 的正向 Join 因 fixture 重建需复核 |
 | OBJ-003 | `query.optimizer-and-plan` | 普通表与 Mongo 外表互操作 | 普通表维表和 target | 两种 join order、semi/anti/left join | 结果与本地快照对照一致 | 普通表不被 SELECT 修改 | BVT | ✅ |
-| OBJ-004 | `schema.ddl-lifecycle` | 临时表 session 隔离 | session A/B | A 建 temp 并 `INSERT SELECT`；B 同名访问；A 断连 | A 可见、B 不可见/可建独立同名；断连后清理 | 无持久 temp catalog/data | BVT+MOTR | ⏸️ |
+| OBJ-004 | `schema.ddl-lifecycle` | 临时表 session 隔离 | session A/B | A 建 temp 并 `INSERT SELECT`；B 同名访问；A 断连 | A 可见、B 不可见/可建独立同名；断连后清理 | 无持久 temp catalog/data | BVT+MOTR | ✅ A 可见 2 行；B 返回 table does not exist；DROP 后 catalog 计数 0 |
 | OBJ-005 | `security.authorization-and-isolation` | cluster table 租户可见性不越界 | E4，sys 创建 cluster target | sys 写入 Mongo 结果；tenant A/B 查询 | sys 可见全部；租户只见自己的可见行；tenant 不可直接写 | cluster row/account key 正确 | 多租户 MOTR | ⏸️ |
 | OBJ-006 | `security.authorization-and-isolation` | view security 不泄露 connection | DEFINER/INVOKER 两个 view，低权用户 | SELECT、SHOW CREATE VIEW、revoke base grant | 按 security mode 成功/拒绝；均不显示 secret/endpoint | DROP view 后 dependency 正常 | BVT+MOTR | ◐ 基础 view 查询已覆盖，安全交叉未完成 |
 | OBJ-007 | `query.optimizer-and-plan` | 其他 external source 只参与 MO 层组合 | file/S3 external + Mongo external | JOIN/UNION/CTE | 结果正确；无错误跨源 predicate pushdown | 两类 reader 都释放 | BVT/条件 E2E | ⏸️ 环境未提供 |
@@ -197,8 +197,8 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | PK/KEY/UNIQUE/INDEX/FULLTEXT | 明确拒绝 | create 原子失败，无 index metadata | ⏸️ |
 | CHECK | 明确拒绝 | 不把远端脏数据隐藏为已满足约束 | ⏸️ |
 | FOREIGN KEY | 待确认，准入先按拒绝 | 外表不能成为可依赖的受约束 parent/child | ⏸️ |
-| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ⏸️ |
-| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ⏸️ |
+| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ❌ DDL 3/3 被接受；读取字符串 `_id` 时运行期报 BIGINT 转换错误 |
+| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ❌ DDL 3/3 被接受；`GENERATED ALWAYS AS (1)` 读取 4 行但结果全为 NULL |
 | ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 | ⏸️ |
 | ALTER ADD/DROP/MODIFY/RENAME COLUMN | 明确拒绝 | 提示 drop/recreate；mapping/version 不变 | ⏸️ |
 
@@ -210,7 +210,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | SRC-C04 | `schema.ddl-lifecycle` | COMMENT/COLLATE 仅为 metadata | 字符串列 | 建表、SHOW、大小写/Unicode过滤 | metadata round-trip；结果由 MO 比较语义兜底 | plan 不将不安全 collation 比较下推 | BVT+plan UT | ⏸️ |
 | SRC-C05 | `schema.ddl-lifecycle` | 外表不创建本地索引约束 | 无 mapping | 分别使用 inline/table PK、KEY、UNIQUE、INDEX、FULLTEXT | 全部稳定拒绝 `cannot create index on external table` | catalog/index/mapping 无残留 | BVT+plan UT | ⏸️ |
 | SRC-C06 | `schema.ddl-lifecycle` | CHECK 不伪装远端完整性 | 远端有违反 check 的数据 | column/table CHECK DDL | 明确拒绝，不创建 mapping | 无 catalog dependency | BVT+plan UT | ⏸️ |
-| SRC-C07 | `schema.ddl-lifecycle` | 未声明属性 fail-closed | FK、AUTO_INCREMENT、GENERATED、ON UPDATE DDL | 逐项和组合创建 | release 合同确认前期望明确拒绝；若当前意外接受则登记 contract bug | 不生成序列/FK/生成列状态 | P0 BVT | ⏸️ |
+| SRC-C07 | `schema.ddl-lifecycle` | 未声明属性 fail-closed | FK、AUTO_INCREMENT、GENERATED、ON UPDATE DDL | 逐项和组合创建 | release 合同确认前期望明确拒绝；若当前意外接受则登记 contract bug | 不生成序列/FK/生成列状态 | P0 BVT | ❌ AUTO_INCREMENT、GENERATED 3/3 接受，违反 fail-closed 预期 |
 | SRC-C08 | `schema.ddl-lifecycle` | mapping schema 只能 drop/recreate | 已创建外表 | ADD/DROP/MODIFY/CHANGE/RENAME COLUMN/TABLE | 全部拒绝 Mongo external ALTER；原 mapping/version 不变 | 原表继续可查询 | BVT+plan UT | ⏸️ |
 
 ### 3. 普通/临时/集群目标表约束交叉
@@ -329,7 +329,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | DML-001 | `transaction.statement-atomicity` | CTAS schema/rows 原子 | 空 database | CTAS含projection/filter/expr | schema推导和rows正确；失败无表 | catalog/storage一致 | BVT+MOTR | ✅ |
 | DML-002 | `transaction.statement-atomicity` | INSERT SELECT 原子 | 各约束 target | 单/多 batch写入，后段错误 | 成功全写；失败0写 | target/control不变 | P0 MOTR | ✅ |
 | DML-003 | `transaction.statement-atomicity` | REPLACE SELECT 冲突处理确定 | 目标预置PK，source重复 | 单/复合PK、跨batch冲突 | 最终行与本地 source REPLACE 对照一致 | 无重复/index orphan | P0 MOTR | ◐ 单列 PK 已通过，复合 PK/跨 batch 未完成 |
-| DML-004 | `dataio.stage-and-external-data` | Mongo source 永不被写 | 已建外表 | 直接 INSERT/UPDATE/DELETE/REPLACE/TRUNCATE | 全部明确拒绝；Mongo collection hash不变 | mapping仍可查询 | P0 BVT | ⏸️ |
+| DML-004 | `dataio.stage-and-external-data` | Mongo source 永不被写 | 已建外表 | 直接 INSERT/UPDATE/DELETE/REPLACE/TRUNCATE | 全部明确拒绝；Mongo collection hash不变 | mapping仍可查询 | P0 BVT | ❌ INSERT/UPDATE/DELETE/REPLACE 返回 20301；TRUNCATE 3/3 返回成功但外表仍为 4 行 |
 | DML-005 | `transaction.explicit-transaction` | bounded ingest 幂等 | target+control committed_high | `[low,high)`、overlap、late arrival、重复执行 | key稳定、watermark单调、重复范围结果不变 | source不变，lock释放 | MOTR+nightly | ⏸️ |
 
 ### 6. 表类型 × 约束 × 操作交叉覆盖
@@ -579,6 +579,15 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - MongoDB 侧覆盖 single-node ReplicaSet、multi-member ReplicaSet、mongos、SRV/TXT、TLS required/disabled、SCRAM-SHA-256、majority/local、五种 read preference；每个组合只在正式 release gate 明确后进入准入。
 - `DATETIME/TIMESTAMP` 结合 session timezone、SQL mode、scale 做协议结果对照；本地机器 timezone 不作为固定 oracle。
 - 不把 Mongo `$group`、Change Stream/CDC、array element path、schema inference、writes、multi-CN fanout 或未列出的 URI/认证机制纳入兼容通过标准。
+
+### 本轮继续执行记录（2026-08-19，`mo-search-commit-71031d0e9-20260819`）
+
+- 拓扑：MatrixOne `3 CN / 1 DN / 3 Log`，MongoDB `3-member ReplicaSet`；Mongo 主节点从 `mongodb-external-e2e-0` 切换到 `mongodb-external-e2e-1` 后，外表连续 3 次读取均为 `count=4, sum_i=70`。
+- 只读 DML：`INSERT/UPDATE/DELETE/REPLACE` 均返回 `ERROR 20301`；`TRUNCATE TABLE mongo_events_ext` 连续 3 次返回成功，但外表行数仍为 4；普通表对照 `TRUNCATE` 后为 0 行。该行为未满足 DML-004 的 fail-closed 预期，记为 `❌`。
+- 交叉对象：临时表 session A 可见 2 行，session B 返回 `table does not exist`，显式 DROP 后 catalog 计数为 0；CTAS 结果 `4/70`；View 聚合结果 `2/70`。
+- 未声明列属性：`AUTO_INCREMENT` 外表 DDL 连续 3/3 被接受，扫描时返回 `_id` 到 BIGINT 的转换错误；`GENERATED ALWAYS AS (1)` 外表 DDL 连续 3/3 被接受，扫描 4 行但生成列 `MIN/MAX` 均为 NULL。两项均违反当前设计的 fail-closed 预期，记为 `❌`。
+- Fixture 复核：ReplicaSet 切换前未使用 majority write concern 的第二 collection fixture 在切换后不完整；已用 majority write concern 重建并确认三节点均有 `e5/e6/e7`，该 fixture 现象不作为 MatrixOne 缺陷结论。
+- 仍阻塞：TLS/SRV/TXT、真实多租户、普通/Iceberg External 跨源、CN/DN kill/网络断流、Snapshot/PITR、NESR 四 collection 和 E6 规模性能依赖独立环境，不能以本轮结果标记为通过。
 
 ## 可观测性与资源清理
 
