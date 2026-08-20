@@ -104,7 +104,7 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 | 安全 | secret/URI/endpoint/query literal 不进入 SHOW、plan、日志、错误和 artifact | P0 | ◐ EXPLAIN/权限 marker 已测，全链路脱敏未完成 |
 | catalog 分类 | generic external metadata 不能伪装成 Mongo mapping 或借用高权限 connection | P0 | ✅ |
 | 事务 | source scan、target mutation、constraint side effect 和 watermark 同成同败 | P0 | ◐ statement 原子性已测，watermark 未完成 |
-| 资源 | raw/decoded/vector 均受预算约束；超限 fail-fast，不 OOM/restart | P0 | ⏸️ |
+| 资源 | raw/decoded/vector 均受预算约束；超限 fail-fast，不 OOM/restart | P0 | ◐ `max-value-bytes` 与宽度边界已测；decoded/vector、scan bytes/rows 和 conversion budget 未完成 |
 | 推下正确性 | pushed filter 是候选过滤，最终结果始终由 MO residual 语义保证 | P1 | ◐ EXPLAIN/代表性 predicate 已测 |
 | 确定性 | 相同时间使用稳定 tie key；聚合 partial merge 不依赖 batch 到达顺序 | P1 | ✅ max_by/GAPFILL 代表性结果已通过 |
 | 生命周期 | ALTER/DISABLE/DROP/rotation 后新语句不能使用 stale mapping/client | P1 | ◐ create/SHOW/DROP、ALTER SET、disable/enable 已测；stale plan 和真实 secret rotation 未完成 |
@@ -267,10 +267,10 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | DT-14 | DECIMAL(p,s)，decimal256 路径 | 支持 | 同上 | p=39/65；Decimal128 source 精度上限、target padding/overflow | ✅ DECIMAL(40,5) 精确、DECIMAL(65,5) padding 3/3 通过；不可表达的 Decimal128 伪造值已排除 |
 | DT-15 | DATE | 支持 | BSON DateTime | epoch 前后、日边界、MO 年范围、非 DateTime拒绝 | ◐ epoch 前后、1970/9999 域、毫秒边界和非 DateTime 3/3 拒绝已验证；日边界未补齐 |
 | DT-16 | DATETIME(0..6) | 支持 | BSON DateTime | ms 000/001/099/100/999；scale 0/1/2/3/6；截断规则 | ✅ 同一 `2026-08-20T01:03:04.999Z` 在 scale 0/1/2/3/6 的截断/补零已验证 |
-| DT-17 | TIMESTAMP(0..6) | 支持 | BSON DateTime | UTC/session timezone、scale、domain、DST 显示不改 instant | ◐ scale 0/3/6、UTC/+08:00、epoch 前后和 9999 域已验证；DST 未完成 |
+| DT-17 | TIMESTAMP(0..6) | 支持 | BSON DateTime | UTC/session timezone、scale、domain、DST 显示不改 instant | ◐ scale 0/1/2/3/6、UTC/+08:00/`America/New_York`、epoch 前后、9999 域和 DST 春进/秋返已验证；`DATE_FORMAT + ORDER BY` 触发 CN panic，见 #27415 |
 | DT-18 | CHAR(n) | 支持 | String/ObjectID→24 hex | n-1/n/n+1 Unicode code point；padding/compare | ✅ ASCII n-1/n/n+1、CJK、emoji、两字符 CJK+emoji 均验证；padding/compare 未单独验证 |
 | DT-19 | VARCHAR(n) | 支持 | String/ObjectID→24 hex | 空串、中文、emoji、NUL、n±1 | ✅ ASCII n-1/n/n+1、中文、emoji、NUL、超宽均验证；组合字符未完成 |
-| DT-20 | TEXT | 支持 | String/ObjectID→24 hex | 空/大值/max-value-bytes；PK target N/A | ◐ 空、100KB、524260 bytes 通过；524280/524288 bytes 按 BSON document 上限稳定拒绝，精确阈值仍需单独确认 |
+| DT-20 | TEXT | 支持 | String/ObjectID→24 hex | 空/大值/max-value-bytes；PK target N/A | ◐ 空、100KB、524260 bytes 通过；524280/524288 bytes 按 BSON document 上限稳定拒绝，524260～524280 的精确阈值仍需二分确认 |
 | DT-21 | BINARY(n) | 支持 | Binary/ObjectID→12 bytes | subtype、0/n/n+1 bytes、padding/compare | ◐ subtype 0 的 3/4/5 bytes、空值、subtype 4 的 16 bytes、ObjectID 12 bytes 已验证；padding/compare 未单独验证 |
 | DT-22 | VARBINARY(n) | 支持 | Binary/ObjectID→12 bytes | 空、NUL、n±1 | ✅ subtype 0 的 3/4/5 bytes、空值和 subtype 4 的 16 bytes 均已验证；5 bytes 超宽稳定报错 |
 | DT-23 | BLOB | 支持 | Binary/ObjectID→12 bytes | 大值/max-value；PK target N/A | ✅ 空 Binary、4-byte Binary、100KB BLOB、subtype 4 和 ObjectID 12 bytes 均通过，HEX/长度保持 |
@@ -305,7 +305,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | TYPE-002 | `sql.data-types-and-conversion` | 整数不接受隐式截断/wrap | DT-02～09 边界 | min/max/±1、fractional Double、2^63 | 合法精确；非法按 mode 失败/NULL；绝不 wrap | row append 原子 | P0 UT+E2E | ✅ signed/unsigned 代表全边界、负数、fractional 和 Double 2^63 均验证；非法值 3/3 稳定报错 |
 | TYPE-003 | `sql.data-types-and-conversion` | 浮点只按声明精度转换 | DT-10～11 | finite/NaN/Inf/Float32 overflow | 与 converter 合同一致；FLOAT overflow 不静默 Inf | decoded budget 回收 | UT+BVT | ✅ FLOAT/DOUBLE finite、极值、NaN/Inf、Float32 overflow 均已验证；特殊值未被静默改写 |
 | TYPE-004 | `sql.data-types-and-conversion` | DECIMAL precision/scale 正确 | DT-12～14 | p/s 边界、四种 numeric BSON、NaN/Inf | 精确格式/舍入按 MO decimal parser；overflow fail/NULL | 无部分 vector | P0 UT+BVT | ✅ decimal64/128/256、scale 舍入、65 位 padding、overflow 已验证；Decimal128 NaN/±Inf 均 3/3 稳定拒绝 |
-| TYPE-005 | `sql.data-types-and-conversion` | temporal instant/domain/scale 正确 | DT-15～17 | 各 timezone session、scale 0..6、越界 | DATE/DATETIME/TIMESTAMP 结果和显示语义正确；无 overflow/wrap | 同连接后续查询成功 | P0 UT+E2E | ◐ DATETIME/TIMESTAMP scale 0/1/2/3/6、UTC/+08:00、epoch、9999 域、非 DateTime 拒绝和低精度本地 Oracle 对照已验证；DST/完整日边界未完成 |
+| TYPE-005 | `sql.data-types-and-conversion` | temporal instant/domain/scale 正确 | DT-15～17 | 各 timezone session、scale 0..6、越界 | DATE/DATETIME/TIMESTAMP 结果和显示语义正确；无 overflow/wrap | 同连接后续查询成功 | P0 UT+E2E | ◐ DATETIME/TIMESTAMP scale 0/1/2/3/6、UTC/+08:00/`America/New_York`、epoch、9999 域、下/上越界 strict 与 try_null、非 DateTime 拒绝已验证；DST 春进/秋返显示正确；`DATE_FORMAT + ORDER BY` 触发 #27415，完整日边界仍未完成 |
 | TYPE-006 | `sql.data-types-and-conversion` | 字符宽度按 Unicode code point | DT-18～20 | ASCII/CJK/emoji/组合字符 n±1 | 合法保留；超宽按 mode；ObjectID 为小写 24 hex | value/decoded budget正确 | UT+BVT | ◐ ASCII/CJK/emoji/NUL、组合字符（e + U+0301、ZWJ emoji）、CHAR/VARCHAR n±1、100KB/阈值附近 TEXT 已测；完整组合字符超宽矩阵未完成 |
 | TYPE-007 | `sql.data-types-and-conversion` | 二进制与 ObjectID 字节不损坏 | DT-21～23 | subtype、NUL、ObjectID、n±1 | bytes逐字节相等；ObjectID 12 bytes | 无编码二次转换 | UT+BVT | ◐ BINARY/VARBINARY 3/4/5 bytes、空值、subtype 4、BLOB 大值和 ObjectID 12 bytes 已测；padding/compare 未完成 |
 | TYPE-008 | `sql.data-types-and-conversion` | JSON 保留 BSON 类型区别 | DT-24 全 BSON fixture | 读取 scalar/document/array/special values | canonical Extended JSON 可解码且类型标签正确 | 单值上限生效 | UT+E2E | ◐ document/array/null/Boolean/Int32 及 Decimal/Date/Binary/ObjectID/Int64 special 3/3 已验证；Canonical Extended JSON 对用户查询语义未在 Issue/研发文档中明确，待 #27414 确认并补充合同 |
@@ -485,11 +485,11 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 | BD-001 | 空/单行/多 batch | 空 collection、1 document、恰好 batch-1/batch/batch+1 行 | 空结果不创建伪 partition；单行及跨 batch 行数、顺序（显式 ORDER BY 时）和 NULL 语义正确 | ✅ 空 collection 以及 batch_rows=2 的 1/2/3 行 collection 均验证，count/sum 与 fixture 一致 |
 | BD-002 | BSON path | path 为列名、三层 dotted path；中间节点 missing、null、scalar、array | document path 正常取值；中间 scalar/array 不自动展开，按 strict/try_null 合同处理 | ◐ missing/null 核心已测，三层 dotted/array 未完成 |
 | BD-003 | 数值边界 | 各整数 min/max、±1、整数 Double、非整数 Double、unsigned 负数、Decimal precision/scale 边界 | 合法值精确转换；overflow、负 unsigned、非整数按 mode 失败或 NULL，不 wrap/truncate | ✅ signed/unsigned、fractional、Float/Double、Decimal precision/scale 代表边界已验证 |
-| BD-004 | 时间边界 | epoch 前后、毫秒 000/001/099/100/999、DATETIME/TIMESTAMP scale 0/1/2/3/6、合法域最小/最大及越界 | 先做域校验再运算；scale 按合同截断/归一化；越界不 wrap；session timezone 不改变 instant 的合同结果 | ◐ epoch 前后、000/001/999、scale 0/1/2/3/6、9999 域和 UTC/+08:00 已验证；DST、完整越界矩阵未完成 |
+| BD-004 | 时间边界 | epoch 前后、毫秒 000/001/099/100/999、DATETIME/TIMESTAMP scale 0/1/2/3/6、合法域最小/最大及越界 | 先做域校验再运算；scale 按合同截断/归一化；越界不 wrap；session timezone 不改变 instant 的合同结果 | ◐ epoch 前后、000/001/999、scale 0/1/2/3/6、合法最小/最大、下/上越界 strict/try_null、UTC/+08:00/`America/New_York` 和 DST 已验证；完整日期边界及 #27415 查询组合仍未完成 |
 | BD-005 | 字符/二进制 | 空值、ASCII、中文、emoji、组合字符、NUL、长度 n-1/n/n+1、Binary/ObjectID | Unicode 宽度、ObjectID 24 字符/12 字节和二进制逐字节正确；超宽按模式处理 | ◐ 空/ASCII/CJK/emoji/NUL、CHAR/VARCHAR 与 Binary n±1、100KB TEXT/BLOB、subtype 4 和 ObjectID 12-byte 已测；组合字符、padding/compare 未完成 |
 | BD-006 | NULL 组合 | missing、BSON null、undefined、nullable/NOT NULL、strict/try_null | nullable 三类均为 SQL NULL；NOT NULL 三类均失败；try_null 不能弱化 NOT NULL | ✅ 核心 NULL/NOT NULL 结果已通过 |
 | BD-007 | GAPFILL | 每 partition 只有首尾数据、缺 1/多分钟、单分钟、无输入、100 万窗口边界 | 只在 observed min/max 内补点；无输入不生成 partition；超过上限 fail-fast 且无部分 target | ◐ 基础 GAPFILL 已通过，极限窗口未完成 |
-| BD-008 | 配置阈值 | batch rows/bytes、max-value-bytes、scan rows/bytes、conversion count/rate 恰好达到和超过阈值 | 达到阈值结果正确；超过阈值稳定报错；statement、cursor、vector、target 均清理 | ◐ max-value-bytes=524288 下 524260 bytes 通过、524280/524288 bytes 稳定拒绝；batch rows 已覆盖，bytes/scan/conversion 阈值未完成 |
+| BD-008 | 配置阈值 | batch rows/bytes、max-value-bytes、scan rows/bytes、conversion count/rate 恰好达到和超过阈值 | 达到阈值结果正确；超过阈值稳定报错；statement、cursor、vector、target 均清理 | ◐ max-value-bytes=524288 下 524260 bytes 通过、524280/524288 bytes 稳定拒绝，且 strict/try_null 与投影裁剪行为已观察；batch rows 已覆盖，524260～524280 精确边界及 bytes/scan/conversion 阈值未完成 |
 
 ## 异常路径（Unhappy Path）
 
@@ -587,11 +587,13 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 基线映射：三 seed ReplicaSet connection 创建成功；`mongo_events_ext_c8e3fa745` 查询 `count=4, sum_i=70`，missing/NULL 与 dotted path 结果符合预期，SHOW CREATE 保留 mapping、mode 和 `max_parallelism=1`。
 - 数值边界：signed/unsigned 合法最大值、0、越界、负 unsigned、fractional 和 Double `2^63` 已验证；非法边界每项扫描 3/3 稳定返回 `ERROR 20301`，未观察到 wrap/truncate。FLOAT subnormal、MaxFloat32、NaN、+Inf、-Inf 均 3/3 返回对应值；NaN/Inf 未作为失败处理。
 - 时间与 JSON：同一 BSON DateTime `...04.999Z` 在 DATETIME/TIMESTAMP scale 0/1/2/3/6 的截断/补零结果已核对；JSON Extended JSON 保留 Decimal128、DateTime、Binary、ObjectID、Int64 类型标签。
+- 时间域与 DST：BSON DateTime 的 `0001-01-01`、`9999-12-31` strict 读取 3/3 通过；越界值 strict 稳定返回转换错误，try_null 返回 NULL；UTC、`+08:00`、`America/New_York` 各完成 3 轮，`DATETIME` 保持原始 instant，`TIMESTAMP` 正确转换并覆盖春季跳变/秋季重复小时。`DATE_FORMAT + ORDER BY` 触发 CN `FixedLengthShuffle` panic，已提交 #27415。
 - 字符与二进制：使用“一值一 collection”排除前置 batch 转换污染；CHAR/VARCHAR 的 ASCII n-1/n/n+1、CJK、emoji、NUL、组合字符（U+0301 和 ZWJ emoji）通过或稳定拒绝，BINARY/VARBINARY 的 3/4/5 bytes、空值、subtype 4 和 ObjectID 12 bytes 均验证，字节 HEX 无损。混合 collection 的初次失败归因于 strict 扫描会先转换整批文档，不作为产品缺陷。
 - DOUBLE 边界：`-0`、subnormal、MaxDouble、NaN、`+Inf`、`-Inf` 六类值分别连续 3/3 查询，结果保持对应浮点值。
 - DECIMAL：DECIMAL64/128/256 路径分别验证精确值、scale 舍入、DECIMAL(5,2) overflow、DECIMAL(65,5) padding；初次使用超过 Decimal128 34 位有效数字的 fixture 被识别为 BSON fixture 非法并排除，不作为产品缺陷。
 - DECIMAL 特殊值：Decimal128 `NaN`、`Infinity`、`-Infinity` 在 DECIMAL(18,2) mapping 下各执行 3/3，均稳定返回 `ERROR 20301`，未产生 NULL 或错误数值。
 - 空值/大值：空 collection、空 string/binary、100KB TEXT/BLOB 通过；`max-value-bytes=524288` 下 524260 bytes 通过，524280/524288 bytes 稳定拒绝，statement 可复用。
+- 宽度边界：`VARCHAR(4)`/`VARBINARY(4)` 对 3/4/5 长度数据在 try_null 下保留 3/4、超宽转 NULL；strict 在超宽值上稳定返回转换错误。TEXT 524260 bytes 通过、524280/524288 bytes 触发 BSON document 上限错误；try_null 在未投影大值时可返回行，投影该列时仍按上限失败。
 - 失败闭环：connection 参数（hosts/srv_host、URI、未知 option、错误 Secret ref）和 table 参数（max_parallelism、schema_mode、conversion_mode、未知 option）各 3/3 fail-closed，未留下对象。
 - Path/谓词：三层 dotted path 的 nested/missing/null/scalar/array 中间节点均执行 3/3；未发生数组自动展开。`= != < <= >= IN`、`IS NULL/IS NOT NULL`、AND/OR/NOT 各 3/3 与独立结果一致，EXPLAIN 均显示 residual-only（pushed=0）。
 - 时间谓词：DATETIME/TIMESTAMP(0) 对 `.000/.001/.099/.100/.999` 及下一秒执行 equality/range/IN 3/3，并与本地 DATETIME(0) Oracle 一致；`.999` 归一化到下一秒是 MatrixOne 本地表同样行为。
@@ -603,7 +605,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - Prepared 兼容性：普通 SELECT 控制 3/3 为 `4/70`；PREPARE MongoDB 外表扫描 3/3 返回 `ERROR 20105`。Issue/研发文档未说明该限制，已提交 #27411；当前 main 源码 `query_builder_test.go` 存在同一拒绝断言。
 - main 新鲜度：官方 main 当前为 `d7899e703dfaef428f272c2fc0452813c0b8636c`，但 TKE 仓库没有对应镜像；曾在本 namespace 尝试更新后因 `ImagePullBackOff` 回滚到可用的 `c8e3fa745`，未影响其他 namespace。Bug 证据明确记录该环境差异。
 - 分布式恢复：删除当前 namespace 的 Mongo PRIMARY Pod 后，`secondaryPreferred + majority` 查询 20/20 为 `4/70`，恢复后为 1 PRIMARY + 2 SECONDARY；删除一个 CN Pod 后查询 20/20 为 `4/70`，恢复为 3 CN Ready 且 CR Ready。
-- 本轮尚未完成：TEXT/BLOB 精确阈值与 bytes/scan/conversion 预算、timezone DST、完整 temporal 越界矩阵、TLS/SRV/TXT、getMore/网络断流、TN kill、Snapshot/PITR、NESR 和规模性能；prepared 的正式支持/限制仍待研发确认，MongoDB JSON 用户合同由 #27414 跟踪。
+- 本轮尚未完成：TEXT/BLOB 524260～524280 的精确阈值二分与 bytes/scan/conversion 预算、完整日期边界、TLS/SRV/TXT、getMore/网络断流、TN kill、Snapshot/PITR、NESR 和规模性能；`DATE_FORMAT + ORDER BY` 的 #27415 仍待修复；prepared 的正式支持/限制仍待研发确认，MongoDB JSON 用户合同由 #27414 跟踪。
 
 ### 本轮继续执行记录（2026-08-19，`mo-search-commit-71031d0e9-20260819`）
 
