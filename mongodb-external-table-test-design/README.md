@@ -121,7 +121,7 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 | E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 | ◐ 3 CN、三节点 Mongo、CN Pod 删除和 Mongo PRIMARY Pod 删除已测；多 TN 未覆盖 |
 | E3 TLS/SRV | 1–3 CN | TLS 私有 CA、SRV/TXT、hostname | 网络、安全、发现和 allowlist | ⏸️ 环境未提供 |
 | E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope | ⏸️ 环境未提供 |
-| E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ◐ 当前 namespace 的 CN Pod、Mongo PRIMARY Pod 删除已通过；TN、网络和 getMore 断流未执行 |
+| E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ◐ 当前 namespace 的 CN、DN Pod 和 Mongo PRIMARY Pod 删除已通过；网络和 getMore 断流未执行 |
 | E6 big-data | Nightly 独占环境 | 有索引的千万级 collection | 容量、稳定性、资源、性能 | ⏸️ 环境未提供 |
 
 配置覆盖：默认 enable、省略 allowlist、显式 enable/disable、account allowlist、host suffix/CIDR、loopback、timeout、batch rows/bytes、max value/scan/decoded bytes、conversion error count/rate、source concurrency。所有 secret 使用随机测试值和 reference，不写进 SQL fixture。
@@ -543,6 +543,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 |---|---|---|---|---|
 | REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 | ◐ 当前 namespace 删除一个 CN Pod 期间 20/20 查询为 4/70，恢复为 3 Ready 且 CR Ready；事务中断点/getMore 未覆盖 |
 | REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ◐ 当前 namespace 删除 PRIMARY Pod 后，secondaryPreferred+majority 查询 20/20 为 4/70，恢复为唯一 PRIMARY；local/primaryPreferred/getMore 未覆盖 |
+| REC-007 | DN restart | 当前 namespace 删除 `nightly-regression-dis-dn-0`，等待 CR/Pod 恢复后重新扫描 | DN 恢复后外表查询可继续；CR Ready；无 catalog/mapping 残留 | ✅ DN Pod 删除后快速恢复，CR 保持 Ready；Mongo 外表基线连续 3 次为 `4/70` |
 | REC-003 | 网络断流/超时 | find 后断 socket、DNS/SRV 不可达、仅 member 不可达 | 有界错误；target/watermark 原子；连接和 CN 后续查询恢复 | ⏸️ |
 | REC-004 | Snapshot | 在 external table 存在/被 drop 前后创建 snapshot，按正式 scope restore 到隔离目标 | 外部 collection 不被伪造恢复；mapping 与 table ID 一致或按明确 policy 跳过/拒绝；无 orphan dependency | ⏸️ |
 | REC-005 | PITR | 在 mapping/target/control 变更前后恢复到时点 | target/control/catalog 与时点一致；恢复范围外对象不变；恢复后 connection 可管理、可重建、可清理 | ⏸️ |
@@ -605,8 +606,8 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 权限边界：按 MatrixOne 角色模型创建临时普通用户，授予目标外表 SELECT 后查询 3/3 为 `4/70`；创建 MongoDB connection 3/3 拒绝；临时用户、角色和夹具已清理。
 - Prepared 兼容性：普通 SELECT 控制 3/3 为 `4/70`；PREPARE MongoDB 外表扫描 3/3 返回 `ERROR 20105`。Issue/研发文档未说明该限制，已提交 #27411；当前 main 源码 `query_builder_test.go` 存在同一拒绝断言。
 - main 新鲜度：官方 main 当前为 `d7899e703dfaef428f272c2fc0452813c0b8636c`，但 TKE 仓库没有对应镜像；曾在本 namespace 尝试更新后因 `ImagePullBackOff` 回滚到可用的 `c8e3fa745`，未影响其他 namespace。Bug 证据明确记录该环境差异。
-- 分布式恢复：删除当前 namespace 的 Mongo PRIMARY Pod 后，`secondaryPreferred + majority` 查询 20/20 为 `4/70`，恢复后为 1 PRIMARY + 2 SECONDARY；删除一个 CN Pod 后查询 20/20 为 `4/70`，恢复为 3 CN Ready 且 CR Ready。
-- 本轮尚未完成：bytes/scan/conversion 预算、完整 temporal 组合、TLS/SRV/TXT、getMore/网络断流、TN kill、Snapshot/PITR、NESR 和规模性能；`DATE_FORMAT + ORDER BY` 的 #27415 仍待修复；prepared 的正式支持/限制仍待研发确认，MongoDB JSON 用户合同由 #27414 跟踪。
+- 分布式恢复：删除当前 namespace 的 Mongo PRIMARY Pod 后，`secondaryPreferred + majority` 查询 20/20 为 `4/70`，恢复后为 1 PRIMARY + 2 SECONDARY；删除一个 CN Pod 后查询 20/20 为 `4/70`，恢复为 3 CN Ready 且 CR Ready；删除 DN Pod 后外表查询连续 3 次为 `4/70`，CR 保持 Ready。
+- 本轮尚未完成：bytes/scan/conversion 预算、完整 temporal 组合、TLS/SRV/TXT、getMore/网络断流、Snapshot/PITR、NESR 和规模性能；`DATE_FORMAT + ORDER BY` 的 #27415 仍待修复；prepared 的正式支持/限制仍待研发确认，MongoDB JSON 用户合同由 #27414 跟踪。
 
 ### 本轮继续执行记录（2026-08-19，`mo-search-commit-71031d0e9-20260819`）
 
