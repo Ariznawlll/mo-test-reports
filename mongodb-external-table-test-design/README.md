@@ -121,7 +121,7 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 | E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 | ◐ 3 CN、三节点 Mongo、CN Pod 删除和 Mongo PRIMARY Pod 删除已测；多 TN 未覆盖 |
 | E3 TLS/SRV | 1–3 CN | TLS 私有 CA、SRV/TXT、hostname | 网络、安全、发现和 allowlist | ⏸️ 环境未提供 |
 | E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope | ⏸️ 环境未提供 |
-| E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ◐ 当前 namespace 的 CN Pod、Mongo PRIMARY Pod 删除已通过；TN、网络和 getMore 断流未执行 |
+| E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ◐ 当前 namespace 的 CN、DN Pod 和 Mongo PRIMARY Pod 删除已通过；网络和 getMore 断流未执行 |
 | E6 big-data | Nightly 独占环境 | 有索引的千万级 collection | 容量、稳定性、资源、性能 | ⏸️ 环境未提供 |
 
 配置覆盖：默认 enable、省略 allowlist、显式 enable/disable、account allowlist、host suffix/CIDR、loopback、timeout、batch rows/bytes、max value/scan/decoded bytes、conversion error count/rate、source concurrency。所有 secret 使用随机测试值和 reference，不写进 SQL fixture。
@@ -197,9 +197,9 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | PK/KEY/UNIQUE/INDEX/FULLTEXT | 明确拒绝 | create 原子失败，无 index metadata | ✅ PRIMARY KEY、KEY、UNIQUE、INDEX、FULLTEXT 均 3/3 拒绝且无对象残留 |
 | CHECK | 明确拒绝 | 不把远端脏数据隐藏为已满足约束 | ✅ 返回 `not supported: CHECK constraints on external tables`，无对象残留 |
 | FOREIGN KEY | 待确认，准入先按拒绝 | 外表不能成为可依赖的受约束 parent/child | ❌ DDL 3/3 接受，父行删除成功且外表子值仍存在；#27354 |
-| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ❌ DDL 3/3 被接受；读取字符串 `_id` 时运行期报 BIGINT 转换错误 |
-| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ❌ DDL 3/3 被接受；`GENERATED ALWAYS AS (1)` 读取 4 行但结果全为 NULL |
-| ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 | ❌ DDL 3/3 接受并保留 metadata；#27355 |
+| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ❌ DDL 3/3 被接受；读取字符串 `_id` 时运行期报 BIGINT 转换错误；#27347 |
+| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ❌ DDL 3/3 被接受；`GENERATED ALWAYS AS (1)` 读取 4 行但结果全为 NULL；#27348 |
+| ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 | ❌ 历史版本 DDL 3/3 接受并保留 metadata；#27355 已关闭，修复后回归 3/3 拒绝 |
 | ALTER ADD/DROP/MODIFY/RENAME COLUMN | 明确拒绝 | 提示 drop/recreate；mapping/version 不变 | ✅ 五种 column ALTER 均拒绝，拒绝后原表仍为 4 行 |
 
 | ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
@@ -273,7 +273,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | DT-20 | TEXT | 支持 | String/ObjectID→24 hex | 空/大值/max-value-bytes；PK target N/A | ◐ 空、100KB、524260 bytes 通过；`max-value-bytes=524288` 下 524275 bytes 通过、524276 bytes 稳定拒绝，已确认精确边界 |
 | DT-21 | BINARY(n) | 支持 | Binary/ObjectID→12 bytes | subtype、0/n/n+1 bytes、padding/compare | ◐ subtype 0 的 3/4/5 bytes、空值、subtype 4 的 16 bytes、ObjectID 12 bytes 已验证；padding/compare 未单独验证 |
 | DT-22 | VARBINARY(n) | 支持 | Binary/ObjectID→12 bytes | 空、NUL、n±1 | ✅ subtype 0 的 3/4/5 bytes、空值和 subtype 4 的 16 bytes 均已验证；5 bytes 超宽稳定报错 |
-| DT-23 | BLOB | 支持 | Binary/ObjectID→12 bytes | 大值/max-value；PK target N/A | ✅ 空 Binary、4-byte Binary、100KB BLOB、subtype 4 和 ObjectID 12 bytes 均通过，HEX/长度保持 |
+| DT-23 | BLOB | 支持 | Binary/ObjectID→12 bytes | 大值/max-value；PK target N/A | ✅ 空 Binary、4-byte Binary、100KB BLOB、subtype 4、ObjectID 12 bytes 和 `max-value-bytes=524288` 下 524275/524276 边界均已验证，HEX/长度保持 |
 | DT-24 | JSON | 支持 | 任意可解码 BSON value | canonical Extended JSON 保留 Int32/Int64/Decimal/Date/Binary；嵌套/数组 | ✅ document/array/Boolean/null/Int32 及 Decimal/Date/Binary/ObjectID/Int64 special Extended JSON 均已验证 |
 | DT-U01 | BIT(n) | 拒绝 | 无 | n=1/64，DDL fail-closed | ✅ 3/3 拒绝 |
 | DT-U02 | TIME(p) | 拒绝 | 无 | 即使 BSON String/DateTime 也拒绝 mapping | ✅ 3/3 拒绝 |
@@ -489,7 +489,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 | BD-005 | 字符/二进制 | 空值、ASCII、中文、emoji、组合字符、NUL、长度 n-1/n/n+1、Binary/ObjectID | Unicode 宽度、ObjectID 24 字符/12 字节和二进制逐字节正确；超宽按模式处理 | ◐ 空/ASCII/CJK/emoji/NUL、CHAR/VARCHAR 与 Binary n±1、100KB TEXT/BLOB、subtype 4 和 ObjectID 12-byte 已测；组合字符、padding/compare 未完成 |
 | BD-006 | NULL 组合 | missing、BSON null、undefined、nullable/NOT NULL、strict/try_null | nullable 三类均为 SQL NULL；NOT NULL 三类均失败；try_null 不能弱化 NOT NULL | ✅ 核心 NULL/NOT NULL 结果已通过 |
 | BD-007 | GAPFILL | 每 partition 只有首尾数据、缺 1/多分钟、单分钟、无输入、100 万窗口边界 | 只在 observed min/max 内补点；无输入不生成 partition；超过上限 fail-fast 且无部分 target | ◐ 基础 GAPFILL 已通过，极限窗口未完成 |
-| BD-008 | 配置阈值 | batch rows/bytes、max-value-bytes、scan rows/bytes、conversion count/rate 恰好达到和超过阈值 | 达到阈值结果正确；超过阈值稳定报错；statement、cursor、vector、target 均清理 | ◐ `max-value-bytes=524288` 下 524275 bytes 通过、524276 bytes 稳定拒绝，strict/try_null 与投影裁剪行为已观察；batch rows 已覆盖，bytes/scan/conversion 阈值未完成 |
+| BD-008 | 配置阈值 | batch rows/bytes、max-value-bytes、scan rows/bytes、conversion count/rate 恰好达到和超过阈值 | 达到阈值结果正确；超过阈值稳定报错；statement、cursor、vector、target 均清理 | ◐ TEXT/BLOB 均确认 `max-value-bytes=524288` 下 524275 bytes 通过、524276 bytes 稳定拒绝，strict/try_null 与投影裁剪行为已观察；batch rows 已覆盖，bytes/scan/conversion 阈值未完成 |
 
 ## 异常路径（Unhappy Path）
 
@@ -543,6 +543,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 |---|---|---|---|---|
 | REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 | ◐ 当前 namespace 删除一个 CN Pod 期间 20/20 查询为 4/70，恢复为 3 Ready 且 CR Ready；事务中断点/getMore 未覆盖 |
 | REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ◐ 当前 namespace 删除 PRIMARY Pod 后，secondaryPreferred+majority 查询 20/20 为 4/70，恢复为唯一 PRIMARY；local/primaryPreferred/getMore 未覆盖 |
+| REC-007 | DN restart | 当前 namespace 删除 `nightly-regression-dis-dn-0`，等待 CR/Pod 恢复后重新扫描 | DN 恢复后外表查询可继续；CR Ready；无 catalog/mapping 残留 | ✅ DN Pod 删除后快速恢复，CR 保持 Ready；Mongo 外表基线连续 3 次为 `4/70` |
 | REC-003 | 网络断流/超时 | find 后断 socket、DNS/SRV 不可达、仅 member 不可达 | 有界错误；target/watermark 原子；连接和 CN 后续查询恢复 | ⏸️ |
 | REC-004 | Snapshot | 在 external table 存在/被 drop 前后创建 snapshot，按正式 scope restore 到隔离目标 | 外部 collection 不被伪造恢复；mapping 与 table ID 一致或按明确 policy 跳过/拒绝；无 orphan dependency | ⏸️ |
 | REC-005 | PITR | 在 mapping/target/control 变更前后恢复到时点 | target/control/catalog 与时点一致；恢复范围外对象不变；恢复后 connection 可管理、可重建、可清理 | ⏸️ |
@@ -594,7 +595,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - DECIMAL：DECIMAL64/128/256 路径分别验证精确值、scale 舍入、DECIMAL(5,2) overflow、DECIMAL(65,5) padding；初次使用超过 Decimal128 34 位有效数字的 fixture 被识别为 BSON fixture 非法并排除，不作为产品缺陷。
 - DECIMAL 特殊值：Decimal128 `NaN`、`Infinity`、`-Infinity` 在 DECIMAL(18,2) mapping 下各执行 3/3，均稳定返回 `ERROR 20301`，未产生 NULL 或错误数值。
 - 空值/大值：空 collection、空 string/binary、100KB TEXT/BLOB 通过；`max-value-bytes=524288` 下 524260 bytes 通过，524280/524288 bytes 稳定拒绝，statement 可复用。
-- 宽度边界：`VARCHAR(4)`/`VARBINARY(4)` 对 3/4/5 长度数据在 try_null 下保留 3/4、超宽转 NULL；strict 在超宽值上稳定返回转换错误。`max-value-bytes=524288` 下 TEXT 524275 bytes 通过、524276 bytes 触发 BSON document 上限错误；try_null 在未投影大值时可返回行，投影该列时仍按上限失败。
+- 宽度边界：`VARCHAR(4)`/`VARBINARY(4)` 对 3/4/5 长度数据在 try_null 下保留 3/4、超宽转 NULL；strict 在超宽值上稳定返回转换错误。`max-value-bytes=524288` 下 TEXT/BLOB 均为 524275 bytes 通过、524276 bytes 触发 BSON document 上限错误；BLOB try_null 下 `COUNT(*)`/仅投影 `id` 可返回 1 行，但 `COUNT(b)` 仍稳定报上限错误。
 - 失败闭环：connection 参数（hosts/srv_host、URI、未知 option、错误 Secret ref）和 table 参数（max_parallelism、schema_mode、conversion_mode、未知 option）各 3/3 fail-closed，未留下对象。
 - Path/谓词：三层 dotted path 的 nested/missing/null/scalar/array 中间节点均执行 3/3；未发生数组自动展开。`= != < <= >= IN`、`IS NULL/IS NOT NULL`、AND/OR/NOT 各 3/3 与独立结果一致，EXPLAIN 均显示 residual-only（pushed=0）。
 - 时间谓词：DATETIME/TIMESTAMP(0) 对 `.000/.001/.099/.100/.999` 及下一秒执行 equality/range/IN 3/3，并与本地 DATETIME(0) Oracle 一致；`.999` 归一化到下一秒是 MatrixOne 本地表同样行为。
@@ -605,8 +606,8 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 权限边界：按 MatrixOne 角色模型创建临时普通用户，授予目标外表 SELECT 后查询 3/3 为 `4/70`；创建 MongoDB connection 3/3 拒绝；临时用户、角色和夹具已清理。
 - Prepared 兼容性：普通 SELECT 控制 3/3 为 `4/70`；PREPARE MongoDB 外表扫描 3/3 返回 `ERROR 20105`。Issue/研发文档未说明该限制，已提交 #27411；当前 main 源码 `query_builder_test.go` 存在同一拒绝断言。
 - main 新鲜度：官方 main 当前为 `d7899e703dfaef428f272c2fc0452813c0b8636c`，但 TKE 仓库没有对应镜像；曾在本 namespace 尝试更新后因 `ImagePullBackOff` 回滚到可用的 `c8e3fa745`，未影响其他 namespace。Bug 证据明确记录该环境差异。
-- 分布式恢复：删除当前 namespace 的 Mongo PRIMARY Pod 后，`secondaryPreferred + majority` 查询 20/20 为 `4/70`，恢复后为 1 PRIMARY + 2 SECONDARY；删除一个 CN Pod 后查询 20/20 为 `4/70`，恢复为 3 CN Ready 且 CR Ready。
-- 本轮尚未完成：BLOB 的独立 max-value-bytes 精确边界与 bytes/scan/conversion 预算、完整 temporal 组合、TLS/SRV/TXT、getMore/网络断流、TN kill、Snapshot/PITR、NESR 和规模性能；`DATE_FORMAT + ORDER BY` 的 #27415 仍待修复；prepared 的正式支持/限制仍待研发确认，MongoDB JSON 用户合同由 #27414 跟踪。
+- 分布式恢复：删除当前 namespace 的 Mongo PRIMARY Pod 后，`secondaryPreferred + majority` 查询 20/20 为 `4/70`，恢复后为 1 PRIMARY + 2 SECONDARY；删除一个 CN Pod 后查询 20/20 为 `4/70`，恢复为 3 CN Ready 且 CR Ready；删除 DN Pod 后外表查询连续 3 次为 `4/70`，CR 保持 Ready。
+- 本轮尚未完成：bytes/scan/conversion 预算、完整 temporal 组合、TLS/SRV/TXT、getMore/网络断流、Snapshot/PITR、NESR 和规模性能；`DATE_FORMAT + ORDER BY` 的 #27415 仍待修复；prepared 的正式支持/限制仍待研发确认，MongoDB JSON 用户合同由 #27414 跟踪。
 
 ### 本轮继续执行记录（2026-08-19，`mo-search-commit-71031d0e9-20260819`）
 
