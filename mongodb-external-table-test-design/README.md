@@ -99,7 +99,7 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 | 类型错误 | 每个 BSON value 只能按公开映射转换；不能隐式放宽 String→Number、String→Date 等 | P0 | ◐ 代表性转换已测，完整类型参数化未完成 |
 | NULL/约束 | missing/null/undefined/type-error 与 NULL、NOT NULL、try_null 的组合结果确定 | P0 | ✅ 核心 NULL/NOT NULL/target 约束已通过 |
 | 目标约束 | PK/UNIQUE/FK/CHECK/NOT NULL 失败时整条 source DML 回滚 | P0 | ✅ |
-| 时间下推 | BSON 毫秒精度与 DATETIME/TIMESTAMP(0..6) 比较不得产生 false negative | P0 | ⏸️ |
+| 时间下推 | BSON 毫秒精度与 DATETIME/TIMESTAMP(0..6) 比较不得产生 false negative | P0 | ◐ scale 0 低精度 equality/range/IN 与本地 Oracle 已通过；pushed candidate 仍未覆盖 |
 | 表类型 | 不同对象的可读、可写、会话、租户和 owner 语义不串线 | P0 | ◐ Mongo/普通表核心已测，temp/cluster/tenant 未完成 |
 | 安全 | secret/URI/endpoint/query literal 不进入 SHOW、plan、日志、错误和 artifact | P0 | ◐ EXPLAIN/权限 marker 已测，全链路脱敏未完成 |
 | catalog 分类 | generic external metadata 不能伪装成 Mongo mapping 或借用高权限 connection | P0 | ✅ |
@@ -107,7 +107,7 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 | 资源 | raw/decoded/vector 均受预算约束；超限 fail-fast，不 OOM/restart | P0 | ⏸️ |
 | 推下正确性 | pushed filter 是候选过滤，最终结果始终由 MO residual 语义保证 | P1 | ◐ EXPLAIN/代表性 predicate 已测 |
 | 确定性 | 相同时间使用稳定 tie key；聚合 partial merge 不依赖 batch 到达顺序 | P1 | ✅ max_by/GAPFILL 代表性结果已通过 |
-| 生命周期 | ALTER/DISABLE/DROP/rotation 后新语句不能使用 stale mapping/client | P1 | ◐ disable/enable 已测，stale/rotation 未完成 |
+| 生命周期 | ALTER/DISABLE/DROP/rotation 后新语句不能使用 stale mapping/client | P1 | ◐ create/SHOW/DROP、ALTER SET、disable/enable 已测；stale plan 和真实 secret rotation 未完成 |
 | 恢复 | 重启、Snapshot/PITR 后无 orphan mapping，已提交 target/control 一致 | P1 | ⏸️ |
 | 大规模复杂度 | 高 cardinality、宽 schema、长 varlen、低选择率不能导致非预期平方复杂度 | P1 | ⏸️ |
 
@@ -308,7 +308,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | TYPE-005 | `sql.data-types-and-conversion` | temporal instant/domain/scale 正确 | DT-15～17 | 各 timezone session、scale 0..6、越界 | DATE/DATETIME/TIMESTAMP 结果和显示语义正确；无 overflow/wrap | 同连接后续查询成功 | P0 UT+E2E | ◐ DATETIME/TIMESTAMP scale 0/1/2/3/6、UTC/+08:00、epoch、9999 域、非 DateTime 拒绝和低精度本地 Oracle 对照已验证；DST/完整日边界未完成 |
 | TYPE-006 | `sql.data-types-and-conversion` | 字符宽度按 Unicode code point | DT-18～20 | ASCII/CJK/emoji/组合字符 n±1 | 合法保留；超宽按 mode；ObjectID 为小写 24 hex | value/decoded budget正确 | UT+BVT | ◐ ASCII/CJK/emoji/NUL、组合字符（e + U+0301、ZWJ emoji）、CHAR/VARCHAR n±1、100KB/阈值附近 TEXT 已测；完整组合字符超宽矩阵未完成 |
 | TYPE-007 | `sql.data-types-and-conversion` | 二进制与 ObjectID 字节不损坏 | DT-21～23 | subtype、NUL、ObjectID、n±1 | bytes逐字节相等；ObjectID 12 bytes | 无编码二次转换 | UT+BVT | ◐ BINARY/VARBINARY 3/4/5 bytes、空值、subtype 4、BLOB 大值和 ObjectID 12 bytes 已测；padding/compare 未完成 |
-| TYPE-008 | `sql.data-types-and-conversion` | JSON 保留 BSON 类型区别 | DT-24 全 BSON fixture | 读取 scalar/document/array/special values | canonical Extended JSON 可解码且类型标签正确 | 单值上限生效 | UT+E2E | ✅ document/array/null/Boolean/Int32 及 Decimal/Date/Binary/ObjectID/Int64 special 均已验证 |
+| TYPE-008 | `sql.data-types-and-conversion` | JSON 保留 BSON 类型区别 | DT-24 全 BSON fixture | 读取 scalar/document/array/special values | canonical Extended JSON 可解码且类型标签正确 | 单值上限生效 | UT+E2E | ◐ document/array/null/Boolean/Int32 及 Decimal/Date/Binary/ObjectID/Int64 special 3/3 已验证；Canonical Extended JSON 对用户查询语义未在 Issue/研发文档中明确，待研发确认并补充合同 |
 | TYPE-009 | `schema.ddl-lifecycle` | 所有 unsupported MO 类型早拒绝 | DT-U01～11 DDL | 逐类 × mode/nullability 建表 | 全部 scan 前拒绝，错误指出 unsupported type | catalog/mapping/client=0 | P0 plan UT+BVT | ❌ SET 例外（#27259）；BIT/TIME/YEAR/ENUM/UUID/DATALINK/GEOMETRY/GEOMETRY32/全部向量子类型/TS/ROWID/BLOCKID/OBJECTID 均已拒绝 |
 | TYPE-010 | `transaction.statement-atomicity` | source/target 隐式赋值不额外放宽 | 支持 source 类型→相同/兼容/不兼容 target | INSERT SELECT | 相同类型成功；兼容转换与本地 source 对照；不兼容整句失败 | target hash保持 | BVT+MOTR | ◐ 已覆盖约束失败和代表类型 |
 
@@ -320,9 +320,9 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | QRY-002 | `query.optimizer-and-plan` | 安全比较下推等价且差分可执行 | bool/int/time fixture；同一语义准备 pushed candidate 与 residual-only candidate | `= != < <= >= IN`；先用 EXPLAIN 确认 `pushed>0`/`pushed=0` | 两条路径都与独立 BSON oracle 一致；若实现没有关闭 pushdown 开关，则只使用自然产生 `pushed=0` 的等价 SQL，不把“导入本地表后比较”当作 converter 独立 oracle | 保存 plan、pushed count、residual digest、source candidate 结果 | P0 differential E2E | ◐ 比较/IN 全操作符及 AND/OR/NOT 各 3/3 与 Oracle 一致，但 EXPLAIN 均为 residual-only（pushed=0），pushed>0 路径未覆盖 |
 | QRY-003 | `query.optimizer-and-plan` | NULL 候选不排除 malformed | missing/null/undefined/wrong type | IS NULL/IS NOT NULL、AND/OR/NOT | strict/try_null 各自与 Oracle 一致，无 false negative | cursor释放 | P0 differential E2E | ✅ IS NULL/IS NOT NULL、AND/OR/NOT 及比较组合 3/3 与独立结果一致 |
 | QRY-004 | `query.optimizer-and-plan` | 低精度 temporal 下推安全 | 10.000～10.999s BSON DateTime | DATETIME/TIMESTAMP(0/1/2) equality/range/IN | candidate range覆盖所有 residual 命中；无 false negative | plan含residual | P0 regression UT+BVT | ◐ DATETIME/TIMESTAMP(0) equality/range/IN 3/3 与本地 DATETIME(0) Oracle 一致；`.999` 的下一秒归一化也一致；当前计划为 residual-only，pushed candidate 未覆盖 |
-| QRY-005 | `query.optimizer-and-plan` | 不安全表达式只在 MO 求值 | float/collation/function/JSON/array | 函数、cast、LIKE、复杂 OR、JSON expr | 不支持部分 residual-only；不能因不可推而拒绝合法 SQL | Mongo command无敏感 literal | BVT+E2E | ◐ CTE/窗口等算子已测，JSON/collation residual 未完成 |
+| QRY-005 | `query.optimizer-and-plan` | 不安全表达式只在 MO 求值 | float/collation/function/JSON/array | 函数、cast、LIKE、复杂 OR、JSON expr | 不支持部分 residual-only；不能因不可推而拒绝合法 SQL | Mongo command无敏感 literal | BVT+E2E | ◐ JSON_EXTRACT/JSON_UNQUOTE/JSON_CONTAINS/JSON_LENGTH/NULL 3/3；字符 equality/LIKE/BINARY/COLLATE 与本地 Oracle 3/3；外表 JSON 保留 `$numberInt` 导致 JSON 查询与本地 JSON 结果不同，合同待确认 |
 | QRY-006 | `query.optimizer-and-plan` | dotted path 不遍历 array | nested/missing/scalar/array intermediate | projection和各 predicate | 文档路径正常；scalar/array按 strict/try_null；不自动展开 | 无 panic/cursor leak | P0 E2E | ◐ 三层 nested、missing、null、scalar、array 均 3/3 验证；未自动展开，异常中间节点按 missing/NULL 语义返回；完整 strict/try_null 交叉矩阵未完成 |
-| QRY-007 | `query.optimizer-and-plan` | CTE/subquery set 语义正确 | Mongo+local fixture | CTE、derived table、EXISTS/IN、UNION/UNION ALL | 与物化本地副本结果一致 | 临时执行状态释放 | BVT | ◐ CTE/EXISTS/IN 已通过，UNION 未完成 |
+| QRY-007 | `query.optimizer-and-plan` | CTE/subquery set 语义正确 | Mongo+local fixture | CTE、derived table、EXISTS/IN、UNION/UNION ALL | 与物化本地副本结果一致 | 临时执行状态释放 | BVT | ✅ CTE/derived/EXISTS/IN/UNION/UNION ALL 各 3/3；结果分别稳定为 2/50、2/50、2、4/70、3/60 |
 | QRY-008 | `query.optimizer-and-plan` | Join 类型和 NULL 语义正确 | Mongo fact+local dimension | inner/left/right/semi/anti，多 key | 行数/key/null extension 与 Oracle 一致 | 两侧状态释放 | BVT+MOTR | ✅ inner/left/right/semi/anti 和多 key 代表组均通过 |
 | QRY-009 | `query.optimizer-and-plan` | aggregate/window 不依赖 batch | 多 batch、skew/null fixture | GROUP BY、distinct、count/sum/avg/min/max、window | 与不同 batch size、本地副本一致 | agg memory回收 | BVT+big-data | ✅ Group/Window 结果已通过 |
 | QRY-010 | `query.optimizer-and-plan` | 时间算子和 tie 稳定 | 多 partition、相同 ts/不同 `_id` | TimeWindow、max_by/non_null、GAPFILL | 与 reference一致；tie 使用声明的稳定 key | gap/window limit可观测 | P1 MOTR | ✅ max_by/max_by_non_null/GAPFILL 已通过 |
@@ -465,7 +465,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 | ID | 场景 | 操作与 Oracle | 通过标准 | 测试结果 |
 |---|---|---|---|---|
-| HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 | ◐ DISABLE/ENABLE 3 轮及基线恢复已通过，创建/SHOW/DROP 未完成 |
+| HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 | ◐ 独立连接建表、SHOW、ALTER SET、disable/enable、被引用时 DROP 拒绝、删表后 DROP 和清理均 3 轮通过；version 递增细节及真实 secret rotation 未完成 |
 | HP-002 | 显式 schema scan | 创建包含 scalar、dotted path、ObjectID、DateTime、Decimal128、Binary、JSON 的 external table，分别执行全列/部分列/重排列 SELECT | 逐值与 canonical Extended JSON 独立 oracle 一致；缺失 nullable path 为 SQL NULL；source collection 不变 | ◐ 核心类型/NULL 查询已通过，完整类型集合未完成 |
 | HP-003 | pushdown + residual differential | 对 try_null 的 bool/整数/DATETIME(3+) 执行比较、IN、IS NOT NULL；对 strict、浮点、字符串、IS NULL 执行同样 SQL；用 test-only residual-only 开关，若无开关则使用 EXPLAIN 可证明 `pushed=0` 的自然等价 SQL | 保存两份 EXPLAIN、pushed predicate 数量、residual shape digest、source candidate 结果和最终 multiset；pushdown 只能减少候选集，`pushed>0` 与 `pushed=0` 结果一致；本地物化不能作为独立 BSON→MO converter Oracle | ◐ EXPLAIN/predicate 核心已测，全操作符差分未完成 |
 | HP-004 | 下游算子链 | MongoScan → Filter → TimeWindow/Group → `max_by`/`max_by_non_null` → `GAPFILL(PARTITION)` → target | 与 materialized local copy 结果一致；相同 `(ts,_id)` tie 选择最大 `_id`；空 partition 不凭空生成 | ◐ max_by/GAPFILL 已通过，完整链路落 target 未完成 |
@@ -596,10 +596,14 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - Path/谓词：三层 dotted path 的 nested/missing/null/scalar/array 中间节点均执行 3/3；未发生数组自动展开。`= != < <= >= IN`、`IS NULL/IS NOT NULL`、AND/OR/NOT 各 3/3 与独立结果一致，EXPLAIN 均显示 residual-only（pushed=0）。
 - 时间谓词：DATETIME/TIMESTAMP(0) 对 `.000/.001/.099/.100/.999` 及下一秒执行 equality/range/IN 3/3，并与本地 DATETIME(0) Oracle 一致；`.999` 归一化到下一秒是 MatrixOne 本地表同样行为。
 - DDL 拒绝矩阵：KEY/UNIQUE/INDEX/FULLTEXT 各 3/3 返回 `cannot create index on external table`；VECBF16/VECF16/VECUINT8、TS/ROWID/BLOCKID/OBJECTID 各 3/3 在建表阶段拒绝，未残留对象。
+- 连接生命周期：独立 connection/table 的 create、SHOW、ALTER SET、被引用时 DROP 拒绝、删表后 DROP 和清理各 3/3 通过；已有 connection disable 时查询稳定返回 `MongoDB connection is disabled`，enable 后恢复 `4/70`，ALTER SET 后查询仍为 `4/70`。
+- 跨查询组合：CTE、derived table、EXISTS、IN、UNION、UNION ALL 各 3/3 与独立结果一致，结果分别稳定为 `2/50`、`2/50`、`2`、`2`、`3/60`、`4/70`。
+- JSON/字符语义：JSON 外表与本地 JSON 对照各 3/3；普通标量/NULL/JSON_LENGTH 一致，但 Mongo BSON 数值在 JSON 中保留 `{$numberInt:...}`，导致 JSON_EXTRACT/JSON_CONTAINS 结果与本地 JSON 不同。字符 equality/LIKE/BINARY/COLLATE 与本地 Oracle 各 3/3 一致；该 JSON 表示及查询合同未在 Issue/研发文档中说明，列为产品待确认项。
+- 权限边界：按 MatrixOne 角色模型创建临时普通用户，授予目标外表 SELECT 后查询 3/3 为 `4/70`；创建 MongoDB connection 3/3 拒绝；临时用户、角色和夹具已清理。
 - Prepared 兼容性：普通 SELECT 控制 3/3 为 `4/70`；PREPARE MongoDB 外表扫描 3/3 返回 `ERROR 20105`。Issue/研发文档未说明该限制，已提交 #27411；当前 main 源码 `query_builder_test.go` 存在同一拒绝断言。
 - main 新鲜度：官方 main 当前为 `d7899e703dfaef428f272c2fc0452813c0b8636c`，但 TKE 仓库没有对应镜像；曾在本 namespace 尝试更新后因 `ImagePullBackOff` 回滚到可用的 `c8e3fa745`，未影响其他 namespace。Bug 证据明确记录该环境差异。
 - 分布式恢复：删除当前 namespace 的 Mongo PRIMARY Pod 后，`secondaryPreferred + majority` 查询 20/20 为 `4/70`，恢复后为 1 PRIMARY + 2 SECONDARY；删除一个 CN Pod 后查询 20/20 为 `4/70`，恢复为 3 CN Ready 且 CR Ready。
-- 本轮尚未完成：TEXT/BLOB 精确阈值与 bytes/scan/conversion 预算、timezone DST、完整 temporal 越界矩阵、TLS/SRV/TXT、getMore/网络断流、TN kill、Snapshot/PITR、NESR 和规模性能；prepared 的正式支持/限制仍待研发确认。
+- 本轮尚未完成：TEXT/BLOB 精确阈值与 bytes/scan/conversion 预算、timezone DST、完整 temporal 越界矩阵、TLS/SRV/TXT、getMore/网络断流、TN kill、Snapshot/PITR、NESR 和规模性能；prepared 的正式支持/限制及 MongoDB JSON 的 Canonical Extended JSON 用户合同仍待研发确认。
 
 ### 本轮继续执行记录（2026-08-19，`mo-search-commit-71031d0e9-20260819`）
 
@@ -688,3 +692,4 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - mutable collection、源端物理删除、overlap 之前的 late correction 需要业务侧选择 snapshot/dedup/range-delete/backfill 策略；不能由 external table 无状态扫描自动保证。
 - `GAPFILL` 上限、`max_by` 浮点 tolerance、300 万 raw rows 的 nightly 门槛、NESR 客户峰值门槛、source protection 和最大 cursor 时长需要产品/运维给出明确数值。
 - 当前文档与 main README 在“功能默认 enable”描述上曾有差异；以当前 main README 为实现基线，同时要求 release 文档、配置参考和错误合同统一后再宣称正式支持。
+- MongoDB JSON 的 Canonical Extended JSON 表示由当前 main converter 实现注释明确，但 Issue #26229 和研发用户文档未说明其对 `JSON_EXTRACT`/`JSON_CONTAINS` 的用户影响；需要研发确认“保留类型标签”是否为正式合同，并补充示例或提供规范化模式。
