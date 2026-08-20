@@ -595,7 +595,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - DECIMAL：DECIMAL64/128/256 路径分别验证精确值、scale 舍入、DECIMAL(5,2) overflow、DECIMAL(65,5) padding；初次使用超过 Decimal128 34 位有效数字的 fixture 被识别为 BSON fixture 非法并排除，不作为产品缺陷。
 - DECIMAL 特殊值：Decimal128 `NaN`、`Infinity`、`-Infinity` 在 DECIMAL(18,2) mapping 下各执行 3/3，均稳定返回 `ERROR 20301`，未产生 NULL 或错误数值。
 - 空值/大值：空 collection、空 string/binary、100KB TEXT/BLOB 通过；`max-value-bytes=524288` 下 524260 bytes 通过，524280/524288 bytes 稳定拒绝，statement 可复用。
-- 宽度边界：`VARCHAR(4)`/`VARBINARY(4)` 对 3/4/5 长度数据在 try_null 下保留 3/4、超宽转 NULL；strict 在超宽值上稳定返回转换错误。`max-value-bytes=524288` 下 TEXT/BLOB 均为 524275 bytes 通过、524276 bytes 触发 BSON document 上限错误；try_null 在未投影大值时可返回行，投影该列时仍按上限失败。
+- 宽度边界：`VARCHAR(4)`/`VARBINARY(4)` 对 3/4/5 长度数据在 try_null 下保留 3/4、超宽转 NULL；strict 在超宽值上稳定返回转换错误。`max-value-bytes=524288` 下 TEXT/BLOB 均为 524275 bytes 通过、524276 bytes 触发 BSON document 上限错误；BLOB try_null 下 `COUNT(*)`/仅投影 `id` 可返回 1 行，但 `COUNT(b)` 仍稳定报上限错误。
 - 失败闭环：connection 参数（hosts/srv_host、URI、未知 option、错误 Secret ref）和 table 参数（max_parallelism、schema_mode、conversion_mode、未知 option）各 3/3 fail-closed，未留下对象。
 - Path/谓词：三层 dotted path 的 nested/missing/null/scalar/array 中间节点均执行 3/3；未发生数组自动展开。`= != < <= >= IN`、`IS NULL/IS NOT NULL`、AND/OR/NOT 各 3/3 与独立结果一致，EXPLAIN 均显示 residual-only（pushed=0）。
 - 时间谓词：DATETIME/TIMESTAMP(0) 对 `.000/.001/.099/.100/.999` 及下一秒执行 equality/range/IN 3/3，并与本地 DATETIME(0) Oracle 一致；`.999` 归一化到下一秒是 MatrixOne 本地表同样行为。
