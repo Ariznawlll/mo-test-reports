@@ -197,9 +197,9 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | PK/KEY/UNIQUE/INDEX/FULLTEXT | 明确拒绝 | create 原子失败，无 index metadata | ✅ PRIMARY KEY、KEY、UNIQUE、INDEX、FULLTEXT 均 3/3 拒绝且无对象残留 |
 | CHECK | 明确拒绝 | 不把远端脏数据隐藏为已满足约束 | ✅ 返回 `not supported: CHECK constraints on external tables`，无对象残留 |
 | FOREIGN KEY | 待确认，准入先按拒绝 | 外表不能成为可依赖的受约束 parent/child | ❌ DDL 3/3 接受，父行删除成功且外表子值仍存在；#27354 |
-| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ❌ DDL 3/3 被接受；读取字符串 `_id` 时运行期报 BIGINT 转换错误 |
-| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ❌ DDL 3/3 被接受；`GENERATED ALWAYS AS (1)` 读取 4 行但结果全为 NULL |
-| ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 | ❌ DDL 3/3 接受并保留 metadata；#27355 |
+| AUTO_INCREMENT | 待确认，准入先按拒绝 | 读取时不得生成本地序列值 | ❌ DDL 3/3 被接受；读取字符串 `_id` 时运行期报 BIGINT 转换错误；#27347 |
+| GENERATED ALWAYS | 待确认，准入先按拒绝 | 计算列应由 SELECT expression/view 实现 | ❌ DDL 3/3 被接受；`GENERATED ALWAYS AS (1)` 读取 4 行但结果全为 NULL；#27348 |
+| ON UPDATE | 待确认，准入先按拒绝 | 外表无 UPDATE 语义 | ❌ 历史版本 DDL 3/3 接受并保留 metadata；#27355 已关闭，修复后回归 3/3 拒绝 |
 | ALTER ADD/DROP/MODIFY/RENAME COLUMN | 明确拒绝 | 提示 drop/recreate；mapping/version 不变 | ✅ 五种 column ALTER 均拒绝，拒绝后原表仍为 4 行 |
 
 | ID | 能力 ID | 不变量 | 前置状态 | 操作 | 预期结果 | 清理/状态断言 | 环境/层级 | 测试结果 |
