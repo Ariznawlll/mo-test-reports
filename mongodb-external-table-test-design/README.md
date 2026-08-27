@@ -591,6 +591,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 字符比较对照：外表与本地 `utf8mb4_bin` 表分别执行 `txt='a'`、`txt='A'`、`BINARY txt='a'`、`txt LIKE 'a%'`，四项计数均为 `1/1/1/3`；补充了 COLLATE 的基础比较语义，Unicode 完整边界及安全下推仍未完成。
 - target 约束与失败原子：`INSERT ... SELECT` 写入 `NOT NULL` 目标时因 source 的 NULL 返回 `ERROR 3819`，目标保持 `0` 行；单列 PK 冲突返回 `ERROR 1062`，预置行保持 `1/999`；`REPLACE ... SELECT` 替换预置冲突行后为 `4` 行、`SUM(i)=10`。本批仅验证无部分写入和单列键，复合键、generated/index/水位同事务仍未完成。
 - target 自动列与生成列：无显式 id 的 `INSERT ... SELECT` 写入 `AUTO_INCREMENT` 目标生成 `10001–10004`，4 行且 `SUM(i)=10`；`GENERATED ALWAYS AS (i+1) STORED` 目标读取为 `count/min/max/sum=4/2/5/14`。已证明代表性成功路径，但失败后序列副作用、source 同名伪造列和约束组合仍未完成。
+- CTAS 失败原子：将 Mongo `_id`（如 `d1`）严格映射为 `INT` 后执行 `CREATE TABLE ... AS SELECT` 返回 `ERROR 20301`，随后 catalog 中目标表计数为 `0`，确认转换失败不留下半表；取消、约束组合和完整类型矩阵仍未完成。
 - 只读 DML：`INSERT/UPDATE/DELETE/REPLACE` 各执行 3 轮，均返回 `ERROR 20301`；`TRUNCATE` 连续 3 轮返回成功但源数据始终为 4 行，未满足 DML-004 的 fail-closed 预期，沿用 #27344/#27345/#27346，不新增重复 issue。
 - 查询交叉：UNION/UNION ALL、自连接/多 mapping、derived table、RIGHT JOIN、本地表 Join、`= != < <= > >= BETWEEN IN LIKE`、`IS NULL/IS NOT NULL`、AND/OR 代表组合均执行；结果与 4 行独立 fixture 对照一致。该记录覆盖查询代表组合，不等同于完整类型×约束笛卡尔积完成。
 - 约束/列属性：外表上的 PRIMARY KEY/UNIQUE 返回 `ERROR 20301 cannot create index on external table`；CHECK、FOREIGN KEY、AUTO_INCREMENT、GENERATED ALWAYS、ON UPDATE、ALTER COLUMN 均返回 `ERROR 20105 not supported`；`DEFAULT NULL`、COMMENT、COLLATE 的 metadata 创建/展示通过；非 NULL DEFAULT 被拒绝。未把“被接受但读取异常”的历史 AUTO_INCREMENT/GENERATED 结果改写为通过。
