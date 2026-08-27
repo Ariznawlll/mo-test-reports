@@ -581,6 +581,29 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - `DATETIME/TIMESTAMP` 结合 session timezone、SQL mode、scale 做协议结果对照；本地机器 timezone 不作为固定 oracle。
 - 不把 Mongo `$group`、Change Stream/CDC、array element path、schema inference、writes、multi-CN fanout 或未列出的 URI/认证机制纳入兼容通过标准。
 
+### 本轮继续执行记录（2026-08-27，`mo-search-commit-ff4270c84-20260827`）
+
+- 版本与拓扑：MatrixOne 完整 commit `ff4270c844c4b630cf1d921da813ba119d5b5e89`，3 CN / 1 DN / 3 Log / 2 Proxy；该镜像是本轮可用的指定构建，**不是当前官方 main 最新 commit**。MongoDB 8.0.12，3-member `rs0`，使用只读测试账号。
+- 基线与清理：重新创建独立 `mongodb_e2e` connection/table，4 行 fixture 的 `count/sum/count(nullable)` 为 `4/10/3`；测试批次结束后已删除 MatrixOne 测试库，MongoDB 测试 StatefulSet、Service 和 Secret 保留供本轮后续测试使用。
+- 脱敏与视图：`SHOW CREATE TABLE`、`CREATE VIEW`/视图查询、`SHOW CREATE VIEW` 各执行成功；检查结果未出现 password、带 userinfo 的 Mongo URI 或 CA PEM，视图读取 4 行。
+- 临时表断连清理：客户端 session 内创建并读取 2 行 TEMPORARY TABLE；客户端进程退出后，新连接查询该临时表稳定返回 `ERROR 1146 table does not exist`，补齐“断连自动清理”的一项证据。
+- 外表生命周期：删除外表后重建 mapping，重建前后读取均为 4 行，证明 DROP/RECREATE 不改写 MongoDB 源 collection；该结果不替代 connection 被引用时 DROP、stale client 和 Snapshot/PITR 生命周期验证。
+- 字符比较对照：外表与本地 `utf8mb4_bin` 表分别执行 `txt='a'`、`txt='A'`、`BINARY txt='a'`、`txt LIKE 'a%'`，四项计数均为 `1/1/1/3`；补充了 COLLATE 的基础比较语义，Unicode 完整边界及安全下推仍未完成。
+- target 约束与失败原子：`INSERT ... SELECT` 写入 `NOT NULL` 目标时因 source 的 NULL 返回 `ERROR 3819`，目标保持 `0` 行；单列 PK 冲突返回 `ERROR 1062`，预置行保持 `1/999`；`REPLACE ... SELECT` 替换预置冲突行后为 `4` 行、`SUM(i)=10`。本批仅验证无部分写入和单列键，复合键、generated/index/水位同事务仍未完成。
+- target 自动列与生成列：无显式 id 的 `INSERT ... SELECT` 写入 `AUTO_INCREMENT` 目标生成 `10001–10004`，4 行且 `SUM(i)=10`；`GENERATED ALWAYS AS (i+1) STORED` 目标读取为 `count/min/max/sum=4/2/5/14`。已证明代表性成功路径，但失败后序列副作用、source 同名伪造列和约束组合仍未完成。
+- CTAS 失败原子：将 Mongo `_id`（如 `d1`）严格映射为 `INT` 后执行 `CREATE TABLE ... AS SELECT` 返回 `ERROR 20301`，随后 catalog 中目标表计数为 `0`，确认转换失败不留下半表；取消、约束组合和完整类型矩阵仍未完成。
+- CREATE TABLE LIKE：尝试从 Mongo 外表复制 schema 时返回 `ERROR 20101 ... is not BASE TABLE`，后续确认目标表不存在并清理数据库；当前未定义“外表 LIKE 必须支持”的正式合同，因此记为行为/合同待确认，不作为通过项或新 bug。
+- 只读 DML：`INSERT/UPDATE/DELETE/REPLACE` 各执行 3 轮，均返回 `ERROR 20301`；`TRUNCATE` 连续 3 轮返回成功但源数据始终为 4 行，未满足 DML-004 的 fail-closed 预期，沿用 #27344/#27345/#27346，不新增重复 issue。
+- 查询交叉：UNION/UNION ALL、自连接/多 mapping、derived table、RIGHT JOIN、本地表 Join、`= != < <= > >= BETWEEN IN LIKE`、`IS NULL/IS NOT NULL`、AND/OR 代表组合均执行；结果与 4 行独立 fixture 对照一致。该记录覆盖查询代表组合，不等同于完整类型×约束笛卡尔积完成。
+- 约束/列属性：外表上的 PRIMARY KEY/UNIQUE 返回 `ERROR 20301 cannot create index on external table`；CHECK、FOREIGN KEY、AUTO_INCREMENT、GENERATED ALWAYS、ON UPDATE、ALTER COLUMN 均返回 `ERROR 20105 not supported`；`DEFAULT NULL`、COMMENT、COLLATE 的 metadata 创建/展示通过；非 NULL DEFAULT 被拒绝。未把“被接受但读取异常”的历史 AUTO_INCREMENT/GENERATED 结果改写为通过。
+- 类型与边界：完成 bool、整数、浮点、DECIMAL、CHAR/VARCHAR/TEXT、JSON 的代表性读取，以及 DATALINK/GEOMETRY/VECF32/VECBF16 等不支持类型的 DDL 拒绝；本轮没有可写 Mongo 账号，不能声称 24 种类型 × `strict/try_null` × `nullable/NOT NULL` 的 768 组合已完成。
+- 临时表与跨查询：TEMPORARY TABLE 当前 session 可读，另一 session 不可见；CTE/derived/EXISTS/IN/UNION 代表组合执行通过。断连自动清理、TEMPORARY 与全部约束/索引组合仍保留为 GAP。
+- 故障恢复：删除当前 namespace 的 Mongo SECONDARY Pod 后自动重建，3-member ReplicaSet 恢复，MatrixOne 保持 Ready；该结果只覆盖 secondary pod 重建，不等同于完整的 primary 切换、网络断流、getMore/cancel 或 CN/DN kill 矩阵。
+- 环境限制：本 namespace 未部署 TLS/SRV/TXT、Iceberg/S3/Hive、Snapshot/PITR/Backup/Restore、NESR fixture 或规模性能任务；这些项目继续标记 `⏸️`，不能用普通 Mongo 外表读成功替代。
+- 可写 fixture 尝试：为第一期 24 类型矩阵在本 namespace 临时创建 1 Pod、`emptyDir`、`mongo:8.0.12` 的 `mongodb-cov-writable`；调度器报告无可用余量（`Insufficient memory`/`Too many pods`，其余节点受 taint 限制），Pod 未启动，随后已删除该 StatefulSet/Service/Secret/Pod。因没有可写 Mongo fixture，24 类型边界仍不能执行；未改动现有 3 节点 Mongo 或 MO 组件。
+- CLUSTER TABLE：尝试在临时数据库创建/写入/读取/截断 cluster table，当前测试账号返回 `ERROR 20101 do not have privilege to execute the statement`，后续确认对象不存在并清理数据库；该能力要求 system admin，故 E4 多租户/cluster table 仍为环境阻塞，不判为产品缺陷。
+- 本轮新增可执行证据仍未覆盖：完整 24×4×8 参数化矩阵、真实写入/边界 BSON fixture、bytes/scan/conversion budget、长 cursor/getMore/网络故障、事务并发/watermark/commit-ack、TLS/SRV/TXT、多租户、Snapshot/PITR、NESR 和大数据/稳定性性能。
+
 ### 本轮继续执行记录（2026-08-20，`mo-search-commit-c8e3fa745-20260820`）
 
 - 版本与拓扑：MatrixOne 完整 commit `c8e3fa745a336a406a0d17f29c3c05fb48bd394c`，3 CN / 1 DN / 3 Log / 2 Proxy；MongoDB 8.0.12，3-member `rs0`（1 PRIMARY、2 SECONDARY，health 均为 1）。
