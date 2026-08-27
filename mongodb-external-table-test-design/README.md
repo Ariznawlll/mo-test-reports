@@ -159,7 +159,7 @@ Oracle 使用 Go Driver 或 mongosh 导出的 canonical Extended JSON，加独�
 | 普通永久表 | 不适用 | P | P | 覆盖全部目标约束和数据类型赋值 | ✅ 目标约束核心组合已通过 |
 | TEMPORARY TABLE | 不适用 | P | P | 仅当前 session 可见；断连自动清理 | ✅ 当前 session 可见、另一 session 不可见、显式 DROP 后无 catalog 残留 |
 | CLUSTER TABLE | 不适用 | C | C | system admin 创建；tenant 只读范围按正式合同验证 | ⏸️ |
-| VIEW | 不适用 | P | 不作为基础写入目标 | DEFINER/INVOKER、嵌套 view、权限撤销 | ◐ 基础查询、DEFINER/INVOKER、嵌套和撤权已通过；DROP/recreate 依赖未完成 |
+| VIEW | 不适用 | P | 不作为基础写入目标 | DEFINER/INVOKER、嵌套 view、权限撤销 | ✅ 基础查询、DEFINER/INVOKER、嵌套、撤权和 DROP/recreate 依赖已通过 |
 | 普通 external table（INFILE/S3） | I | I | N | 只读 Join/Union；不要求跨源 pushdown | ⏸️ |
 | Iceberg external table | I | I | N | 有 Iceberg 环境才执行只读 Join/Union | ⏸️ 环境未提供 |
 | `CREATE TABLE AS SELECT` | 不适用 | 不适用 | P | 新建普通表并物化 Mongo 查询结果 | ✅ 成功与失败原子性已通过 |
@@ -176,7 +176,7 @@ Oracle 使用 Go Driver 或 mongosh 导出的 canonical Extended JSON，加独�
 | OBJ-003 | `query.optimizer-and-plan` | 普通表与 Mongo 外表互操作 | 普通表维表和 target | 两种 join order、semi/anti/left join | 结果与本地快照对照一致 | 普通表不被 SELECT 修改 | BVT | ✅ |
 | OBJ-004 | `schema.ddl-lifecycle` | 临时表 session 隔离 | session A/B | A 建 temp 并 `INSERT SELECT`；B 同名访问；A 断连 | A 可见、B 不可见/可建独立同名；断连后清理 | 无持久 temp catalog/data | BVT+MOTR | ✅ A 可见 2 行；B 返回 table does not exist；DROP 后 catalog 计数 0 |
 | OBJ-005 | `security.authorization-and-isolation` | cluster table 租户可见性不越界 | E4，sys 创建 cluster target | sys 写入 Mongo 结果；tenant A/B 查询 | sys 可见全部；租户只见自己的可见行；tenant 不可直接写 | cluster row/account key 正确 | 多租户 MOTR | ⏸️ |
-| OBJ-006 | `security.authorization-and-isolation` | view security 不泄露 connection | DEFINER/INVOKER view，低权用户 | SELECT、SHOW CREATE VIEW、直读 base external、撤权 | DEFINER 仅 View 权限可读；INVOKER 需额外 base 权限；撤权即时生效；不显示 secret/endpoint | DROP view 后 dependency 正常 | BVT+MOTR | ◐ DEFINER/INVOKER、嵌套、撤权及脱敏已通过；DROP/recreate 未完成 |
+| OBJ-006 | `security.authorization-and-isolation` | view security 不泄露 connection | DEFINER/INVOKER view，低权用户 | SELECT、SHOW CREATE VIEW、直读 base external、撤权 | DEFINER 仅 View 权限可读；INVOKER 需额外 base 权限；撤权即时生效；不显示 secret/endpoint | DROP view 后 dependency 正常 | BVT+MOTR | ✅ DEFINER/INVOKER、嵌套、撤权、脱敏和 DROP/recreate 已通过 |
 | OBJ-007 | `query.optimizer-and-plan` | 其他 external source 只参与 MO 层组合 | file/S3 external + Mongo external | JOIN/UNION/CTE | 结果正确；无错误跨源 predicate pushdown | 两类 reader 都释放 | BVT/条件 E2E | ⏸️ 环境未提供 |
 | OBJ-008 | `transaction.statement-atomicity` | CTAS 全成全败 | 空 schema；Mongo fixture 含合法/非法行 | CTAS 成功；strict 转换中途失败 | 成功表 schema/rows 正确；失败不留半表/部分行 | catalog 与 storage 无残留 | BVT+MOTR | ✅ |
 | OBJ-009 | `schema.ddl-lifecycle` | LIKE 不复制 Mongo 私有映射 | Mongo 外表和普通模板表 | `CREATE TABLE LIKE` 两种来源 | 仅正式允许的路径成功；不得生成可绕过 connection 的 Mongo mapping | SHOW CREATE 无 secret/marker 注入 | BVT | ✅ |
@@ -343,7 +343,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | 普通永久表 | P | P | P | P | P | P | P | P | P | P | ✅ 核心约束已通过 |
 | TEMPORARY TABLE | R | R | R | GAP | GAP | R | GAP | GAP | R | GAP | ◐ AUTO_INCREMENT/GENERATED/UNIQUE/二级索引、NOT NULL/CHECK 失败原子和断连清理已测；FK 明确不支持、全组合未完成 |
 | CLUSTER TABLE | R | GAP | R | GAP | GAP | GAP | GAP | R | GAP | C | ⏸️ |
-| VIEW（基于本地/Mongo 外表） | P | N/只读语义 | N/写入目标不适用 | N/依赖权限 | N/由底层表承担 | N | N | N | R | R/C | ◐ 基础查询、DEFINER/INVOKER、嵌套和撤权已通过；DROP/recreate 未完成 |
+| VIEW（基于本地/Mongo 外表） | P | N/只读语义 | N/写入目标不适用 | N/依赖权限 | N/由底层表承担 | N | N | N | R | R/C | ✅ 基础查询、DEFINER/INVOKER、嵌套、撤权和 DROP/recreate 已通过 |
 | 普通 External/Iceberg External | R | GAP | N/按外表合同 | GAP | N/按外表合同 | N | N | C | GAP | C | ⏸️ |
 | MongoDB External Table | P | GAP（非 NULL DEFAULT） | N | N | N | N | N | N | R | P/C | ◐ 核心列约束、复合 target 冲突和权限交叉已测，属性全组合未完成 |
 | CTAS 生成的普通表 | R | GAP | R | GAP | GAP | GAP | GAP | GAP | GAP | P | ✅ CTAS 成功/失败已通过 |
@@ -359,7 +359,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | 普通永久表 | P | P | P | P | P | P | P | P | ✅ 核心写入/约束已通过 |
 | TEMPORARY TABLE | R | R | R | GAP | GAP | R | R | GAP | ◐ session 隔离、代表性约束/索引和断连清理已测；CTAS/恢复未完成 |
 | CLUSTER TABLE | R | R | C | GAP | GAP | R | C | GAP | ⏸️ |
-| VIEW | P | P | N | N/视图只读 | R | P | R/C | GAP | ◐ 基础查询、Mongo View 权限隔离、DEFINER/INVOKER、撤权/嵌套已测；DROP/recreate 未完成 |
+| VIEW | P | P | N | N/视图只读 | R | P | R/C | GAP | ✅ 基础查询、Mongo View 权限隔离、DEFINER/INVOKER、撤权/嵌套和 DROP/recreate 已测 |
 | 普通 External/Iceberg External | R | R | N/条件 | GAP | GAP | C | R | C | ⏸️ |
 | MongoDB External Table | P | P | N（source 只读） | P（作为 source） | P | P/C | P | C | ◐ 核心路径、复合 target 冲突和权限交叉已测，恢复未完成 |
 | CTAS 生成的普通表 | P | P | P | N/A | R | R | P | GAP | ✅ |
@@ -374,7 +374,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | CROSS-GAP-001 | TEMPORARY × FK/CHECK/GENERATED/二级索引 × INSERT/REPLACE SELECT | GAP | session A/B 可见性、约束失败回滚、断连自动清理、重连后对象不存在 | ◐ AUTO_INCREMENT/GENERATED/UNIQUE/二级索引、CHECK/NOT NULL 失败原子和断连清理已测；FK 明确不支持（20105），完整组合未完成 |
 | CROSS-GAP-002 | TEMPORARY × DEFAULT/AUTO_INCREMENT/PK/UNIQUE × source conversion error | R | source 中途转换失败时 target、临时表序列和索引状态原子 | ◐ 临时 AUTO_INCREMENT/UNIQUE 成功及断连清理已测，转换失败与序列副作用未完成 |
 | CROSS-GAP-003 | CLUSTER × DEFAULT/FK/CHECK/GENERATED/INDEX × tenant DML | GAP/C | system 创建、tenant 读写边界、自动租户列、跨租户越权和约束错误 | ⏸️ |
-| CROSS-GAP-004 | VIEW × Mongo External × DEFINER/INVOKER × revoke/drop/recreate | R | view 依赖、权限撤销即时生效、SHOW/EXPLAIN 脱敏和 base table 重建 | ◐ DEFINER/INVOKER、嵌套、撤权即时生效、直读外表拒绝和 SHOW CREATE VIEW 拒绝已通过；DROP/recreate 未完成 |
+| CROSS-GAP-004 | VIEW × Mongo External × DEFINER/INVOKER × revoke/drop/recreate | R | view 依赖、权限撤销即时生效、SHOW/EXPLAIN 脱敏和 base table 重建 | ✅ DEFINER/INVOKER、嵌套、撤权即时生效、直读外表拒绝、SHOW CREATE VIEW 拒绝及 base table DROP/recreate 已通过 |
 | CROSS-GAP-005 | Mongo External × NOT NULL/try_null × SELECT/JOIN/CTAS/INSERT/rollback | P/R | missing/null/undefined/type error 四类输入在每个操作边界都不能输出隐式 NULL 或部分行 | ◐ 核心 SELECT/CTAS/INSERT 已测，完整交叉未完成 |
 | CROSS-GAP-006 | Mongo External × non-NULL DEFAULT/FK/AUTO_INCREMENT/GENERATED × CREATE/SHOW/scan | GAP | 产品确认后统一标记支持或拒绝；若拒绝，验证 fail-fast 与无 metadata 残留 | ⏸️ |
 | CROSS-GAP-007 | Mongo External × target PK/UNIQUE/FK/CHECK/GENERATED × INSERT/REPLACE/constraint failure | R | 同 batch/跨 batch/已有行冲突、affected rows、索引和 statement rollback | ◐ 单列及复合 PK/UNIQUE、FK/CHECK 已测；GENERATED 失败路径和索引失败未完成 |
@@ -596,7 +596,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 目标复合键与索引：Mongo 外表 `INSERT SELECT` 写入复合 PK、复合 UNIQUE 目标均为 `4` 行/`SUM(i)=10`；带二级索引的目标点查命中 `1` 行，全表为 `4/10`；带 `CLUSTER BY (i)` 的目标为 `4/10`。复合键冲突回滚、复合 PK REPLACE、索引约束失败后的 0 行/0 命中均已补测；range/hint 和更完整的临时目标组合仍未完成。
 - 复合键失败原子：预置复合 PK `(1,'d1')` 后 `INSERT ... SELECT` 返回 `ERROR 1062`，目标保持 `1/999/999`；随后 `REPLACE ... SELECT` 得到 `4/10/4`。预置复合 UNIQUE `(true,999)` 后将 source 映射为相同组合，`INSERT ... SELECT` 返回 `ERROR 1062`，目标保持 `1/999/999`；确认复合键冲突不会部分提交，NULL 组合和索引失败路径仍未完成。
 - TEMPORARY 目标约束：独立 session 分别验证临时 `AUTO_INCREMENT`（`4/1/4`）、`GENERATED`（`4/2/5`）、UNIQUE（4 行）和二级索引点查（1 行）；临时 `NOT NULL` 写入返回 `ERROR 3819`，同 session 后续查询仍可执行且行数为 `0`，随后 `SELECT 42` 成功；临时 CHECK 合法写入为 4 行，违规写入返回 `3819` 且保持 4 行；临时 FK 建表稳定返回 `ERROR 20105 not supported: add foreign key for temporary table`，与现有 MOTR 的不支持方向一致；客户端退出后临时表查询返回 `ERROR 1146`。完整约束组合仍未完成。
-- View 权限隔离：以 `sys:<user>:<role>` 角色身份创建临时低权限用户，仅授予 Mongo View 的 `SELECT`；View 查询成功（`4` 行、`SUM(i)=10`），直读 Mongo 外表和 `SHOW CREATE VIEW` 均返回 `ERROR 20101 do not have privilege`，且未暴露 connection 信息。两层 View 仅授予 outer view 时查询成功、直接访问 inner view 被拒绝；撤销 outer view 权限后立即拒绝，再次授权后恢复 `4/10`。`view_security_type='INVOKER'` 时仅 View 权限被拒绝，补授底层外表 `SELECT` 后为 `4/10`，撤销后再次拒绝。用户、角色和测试库已清理；DROP/recreate 依赖仍未完成。
+- View 权限隔离：以 `sys:<user>:<role>` 角色身份创建临时低权限用户，仅授予 Mongo View 的 `SELECT`；View 查询成功（`4` 行、`SUM(i)=10`），直读 Mongo 外表和 `SHOW CREATE VIEW` 均返回 `ERROR 20101 do not have privilege`，且未暴露 connection 信息。两层 View 仅授予 outer view 时查询成功、直接访问 inner view 被拒绝；撤销 outer view 权限后立即拒绝，再次授权后恢复 `4/10`。`view_security_type='INVOKER'` 时仅 View 权限被拒绝，补授底层外表 `SELECT` 后为 `4/10`，撤销后再次拒绝。删除被 View 依赖的外表后 View 返回 `1146`，重建同名外表后恢复 `4/10`；删除 View 后再重建外表/View 也恢复 `4/10`。用户、角色和测试库已清理。
 - 只读 DML：`INSERT/UPDATE/DELETE/REPLACE` 各执行 3 轮，均返回 `ERROR 20301`；`TRUNCATE` 连续 3 轮返回成功但源数据始终为 4 行，未满足 DML-004 的 fail-closed 预期，沿用 #27344/#27345/#27346，不新增重复 issue。
 - 查询交叉：UNION/UNION ALL、自连接/多 mapping、derived table、RIGHT JOIN、本地表 Join、`= != < <= > >= BETWEEN IN LIKE`、`IS NULL/IS NOT NULL`、AND/OR 代表组合均执行；结果与 4 行独立 fixture 对照一致。该记录覆盖查询代表组合，不等同于完整类型×约束笛卡尔积完成。
 - 约束/列属性：外表上的 PRIMARY KEY/UNIQUE 返回 `ERROR 20301 cannot create index on external table`；CHECK、FOREIGN KEY、AUTO_INCREMENT、GENERATED ALWAYS、ON UPDATE、ALTER COLUMN 均返回 `ERROR 20105 not supported`；`DEFAULT NULL`、COMMENT、COLLATE 的 metadata 创建/展示通过；非 NULL DEFAULT 被拒绝。未把“被接受但读取异常”的历史 AUTO_INCREMENT/GENERATED 结果改写为通过。
@@ -606,7 +606,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 环境限制：本 namespace 未部署 TLS/SRV/TXT、Iceberg/S3/Hive、Snapshot/PITR/Backup/Restore、NESR fixture 或规模性能任务；这些项目继续标记 `⏸️`，不能用普通 Mongo 外表读成功替代。
 - 可写 fixture 尝试：为第一期 24 类型矩阵在本 namespace 临时创建 1 Pod、`emptyDir`、`mongo:8.0.12` 的 `mongodb-cov-writable`；调度器报告无可用余量（`Insufficient memory`/`Too many pods`，其余节点受 taint 限制），Pod 未启动，随后已删除该 StatefulSet/Service/Secret/Pod。因没有可写 Mongo fixture，24 类型边界仍不能执行；未改动现有 3 节点 Mongo 或 MO 组件。
 - CLUSTER TABLE：尝试在临时数据库创建/写入/读取/截断 cluster table，当前测试账号返回 `ERROR 20101 do not have privilege to execute the statement`，后续确认对象不存在并清理数据库；该能力要求 system admin，故 E4 多租户/cluster table 仍为环境阻塞，不判为产品缺陷。
-- 本轮新增可执行证据仍未覆盖：完整 24×4×8 参数化矩阵、真实写入/边界 BSON fixture、bytes/scan/conversion budget、长 cursor/getMore/网络故障、事务并发/watermark/commit-ack、TLS/SRV/TXT、多租户、View 的 DROP/recreate 依赖、Snapshot/PITR、NESR 和大数据/稳定性性能。
+- 本轮新增可执行证据仍未覆盖：完整 24×4×8 参数化矩阵、真实写入/边界 BSON fixture、bytes/scan/conversion budget、长 cursor/getMore/网络故障、事务并发/watermark/commit-ack、TLS/SRV/TXT、多租户、Snapshot/PITR、NESR 和大数据/稳定性性能。
 
 ### 本轮继续执行记录（2026-08-20，`mo-search-commit-c8e3fa745-20260820`）
 
