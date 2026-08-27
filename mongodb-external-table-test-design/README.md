@@ -581,6 +581,19 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - `DATETIME/TIMESTAMP` 结合 session timezone、SQL mode、scale 做协议结果对照；本地机器 timezone 不作为固定 oracle。
 - 不把 Mongo `$group`、Change Stream/CDC、array element path、schema inference、writes、multi-CN fanout 或未列出的 URI/认证机制纳入兼容通过标准。
 
+### 本轮继续执行记录（2026-08-27，`mo-search-commit-ff4270c84-20260827`）
+
+- 版本与拓扑：MatrixOne 完整 commit `ff4270c844c4b630cf1d921da813ba119d5b5e89`，3 CN / 1 DN / 3 Log / 2 Proxy；该镜像是本轮可用的指定构建，**不是当前官方 main 最新 commit**。MongoDB 8.0.12，3-member `rs0`，使用只读测试账号。
+- 基线与清理：重新创建独立 `mongodb_e2e` connection/table，4 行 fixture 的 `count/sum/count(nullable)` 为 `4/10/3`；测试批次结束后已删除 MatrixOne 测试库，MongoDB 测试 StatefulSet、Service 和 Secret 保留供本轮后续测试使用。
+- 只读 DML：`INSERT/UPDATE/DELETE/REPLACE` 各执行 3 轮，均返回 `ERROR 20301`；`TRUNCATE` 连续 3 轮返回成功但源数据始终为 4 行，未满足 DML-004 的 fail-closed 预期，沿用 #27344/#27345/#27346，不新增重复 issue。
+- 查询交叉：UNION/UNION ALL、自连接/多 mapping、derived table、RIGHT JOIN、本地表 Join、`= != < <= > >= BETWEEN IN LIKE`、`IS NULL/IS NOT NULL`、AND/OR 代表组合均执行；结果与 4 行独立 fixture 对照一致。该记录覆盖查询代表组合，不等同于完整类型×约束笛卡尔积完成。
+- 约束/列属性：外表上的 PRIMARY KEY/UNIQUE 返回 `ERROR 20301 cannot create index on external table`；CHECK、FOREIGN KEY、AUTO_INCREMENT、GENERATED ALWAYS、ON UPDATE、ALTER COLUMN 均返回 `ERROR 20105 not supported`；`DEFAULT NULL`、COMMENT、COLLATE 的 metadata 创建/展示通过；非 NULL DEFAULT 被拒绝。未把“被接受但读取异常”的历史 AUTO_INCREMENT/GENERATED 结果改写为通过。
+- 类型与边界：完成 bool、整数、浮点、DECIMAL、CHAR/VARCHAR/TEXT、JSON 的代表性读取，以及 DATALINK/GEOMETRY/VECF32/VECBF16 等不支持类型的 DDL 拒绝；本轮没有可写 Mongo 账号，不能声称 24 种类型 × `strict/try_null` × `nullable/NOT NULL` 的 768 组合已完成。
+- 临时表与跨查询：TEMPORARY TABLE 当前 session 可读，另一 session 不可见；CTE/derived/EXISTS/IN/UNION 代表组合执行通过。断连自动清理、TEMPORARY 与全部约束/索引组合仍保留为 GAP。
+- 故障恢复：删除当前 namespace 的 Mongo SECONDARY Pod 后自动重建，3-member ReplicaSet 恢复，MatrixOne 保持 Ready；该结果只覆盖 secondary pod 重建，不等同于完整的 primary 切换、网络断流、getMore/cancel 或 CN/DN kill 矩阵。
+- 环境限制：本 namespace 未部署 TLS/SRV/TXT、Iceberg/S3/Hive、Snapshot/PITR/Backup/Restore、NESR fixture 或规模性能任务；这些项目继续标记 `⏸️`，不能用普通 Mongo 外表读成功替代。
+- 本轮新增可执行证据仍未覆盖：完整 24×4×8 参数化矩阵、真实写入/边界 BSON fixture、bytes/scan/conversion budget、长 cursor/getMore/网络故障、事务并发/watermark/commit-ack、TLS/SRV/TXT、多租户、Snapshot/PITR、NESR 和大数据/稳定性性能。
+
 ### 本轮继续执行记录（2026-08-20，`mo-search-commit-c8e3fa745-20260820`）
 
 - 版本与拓扑：MatrixOne 完整 commit `c8e3fa745a336a406a0d17f29c3c05fb48bd394c`，3 CN / 1 DN / 3 Log / 2 Proxy；MongoDB 8.0.12，3-member `rs0`（1 PRIMARY、2 SECONDARY，health 均为 1）。
