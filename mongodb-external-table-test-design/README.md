@@ -593,6 +593,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - target 自动列与生成列：无显式 id 的 `INSERT ... SELECT` 写入 `AUTO_INCREMENT` 目标生成 `10001–10004`，4 行且 `SUM(i)=10`；`GENERATED ALWAYS AS (i+1) STORED` 目标读取为 `count/min/max/sum=4/2/5/14`。已证明代表性成功路径，但失败后序列副作用、source 同名伪造列和约束组合仍未完成。
 - CTAS 失败原子：将 Mongo `_id`（如 `d1`）严格映射为 `INT` 后执行 `CREATE TABLE ... AS SELECT` 返回 `ERROR 20301`，随后 catalog 中目标表计数为 `0`，确认转换失败不留下半表；取消、约束组合和完整类型矩阵仍未完成。
 - CREATE TABLE LIKE：尝试从 Mongo 外表复制 schema 时返回 `ERROR 20101 ... is not BASE TABLE`，后续确认目标表不存在并清理数据库；当前未定义“外表 LIKE 必须支持”的正式合同，因此记为行为/合同待确认，不作为通过项或新 bug。
+- 目标复合键与索引：Mongo 外表 `INSERT SELECT` 写入复合 PK、复合 UNIQUE 目标均为 `4` 行/`SUM(i)=10`；带二级索引的目标点查命中 `1` 行，全表为 `4/10`；带 `CLUSTER BY (i)` 的目标为 `4/10`。已覆盖代表性成功路径，复合键冲突回滚、索引约束失败和临时目标组合仍未完成。
 - 只读 DML：`INSERT/UPDATE/DELETE/REPLACE` 各执行 3 轮，均返回 `ERROR 20301`；`TRUNCATE` 连续 3 轮返回成功但源数据始终为 4 行，未满足 DML-004 的 fail-closed 预期，沿用 #27344/#27345/#27346，不新增重复 issue。
 - 查询交叉：UNION/UNION ALL、自连接/多 mapping、derived table、RIGHT JOIN、本地表 Join、`= != < <= > >= BETWEEN IN LIKE`、`IS NULL/IS NOT NULL`、AND/OR 代表组合均执行；结果与 4 行独立 fixture 对照一致。该记录覆盖查询代表组合，不等同于完整类型×约束笛卡尔积完成。
 - 约束/列属性：外表上的 PRIMARY KEY/UNIQUE 返回 `ERROR 20301 cannot create index on external table`；CHECK、FOREIGN KEY、AUTO_INCREMENT、GENERATED ALWAYS、ON UPDATE、ALTER COLUMN 均返回 `ERROR 20105 not supported`；`DEFAULT NULL`、COMMENT、COLLATE 的 metadata 创建/展示通过；非 NULL DEFAULT 被拒绝。未把“被接受但读取异常”的历史 AUTO_INCREMENT/GENERATED 结果改写为通过。
