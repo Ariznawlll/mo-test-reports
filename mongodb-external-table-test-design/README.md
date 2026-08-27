@@ -598,6 +598,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 临时表与跨查询：TEMPORARY TABLE 当前 session 可读，另一 session 不可见；CTE/derived/EXISTS/IN/UNION 代表组合执行通过。断连自动清理、TEMPORARY 与全部约束/索引组合仍保留为 GAP。
 - 故障恢复：删除当前 namespace 的 Mongo SECONDARY Pod 后自动重建，3-member ReplicaSet 恢复，MatrixOne 保持 Ready；该结果只覆盖 secondary pod 重建，不等同于完整的 primary 切换、网络断流、getMore/cancel 或 CN/DN kill 矩阵。
 - 环境限制：本 namespace 未部署 TLS/SRV/TXT、Iceberg/S3/Hive、Snapshot/PITR/Backup/Restore、NESR fixture 或规模性能任务；这些项目继续标记 `⏸️`，不能用普通 Mongo 外表读成功替代。
+- 可写 fixture 尝试：为第一期 24 类型矩阵在本 namespace 临时创建 1 Pod、`emptyDir`、`mongo:8.0.12` 的 `mongodb-cov-writable`；调度器报告无可用余量（`Insufficient memory`/`Too many pods`，其余节点受 taint 限制），Pod 未启动，随后已删除该 StatefulSet/Service/Secret/Pod。因没有可写 Mongo fixture，24 类型边界仍不能执行；未改动现有 3 节点 Mongo 或 MO 组件。
 - 本轮新增可执行证据仍未覆盖：完整 24×4×8 参数化矩阵、真实写入/边界 BSON fixture、bytes/scan/conversion budget、长 cursor/getMore/网络故障、事务并发/watermark/commit-ack、TLS/SRV/TXT、多租户、Snapshot/PITR、NESR 和大数据/稳定性性能。
 
 ### 本轮继续执行记录（2026-08-20，`mo-search-commit-c8e3fa745-20260820`）
