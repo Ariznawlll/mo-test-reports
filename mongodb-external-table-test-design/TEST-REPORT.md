@@ -92,5 +92,7 @@
 - 12 路并发 scan-only 查询全部返回 `5/74`；Mongo PRIMARY Pod 删除和 CN Pod 删除后的恢复查询仍为 `5/74`，最终 MO Ready、Mongo 为 1 PRIMARY + 2 SECONDARY。
 - Mongo 只读账号直接写 source collection、读取 `admin.system.users` 均被拒绝，源集合计数仍为 5。
 - 客户端 2 秒超时取消含外表扫描的 8 秒语句，连续 3 轮有界退出；取消后查询恢复 `5/74`。IP endpoint 未配置 CIDR 时建连接连续 3 轮 fail-closed，临时 connection 已清理。
+- CHECK/FK/REPLACE/索引与事务补测：REPLACE 目标为 `5/74`；CHECK/FK 冲突后目标均为 0 行；二级索引点查为 4 行；control/target rollback 后为 `0/0`、commit 后为 `5/5`；同一 control row 并发持锁时等待方有界退出，锁释放后后续更新成功。
+- 多租户/TLS 负向补测：临时 tenant A/B 可创建，但 tenant 侧解析 `secret://env` 凭证失败，未判为隔离通过，已清理；TLS required 连接非 TLS Mongo 返回 server selection/auth failure，临时对象已清理。
 
 本次没有新增可归因于产品且未覆盖的重复 Bug。剩余项目仍包括完整 24×768 组合、pushed>0、getMore/网络断流/服务端取消、watermark/并发 commit-ack、TLS/SRV/TXT、多租户/Cluster Table、普通/Iceberg External 跨源、Snapshot/PITR、NESR 和大数据/稳定性性能；不能将本补测增量写成完整 acceptance 结论。
