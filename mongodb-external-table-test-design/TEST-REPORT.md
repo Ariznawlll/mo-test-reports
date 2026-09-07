@@ -135,3 +135,11 @@
 | 转换失败资源闭环 | ✅/观测性缺口 | pipeline 产出字符串到 BIGINT 连续 3/3 返回稳定转换错误；各 CN cursor `open=close`、`pool_checked_out_connections=0`。`conversion_errors_total` 未因业务转换错误递增，已提交 [#28341](https://github.com/matrixorigin/matrixone/issues/28341)，请求研发确认/补齐指标合同 |
 
 本轮 cleanup：临时 dotted mapping 已删除；MongoDB collection 未修改；目标外表基线仍为 `COUNT(*)=5, SUM(measurement)=74`；3 CN、1 DN、3 Mongo 节点均 Running 且重启数为 0。当前构建仍为 `commit-4fdb9e916`，不是官方最新 main，#28333/#28337 均需主线镜像复核。
+
+## 10. 2026-09-07 最新 main 本地回归归档
+
+在官方 `main` SHA `8edac64737db2633c250a527cffdf04707cd8c21` 上，以 macOS 本地单进程 MatrixOne 和 MongoDB 8.0.12 单节点 ReplicaSet 执行官方 `make test-mongodb-e2e-local`。独立运行 3 次，每轮均为 `status=passed`、24 个场景；三份结构化报告、校验和、白盒复核和清理记录已归档到：
+
+- [`runs/2026-09-07-main-8edac647-local/`](runs/2026-09-07-main-8edac647-local/)
+
+本轮没有发现新的产品缺陷。#27346 的 `TRUNCATE` 黑盒回归符合预期；#27347/#27348 的 mapping/DDL 白盒拒绝路径符合预期，但公开 SQL 黑盒 DDL 仍需单独复测。完整 24 类型交叉矩阵、TLS/SRV、多租户、多成员/网络/getMore 故障、Snapshot/PITR、NESR、big-data、stability 和 Chaos 未由本地归档覆盖，因此不改变 Issue #26229 的完整验收结论。
