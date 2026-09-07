@@ -132,6 +132,6 @@
 | `$sort/$unwind` | ❌/待契约确认 | 各 3/3 在 MongoDB 操作前返回 `pipeline stage is not allowed`；#27536 将二者列为首期候选，已提交 [#28337](https://github.com/matrixorigin/matrixone/issues/28337)，指派 `iamlinjunhong`，标签 `kind/bug`、`needs-triage`，类型 Bug |
 | getMore/指标 | ⏸️ | 指标端点确认存在 `find/aggregate/get_more/kill_cursors`、cursor、pool、scan 文档/字节和转换错误指标；5 行 fixture 配默认 `batch-rows=8192` 只产生单 batch。曾在本 namespace 临时 patch CN ConfigMap 并串行重启尝试调到 2，但运行时未生效；已恢复 ConfigMap，3 CN Ready，不能据此宣称 getMore 已覆盖 |
 | reducing aggregation 差分 | ✅ | 普通 raw scan + MO `GROUP BY` 与 Mongo `$group+$project` pipeline 结果一致；指标增量分别为 5 documents/223 bytes 与 2 documents/138 bytes，当前 fixture 满足“少传输/少解码”方向 |
-| 转换失败资源闭环 | ✅ | pipeline 产出字符串到 BIGINT 连续 3/3 返回稳定转换错误；各 CN cursor `open=close`、`pool_checked_out_connections=0`。`conversion_errors_total` 未因业务转换错误递增，指标归属需研发确认 |
+| 转换失败资源闭环 | ✅/观测性缺口 | pipeline 产出字符串到 BIGINT 连续 3/3 返回稳定转换错误；各 CN cursor `open=close`、`pool_checked_out_connections=0`。`conversion_errors_total` 未因业务转换错误递增，已提交 [#28341](https://github.com/matrixorigin/matrixone/issues/28341)，请求研发确认/补齐指标合同 |
 
 本轮 cleanup：临时 dotted mapping 已删除；MongoDB collection 未修改；目标外表基线仍为 `COUNT(*)=5, SUM(measurement)=74`；3 CN、1 DN、3 Mongo 节点均 Running 且重启数为 0。当前构建仍为 `commit-4fdb9e916`，不是官方最新 main，#28333/#28337 均需主线镜像复核。

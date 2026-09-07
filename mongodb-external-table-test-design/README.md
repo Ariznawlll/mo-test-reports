@@ -692,7 +692,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - `$sort`、`$unwind` 各 3/3 在发往 MongoDB 前被 allowlist 拒绝。#27536 将二者列为首期候选 stage，但当前实现的 allowlist 和单测均未放行，已单独提交 [#28337](https://github.com/matrixorigin/matrixone/issues/28337)，指派 `iamlinjunhong`，标签为 `kind/bug`、`needs-triage`，Issue Type 为 `Bug`；在研发确认前不将其记为“功能通过”。
 - 指标端点存在 Mongo command/cursor/pool/scan/转换错误等指标，当前 5 行 fixture 使用默认 `batch-rows=8192` 时未出现 `get_more`；为强行改变配置曾仅在本 namespace 临时 patch CN ConfigMap 并串行重启 CN，查询仍为 `5/74`，随后已恢复原配置并确认 3 CN Ready。因此 getMore 中途失败、网络断流和服务端取消仍不能标记通过，不能用这次单 batch 结果替代。
 - reducing aggregation 差分已完成：普通 raw scan + MO `GROUP BY` 返回 `device-001|4|18.5`、`device-002|1|NULL`，扫描指标增量为 5 documents/223 bytes；同语义 Mongo `$group+$project` pipeline 返回相同结果，扫描指标增量为 2 documents/138 bytes，满足当前 fixture 下“结果一致且远端返回更少”的验收方向。
-- pipeline 类型转换失败连续 3/3 返回稳定的 BIGINT 转换错误；失败后各 CN 的 cursor `open=close`、`pool_checked_out_connections=0`，未观察到 cursor/连接池泄漏。`conversion_errors_total` 在该 build 未因这个业务转换错误递增，是否需要把业务转换失败纳入该指标需研发确认。
+- pipeline 类型转换失败连续 3/3 返回稳定的 BIGINT 转换错误；失败后各 CN 的 cursor `open=close`、`pool_checked_out_connections=0`，未观察到 cursor/连接池泄漏。`conversion_errors_total` 在该 build 未因这个业务转换错误递增，已提交 [#28341](https://github.com/matrixorigin/matrixone/issues/28341) 请求研发确认/补齐观测性合同。
 
 ## 可观测性与资源清理
 
