@@ -97,3 +97,21 @@
 - 认证/stale/恢复/脱敏补测：错误 `auth_source`、缺失 Secret 各 3/3 稳定失败；connection disable 期间在途查询完成、新查询拒绝、enable 后恢复；SHOW CREATE TABLE/EXPLAIN 未发现 password、Mongo URI 或证书；删除 Mongo SECONDARY 和 DN Pod 后查询均恢复 `5/74`，CR 最终回到 `Ready`。
 
 本次没有新增可归因于产品且未覆盖的重复 Bug。剩余项目仍包括完整 24×768 组合、pushed>0、getMore/网络断流/服务端取消、watermark/并发 commit-ack、TLS/SRV/TXT、多租户/Cluster Table、普通/Iceberg External 跨源、Snapshot/PITR、NESR 和大数据/稳定性性能；不能将本补测增量写成完整 acceptance 结论。
+
+## 8. 2026-09-07 #27536 显式查询补测
+
+目标环境仍为 129 的 `mo-search-commit-4fdb9e916-20260907`，MatrixOne 为 3 CN / 1 DN / 3 Log / 2 Proxy，MongoDB 8.0.12 三成员 `rs0`。本节只记录 Issue [#27536](https://github.com/matrixorigin/matrixone/issues/27536) 的 `__mo_query` 验收，不改变前述其他套件状态。
+
+| 验收项 | 结果 | 证据 |
+|---|---|---|
+| 显式 filter | ✅ | `site_id=site-west` 连续 3/3 返回 `COUNT=1` |
+| 显式 pipeline | ✅ | `$match + $group + $project` 连续 3/3 返回 `device-001\|1\|30`；叠加 `event_count >= 1` 的 residual 对照也为 3/3 |
+| 普通 SQL residual 对照 | ✅ | 不带 `__mo_query` 的 `site_id='site-west' AND measurement>0` 连续 3/3 返回 `COUNT=1` |
+| 隐藏列/canonical | ✅ | 显式读取 `__mo_query` 连续 3/3 返回 canonical relaxed JSON；`SELECT *`/`DESC` 不包含隐藏列 |
+| 严格 JSON 与安全拒绝 | ✅ | uppercase envelope、双 envelope 字段、重复 key、尾随内容、空 pipeline、`$out/$merge/$lookup/$unionWith/$function`、未知 stage 各 3/3 稳定返回 `20301` |
+| 资源上限 | ✅ | 16 stages 连续 3/3 成功；17 stages、超过 64 KiB 各 3/3 返回 size/stage limit 错误 |
+| 显式 filter + 普通 residual | ❌ | 叠加 `site_id='site-west'`、`measurement>0`、`OR`、投影变体各 3/3 触发 `index out of range`；`EXPLAIN` 为 `pushed=0`、`residual`，CN 日志栈落在 `ColumnExpressionExecutor.Eval` `evalExpression.go:1685` → `FunctionExpressionExecutor` → `Filter` |
+
+失败后检查：CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3/3 为 `COUNT=5, SUM(measurement)=74`。该失败当前先记录为目标构建上的新问题候选，尚未提交新 Bug：需在官方最新 main 上完成 3/3 复现并检索重复 issue 后再决定是否归因和提报。
+
+`events_aggregate` 直接扫描时聚合列显示 NULL，是因为源 collection 文档没有这两个字段；使用 `$group` pipeline 生成同名输出字段后映射正常，未作为本 Issue 缺陷。
