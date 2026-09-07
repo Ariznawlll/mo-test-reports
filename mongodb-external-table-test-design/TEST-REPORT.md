@@ -82,3 +82,15 @@
 3. 在 E2/E3/E4/E5 环境执行 BVT/MOTR、TLS/SRV、真实 tenant、target constraints、事务、cancel/断连和 recovery case。
 4. 提供 NESR 脚本仓库 URL/SHA、配置 hash、四 collection fixture manifest 和客户峰值运行环境。
 5. 用同一 MatrixOne SHA、build flags、MongoDB version/FCV、configuration hash、NESR SHA、fixture manifest hash 重新生成正式 acceptance report。
+
+## 7. 2026-09-07 TKE 补测增量
+
+在 129 的 `mo-search-commit-4fdb9e916-20260907` namespace 中补测，MatrixOne 为 `commit-4fdb9e916`（3 CN / 1 DN / 3 Log / 2 Proxy），MongoDB 8.0.12 为 3-member `rs0`。本节只记录该 namespace 的操作。
+
+- 基础外表、filter/group/aggregate/self-join/UNION、JSON/BINARY/temporal mapping 和 DROP/recreate 均保持 `count=5, sum(measurement)=74`。
+- 单列 PK、复合 PK、UNIQUE、NOT NULL、AUTO_INCREMENT、GENERATED 目标表交叉写入完成；NOT NULL/UNIQUE 冲突未产生部分写入，后续查询可复用。
+- 12 路并发 scan-only 查询全部返回 `5/74`；Mongo PRIMARY Pod 删除和 CN Pod 删除后的恢复查询仍为 `5/74`，最终 MO Ready、Mongo 为 1 PRIMARY + 2 SECONDARY。
+- Mongo 只读账号直接写 source collection、读取 `admin.system.users` 均被拒绝，源集合计数仍为 5。
+- 客户端 2 秒超时取消含外表扫描的 8 秒语句，连续 3 轮有界退出；取消后查询恢复 `5/74`。IP endpoint 未配置 CIDR 时建连接连续 3 轮 fail-closed，临时 connection 已清理。
+
+本次没有新增可归因于产品且未覆盖的重复 Bug。剩余项目仍包括完整 24×768 组合、pushed>0、getMore/网络断流/服务端取消、watermark/并发 commit-ack、TLS/SRV/TXT、多租户/Cluster Table、普通/Iceberg External 跨源、Snapshot/PITR、NESR 和大数据/稳定性性能；不能将本补测增量写成完整 acceptance 结论。
