@@ -97,3 +97,41 @@
 - 认证/stale/恢复/脱敏补测：错误 `auth_source`、缺失 Secret 各 3/3 稳定失败；connection disable 期间在途查询完成、新查询拒绝、enable 后恢复；SHOW CREATE TABLE/EXPLAIN 未发现 password、Mongo URI 或证书；删除 Mongo SECONDARY 和 DN Pod 后查询均恢复 `5/74`，CR 最终回到 `Ready`。
 
 本次没有新增可归因于产品且未覆盖的重复 Bug。剩余项目仍包括完整 24×768 组合、pushed>0、getMore/网络断流/服务端取消、watermark/并发 commit-ack、TLS/SRV/TXT、多租户/Cluster Table、普通/Iceberg External 跨源、Snapshot/PITR、NESR 和大数据/稳定性性能；不能将本补测增量写成完整 acceptance 结论。
+
+## 8. 2026-09-07 #27536 显式查询补测
+
+目标环境仍为 129 的 `mo-search-commit-4fdb9e916-20260907`，MatrixOne 为 3 CN / 1 DN / 3 Log / 2 Proxy，MongoDB 8.0.12 三成员 `rs0`。本节只记录 Issue [#27536](https://github.com/matrixorigin/matrixone/issues/27536) 的 `__mo_query` 验收，不改变前述其他套件状态。
+
+| 验收项 | 结果 | 证据 |
+|---|---|---|
+| 显式 filter | ✅ | `site_id=site-west` 连续 3/3 返回 `COUNT=1` |
+| 显式 pipeline | ✅ | `$match + $group + $project` 连续 3/3 返回 `device-001\|1\|30`；叠加 `event_count >= 1` 的 residual 对照也为 3/3 |
+| 普通 SQL residual 对照 | ✅ | 不带 `__mo_query` 的 `site_id='site-west' AND measurement>0` 连续 3/3 返回 `COUNT=1` |
+| 隐藏列/canonical | ✅ | 显式读取 `__mo_query` 连续 3/3 返回 canonical relaxed JSON；`SELECT *`/`DESC` 不包含隐藏列 |
+| 严格 JSON 与安全拒绝 | ✅ | uppercase envelope、双 envelope 字段、重复 key、尾随内容、空 pipeline、`$out/$merge/$lookup/$unionWith/$function`、未知 stage 各 3/3 稳定返回 `20301` |
+| 资源上限 | ✅ | 16 stages 连续 3/3 成功；17 stages、超过 64 KiB 各 3/3 返回 size/stage limit 错误 |
+| 显式 filter + 普通 residual/排序 | ❌ | 叠加 `site_id='site-west'`、`measurement>0`、`OR`、投影或外层 `ORDER BY` 的变体各 3/3 触发 `index out of range`；`EXPLAIN` 为 `pushed=0`、`residual`，CN 日志栈落在 `ColumnExpressionExecutor.Eval` `evalExpression.go:1685` → `FunctionExpressionExecutor` → `Filter` |
+
+失败后检查：CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3/3 为 `COUNT=5, SUM(measurement)=74`。该失败已提交为 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，并追加了外层 `ORDER BY` 的 3/3 复现；issue 已指派 `iamlinjunhong`，标签为 `kind/bug`、`needs-triage`，Issue Type 为 `Bug`；正文注明当前构建不是官方最新 main，需继续主线复核。
+
+`events_aggregate` 直接扫描时聚合列显示 NULL，是因为源 collection 文档没有这两个字段；使用 `$group` pipeline 生成同名输出字段后映射正常，未作为本 Issue 缺陷。
+
+## 9. 2026-09-07 继续补测：投影、dotted path、边界与 getMore 条件
+
+仍只操作 129 上的 `mo-search-commit-4fdb9e916-20260907` namespace。
+
+| 项目 | 结果 | 证据/结论 |
+|---|---|---|
+| 普通投影重排对照 | ✅ | 无 `__mo_query` 的 `measurement, device_id, site_id` 连续 3/3 正常返回 5 行 |
+| dotted `MONGODB_PATH` | ✅ | 临时显式 schema 映射 `payload.a`、`payload.b`、`arr`；全列/重排、pipeline 全投影和部分投影各 3/3 正确返回 `2/x/[1,2,3]` 或对应 NULL；临时 mapping 已用 `DROP TABLE` 清理 |
+| pipeline 输出投影/重排 | ✅ | `events_aggregate` 的 `$project` 重排连续 3/3 返回 `device-001|1|30` |
+| pipeline 转换失败 | ✅ | 将 `event_count` 产出为字符串，连续 3/3 稳定返回 `BIGINT` 转换错误；没有 panic，基线仍为 `5/74` |
+| 显式 filter 普通行投影 | ❌ | 单列、三列重排各 3/3 为 `ColumnExpressionExecutor.Eval` 越界；外层 `LIMIT` 也 3/3 越界，已补充 [#28333](https://github.com/matrixorigin/matrixone/issues/28333) |
+| 显式 filter 聚合边界 | ✅ | `COUNT(*)` + `LIMIT 1` 连续 3/3 返回 1；说明问题集中在行投影/下游表达式组合，不是 filter count 本身 |
+| selector/envelope 边界 | ✅ | `OR`、`LIKE` 各 3/3 按单值 selector 约束拒绝；单值 `IN`、常量折叠表达式各 3/3 正常；query text 追加 `allowDiskUse` 各 3/3 拒绝 |
+| `$sort/$unwind` | ❌/待契约确认 | 各 3/3 在 MongoDB 操作前返回 `pipeline stage is not allowed`；#27536 将二者列为首期候选，已提交 [#28337](https://github.com/matrixorigin/matrixone/issues/28337)，指派 `iamlinjunhong`，标签 `kind/bug`、`needs-triage`，类型 Bug |
+| getMore/指标 | ⏸️ | 指标端点确认存在 `find/aggregate/get_more/kill_cursors`、cursor、pool、scan 文档/字节和转换错误指标；5 行 fixture 配默认 `batch-rows=8192` 只产生单 batch。曾在本 namespace 临时 patch CN ConfigMap 并串行重启尝试调到 2，但运行时未生效；已恢复 ConfigMap，3 CN Ready，不能据此宣称 getMore 已覆盖 |
+| reducing aggregation 差分 | ✅ | 普通 raw scan + MO `GROUP BY` 与 Mongo `$group+$project` pipeline 结果一致；指标增量分别为 5 documents/223 bytes 与 2 documents/138 bytes，当前 fixture 满足“少传输/少解码”方向 |
+| 转换失败资源闭环 | ✅/观测性缺口 | pipeline 产出字符串到 BIGINT 连续 3/3 返回稳定转换错误；各 CN cursor `open=close`、`pool_checked_out_connections=0`。`conversion_errors_total` 未因业务转换错误递增，已提交 [#28341](https://github.com/matrixorigin/matrixone/issues/28341)，请求研发确认/补齐指标合同 |
+
+本轮 cleanup：临时 dotted mapping 已删除；MongoDB collection 未修改；目标外表基线仍为 `COUNT(*)=5, SUM(measurement)=74`；3 CN、1 DN、3 Mongo 节点均 Running 且重启数为 0。当前构建仍为 `commit-4fdb9e916`，不是官方最新 main，#28333/#28337 均需主线镜像复核。

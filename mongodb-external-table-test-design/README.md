@@ -326,6 +326,7 @@ Mongo 外表是远端只读映射，不是本地约束存储表。源表列属�
 | QRY-008 | `query.optimizer-and-plan` | Join 类型和 NULL 语义正确 | Mongo fact+local dimension | inner/left/right/semi/anti，多 key | 行数/key/null extension 与 Oracle 一致 | 两侧状态释放 | BVT+MOTR | ✅ inner/left/right/semi/anti 和多 key 代表组均通过 |
 | QRY-009 | `query.optimizer-and-plan` | aggregate/window 不依赖 batch | 多 batch、skew/null fixture | GROUP BY、distinct、count/sum/avg/min/max、window | 与不同 batch size、本地副本一致 | agg memory回收 | BVT+big-data | ✅ Group/Window 结果已通过 |
 | QRY-010 | `query.optimizer-and-plan` | 时间算子和 tie 稳定 | 多 partition、相同 ts/不同 `_id` | TimeWindow、max_by/non_null、GAPFILL | 与 reference一致；tie 使用声明的稳定 key | gap/window limit可观测 | P1 MOTR | ✅ max_by/max_by_non_null/GAPFILL 已通过 |
+| QRY-011 | `query.optimizer-and-plan` | #27536 显式 `__mo_query` 与普通 SQL 语义组合正确 | `mongodb_cov_4fdb.events`、`events_aggregate`；合法 filter/pipeline | filter、pipeline、canonical 显式列、`SELECT *`/`DESC`、普通 residual、排序、非法 envelope/stage/size/stage-limit | filter/pipeline 只作用于映射 collection；隐藏列不进入 `*`/`DESC`；显式投影返回 canonical relaxed JSON；非法输入 fail-closed；residual/排序与显式查询组合不 panic 且结果与 Oracle 一致 | EXPLAIN 记录 query digest、pushed/residual；错误后基线 `5/74`、CN/Mongo 无重启 | P0 BVT+E2E | ◐ 正向 filter/pipeline、允许 stage、隐藏列/canonical、拒绝矩阵和资源上限 3/3；`__mo_query` filter + 普通 residual 或外层 `ORDER BY` 3/3 触发 `ColumnExpressionExecutor.Eval` 越界 panic，见 #28333 |
 | DML-001 | `transaction.statement-atomicity` | CTAS schema/rows 原子 | 空 database | CTAS含projection/filter/expr | schema推导和rows正确；失败无表 | catalog/storage一致 | BVT+MOTR | ✅ |
 | DML-002 | `transaction.statement-atomicity` | INSERT SELECT 原子 | 各约束 target | 单/多 batch写入，后段错误 | 成功全写；失败0写 | target/control不变 | P0 MOTR | ✅ |
 | DML-003 | `transaction.statement-atomicity` | REPLACE SELECT 冲突处理确定 | 目标预置PK，source重复 | 单/复合PK、跨batch冲突 | 最终行与本地 source REPLACE 对照一致 | 无重复/index orphan | P0 MOTR | ◐ 单列 PK 已通过，复合 PK/跨 batch 未完成 |
@@ -661,6 +662,37 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 故障恢复：删除一个 CN Pod 时 20/20 外表读取均为 `4/70`，约 50 秒恢复 3 Ready；删除 Mongo PRIMARY Pod 时 20/20 均为 `4/70`，约 40 秒恢复三节点和唯一 PRIMARY。
 - Fixture 复核：曾因直连命令将 `e7` 写入 `mongo_cross_71031`，而外表映射 `mongo_cross_71031d`，造成表面上的增量不可见；双数据库对照确认是 fixture typo，写回正确数据库后 mapping 和 Join 3/3 通过，不作为 MatrixOne 缺陷。
 - 仍阻塞：TLS/SRV/TXT、真实多租户、普通/Iceberg External 跨源、TN kill/网络/getMore 断流、Snapshot/PITR、NESR 四 collection 和 E6 规模性能依赖独立环境，不能以本轮结果标记为通过。
+
+### #27536 显式 MongoDB 查询补测记录（2026-09-07，`mo-search-commit-4fdb9e916-20260907`）
+
+本节专门记录 Issue [#27536](https://github.com/matrixorigin/matrixone/issues/27536) 的 `__mo_query` filter/pipeline 黑盒验收。目标环境只使用 129 上的 `mo-search-commit-4fdb9e916-20260907`，MatrixOne 为 `3 CN / 1 DN / 3 Log / 2 Proxy`，MongoDB 为 8.0.12 三成员 `rs0`。本构建未作为官方最新 main 的正式 Bug 提交门禁，因此下述 panic 先记为待主线复核。
+
+| 验收项 | 操作/Oracle | 结果 | 备注 |
+|---|---|---|---|
+| 显式 filter | `filter={site_id:site-west}`，连续 3 轮 | ✅ `COUNT=1` | 普通 filter 路径正常 |
+| 显式 pipeline | `$match + $group + $project`，连续 3 轮 | ✅ `device-001\|1\|30` | pipeline 最终字段与 `events_aggregate` 映射一致 |
+| filter/pipeline 组合 residual | pipeline 结果叠加 `event_count >= 1`，连续 3 轮 | ✅ `device-001\|1\|30` | pipeline residual 对照正常 |
+| 普通 residual 对照 | 无 `__mo_query` 的 `site_id='site-west' AND measurement>0`，连续 3 轮 | ✅ `COUNT=1` | 普通外表路径正常 |
+| 显式列与隐藏列 | 显式选择 `__mo_query`；`SELECT *` 列数；`DESC` | ✅ 3/3 | 显式列返回 canonical relaxed JSON；`__mo_query` 不出现在 `*`/`DESC` |
+| 严格 JSON/envelope | 大小写字段、同时 filter/pipeline、重复 key、尾随内容、空 pipeline | ✅ 各 3/3 拒绝 | 均在执行 Mongo 前返回稳定 `20301` |
+| 只读安全 stage/operator | `$out`、`$merge`、`$lookup`、`$unionWith`、`$function`、未知 stage | ✅ 各 3/3 拒绝 | 未产生 source 副作用 |
+| 资源上限 | 16 stages、17 stages、超过 64 KiB | ✅ 16 stages 3/3 成功；17 stages/超 64 KiB 各 3/3 拒绝 | 目标构建行为与当前实现常量一致 |
+| filter + 普通 residual/排序 | 显式 filter 叠加 `site_id='site-west'`、`measurement>0`、`OR`、投影或外层 `ORDER BY` | ❌ 各 3/3 panic | `EXPLAIN` 显示 `pushed=0`、`residual`；CN 日志栈指向 `pkg/sql/colexec.(*ColumnExpressionExecutor).Eval` `evalExpression.go:1685`，随后 `FunctionExpressionExecutor`/`Filter`。普通查询和 `AND 1=1` 对照正常，已提交 #28333 |
+
+失败后的安全性检查：目标 namespace 的 CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3 轮仍为 `COUNT=5, SUM(measurement)=74`。该组合会向客户端暴露内部 panic，已提交 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，并在 issue 中注明当前镜像不是官方最新 main，需继续做主线复核；不与 #27415 的 `DATE_FORMAT + ORDER BY` panic 重复归类。
+
+另外，`events_aggregate` 的普通无 `__mo_query` 扫描中聚合字段因源文档没有对应字段而显示 NULL；使用 `$group` pipeline 产生 `event_count/avg_measurement` 后映射正确，因此该现象按 fixture/mapping 语义处理，不作为 #27536 缺陷。
+
+### 2026-09-07 继续补测：投影、dotted path、边界与 getMore 条件
+
+- 普通无 `__mo_query` 的列重排 3/3 正常；使用临时显式 schema 映射 `payload.a`、`payload.b` 和 `arr`，全列/重排、pipeline 全投影和部分投影均 3/3 返回 `2/x/[1,2,3]` 或对应 NULL，临时表已删除，源 collection 未修改。
+- `events_aggregate` 的 `$project` 字段重排 3/3 正常；pipeline 输出与外表映射列顺序、类型一致。pipeline 将 `event_count` 产出为字符串时，3/3 返回稳定的 BIGINT 转换错误，未暴露 panic，基线仍为 `5/74`。
+- 显式 filter 的普通行投影（单列、三列重排）及外层 `LIMIT` 各 3/3 触发 `ColumnExpressionExecutor.Eval` 越界 panic；`COUNT(*)` + `LIMIT` 3/3 正常。单列投影复现已追加到 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，不重复提单。
+- `__mo_query` selector 的 `OR`、`LIKE` 各 3/3 按单值/常量等价约束拒绝；单值 `IN` 和可常量折叠表达式各 3/3 执行成功，未判为多 pipeline 支持。pipeline envelope 追加 `allowDiskUse` 各 3/3 拒绝，符合“不允许 query text 覆盖运行时选项”。
+- `$sort`、`$unwind` 各 3/3 在发往 MongoDB 前被 allowlist 拒绝。#27536 将二者列为首期候选 stage，但当前实现的 allowlist 和单测均未放行，已单独提交 [#28337](https://github.com/matrixorigin/matrixone/issues/28337)，指派 `iamlinjunhong`，标签为 `kind/bug`、`needs-triage`，Issue Type 为 `Bug`；在研发确认前不将其记为“功能通过”。
+- 指标端点存在 Mongo command/cursor/pool/scan/转换错误等指标，当前 5 行 fixture 使用默认 `batch-rows=8192` 时未出现 `get_more`；为强行改变配置曾仅在本 namespace 临时 patch CN ConfigMap 并串行重启 CN，查询仍为 `5/74`，随后已恢复原配置并确认 3 CN Ready。因此 getMore 中途失败、网络断流和服务端取消仍不能标记通过，不能用这次单 batch 结果替代。
+- reducing aggregation 差分已完成：普通 raw scan + MO `GROUP BY` 返回 `device-001|4|18.5`、`device-002|1|NULL`，扫描指标增量为 5 documents/223 bytes；同语义 Mongo `$group+$project` pipeline 返回相同结果，扫描指标增量为 2 documents/138 bytes，满足当前 fixture 下“结果一致且远端返回更少”的验收方向。
+- pipeline 类型转换失败连续 3/3 返回稳定的 BIGINT 转换错误；失败后各 CN 的 cursor `open=close`、`pool_checked_out_connections=0`，未观察到 cursor/连接池泄漏。`conversion_errors_total` 在该 build 未因这个业务转换错误递增，已提交 [#28341](https://github.com/matrixorigin/matrixone/issues/28341) 请求研发确认/补齐观测性合同。
 
 ## 可观测性与资源清理
 
