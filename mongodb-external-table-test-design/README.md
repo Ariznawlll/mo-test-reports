@@ -118,7 +118,7 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 | 环境 | MatrixOne | MongoDB | 用途 | 测试结果 |
 |---|---|---|---|---|
 | E1 单机功能 | 当前 main，1 CN/1 TN | 8.0.12 单节点 ReplicaSet | BVT、类型、DDL、查询、DML | ⏸️ 本轮未使用 |
-| E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 | ◐ 3 CN、三节点 Mongo、CN Pod 删除和 Mongo PRIMARY Pod 删除已测；多 TN 未覆盖 |
+| E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 | ◐ 3 CN/1 DN、三节点 Mongo；基础 scan、并发读、CN Pod 删除和 Mongo PRIMARY Pod 删除恢复已测；多 TN 未覆盖 |
 | E3 TLS/SRV | 1–3 CN | TLS 私有 CA、SRV/TXT、hostname | 网络、安全、发现和 allowlist | ⏸️ 环境未提供 |
 | E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope | ⏸️ 环境未提供 |
 | E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ◐ 当前 namespace 的 CN、DN Pod 和 Mongo PRIMARY Pod 删除已通过；网络和 getMore 断流未执行 |
@@ -465,11 +465,11 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 | ID | 场景 | 操作与 Oracle | 通过标准 | 测试结果 |
 |---|---|---|---|---|
-| HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 | ◐ 独立连接建表、SHOW、ALTER SET、disable/enable、被引用时 DROP 拒绝、删表后 DROP 和清理均 3 轮通过；version 递增细节及真实 secret rotation 未完成 |
+| HP-001 | connection 基本生命周期 | 创建 connection → SHOW → ALTER policy → DISABLE/ENABLE → DROP；SHOW 结果与 catalog 期望字段对照 | secret、完整 URI、密码、CA PEM 不出现；version 仅在实际状态变化时递增；被表引用时 DROP 被拒绝 | ◐ 独立连接建表、SHOW、ALTER SET、disable/enable、被引用时 DROP 拒绝、删表后 DROP 和清理均 3 轮通过；本轮真实 disable/enable、删建 mapping 恢复通过；version 递增细节及真实 secret rotation 未完成 |
 | HP-002 | 显式 schema scan | 创建包含 scalar、dotted path、ObjectID、DateTime、Decimal128、Binary、JSON 的 external table，分别执行全列/部分列/重排列 SELECT | 逐值与 canonical Extended JSON 独立 oracle 一致；缺失 nullable path 为 SQL NULL；source collection 不变 | ◐ 核心类型/NULL 查询已通过，完整类型集合未完成 |
 | HP-003 | pushdown + residual differential | 对 try_null 的 bool/整数/DATETIME(3+) 执行比较、IN、IS NOT NULL；对 strict、浮点、字符串、IS NULL 执行同样 SQL；用 test-only residual-only 开关，若无开关则使用 EXPLAIN 可证明 `pushed=0` 的自然等价 SQL | 保存两份 EXPLAIN、pushed predicate 数量、residual shape digest、source candidate 结果和最终 multiset；pushdown 只能减少候选集，`pushed>0` 与 `pushed=0` 结果一致；本地物化不能作为独立 BSON→MO converter Oracle | ◐ EXPLAIN/predicate 核心已测，全操作符差分未完成 |
-| HP-004 | 下游算子链 | MongoScan → Filter → TimeWindow/Group → `max_by`/`max_by_non_null` → `GAPFILL(PARTITION)` → target | 与 materialized local copy 结果一致；相同 `(ts,_id)` tie 选择最大 `_id`；空 partition 不凭空生成 | ◐ max_by/GAPFILL 已通过，完整链路落 target 未完成 |
-| HP-005 | 写入普通目标表 | `INSERT ... SELECT`、`REPLACE ... SELECT`、CTAS 分别写入无约束、PK/UNIQUE、NOT NULL、CHECK、FK、generated/index target | 结果、affected rows、约束副作用与本地 source 对照一致；MongoDB 侧只读 | ◐ 无约束/PK/UNIQUE/NOT NULL/CHECK/FK 已通过，generated/index 未完成 |
+| HP-004 | 下游算子链 | MongoScan → Filter → TimeWindow/Group → `max_by`/`max_by_non_null` → `GAPFILL(PARTITION)` → target | 与 materialized local copy 结果一致；相同 `(ts,_id)` tie 选择最大 `_id`；空 partition 不凭空生成 | ◐ 本轮 filter/group、aggregate、自连接、UNION 和 target 写入通过；max_by/GAPFILL 已通过，完整时间窗口链路落 target 未完成 |
+| HP-005 | 写入普通目标表 | `INSERT ... SELECT`、`REPLACE ... SELECT`、CTAS 分别写入无约束、PK/UNIQUE、NOT NULL、CHECK、FK、generated/index target | 结果、affected rows、约束副作用与本地 source 对照一致；MongoDB 侧只读 | ◐ 本轮无约束/PK/复合 PK/UNIQUE/NOT NULL/AUTO_INCREMENT/GENERATED 已通过；CHECK/FK 有前轮证据，REPLACE、索引和完整失败矩阵仍未在本轮完成 |
 | HP-006 | 周期增量 | 控制表有 committed watermark，按 `[low, high)` 执行 procedure；加入 overlap 与 late arrival 后再次执行 | target key 与结果粒度一致；watermark 在 target 成功后同事务推进；重放幂等且不产生重复 | ⏸️ |
 | HP-007 | tenant/admin 使用 | account admin 创建 connection/table；普通用户仅持有 target table SELECT 权限查询 external table 或 view | DDL 权限符合合同；普通用户不能创建/改变 connection 或 mapping；metadata 不泄露 connection secret | ✅ 真实 Mongo DDL 权限边界及 marker injection 已通过 |
 | HP-008 | NESR 四集合 cutover | 四 collection `UNION ALL`、nested metadata、空 collection、跨 collection duplicate key、单 collection cursor/auth/schema failure；按 NESR state machine 执行增量、重放、失败回滚 | 任一 collection 失败无 partial target；watermark/progress/run/fence 满足状态断言；overlap 外删除进入 rebuild/range-delete 语义 | ⏸️ |
@@ -497,14 +497,14 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 | ID | 异常 | 操作 | 预期与失败后断言 | 测试结果 |
 |---|---|---|---|---|
-| UH-001 | 功能开关/allowlist | enable 关闭、account 不在 allowed-accounts、loopback/host/CIDR 不匹配、discovered member 不匹配 | fail-closed；不打开 Mongo socket；无 client/catalog 半状态 | ⏸️ |
+| UH-001 | 功能开关/allowlist | enable 关闭、account 不在 allowed-accounts、loopback/host/CIDR 不匹配、discovered member 不匹配 | fail-closed；不打开 Mongo socket；无 client/catalog 半状态 | ◐ 未配置 CIDR 的 IP endpoint 建连接连续 3/3 在建连阶段拒绝并清理；功能开关、account、discovered member 等组合未完成 |
 | UH-002 | DDL 参数 | hosts 与 srv_host 同时/同时缺失、URI/userinfo、错误 scheme、未知 option、非法 path/mode/type、max_parallelism≠1 | CREATE/ALTER 在 scan 前拒绝；原 connection/table/version 不变；不能注入 generic external metadata | ◐ unsupported type/部分 DDL 已测，参数全集未完成 |
 | UH-003 | 权限绕过 | 普通用户创建 generic external table，其 filepath/option/rel_createsql 含 Mongo marker，尝试复用 admin connection | 必须按可信 catalog discriminator 拒绝；普通用户不能借 generic metadata 使用 Mongo connection；这是 P0 必测回归 | ✅ |
 | UH-004 | 认证/TLS/发现 | secret 缺失或格式错误、SCRAM 错误、CA/hostname/过期证书、SRV/TXT/DNS 失败、ReplicaSet member 不可达 | 错误可定位但不泄露 credential/URI；无 stale client、cursor、lease；同连接可再次执行 | ⏸️ |
 | UH-005 | 转换错误 | strict 类型错误；try_null nullable 类型错误/overflow；try_null 超出 error count/rate；invalid BSON | strict 整句失败；try_null 只在 nullable 时转 NULL；超限失败；已 append 行全部回滚 | ✅ 核心 strict/try_null/overflow 已通过 |
 | UH-006 | 游标中途失败 | find 成功后 getMore/network/timeout/failover 失败 | 不在 operator 内从头重读；statement 失败，target/watermark 不推进；重跑完整旧 `[low,high)` 可恢复 | ⏸️ |
 | UH-007 | 目标约束失败 | source 中途产生 target PK/UNIQUE/FK/CHECK/NOT NULL 冲突 | 按语句合同失败或替换；失败路径不留半写入、错误索引、错误 watermark；auto_increment 仅允许文档化的 gap | ✅ PK/UNIQUE/FK/CHECK/NOT NULL 核心组合已通过 |
-| UH-008 | 取消/断连 | 等待 source semaphore、find、getMore、decode、下游聚合和 commit 前分别取消；客户端断连 | 有界返回；关闭 cursor/killCursors、释放 lease/semaphore/lock/vector；同连接或重连后可继续查询 | ⏸️ |
+| UH-008 | 取消/断连 | 等待 source semaphore、find、getMore、decode、下游聚合和 commit 前分别取消；客户端断连 | 有界返回；关闭 cursor/killCursors、释放 lease/semaphore/lock/vector；同连接或重连后可继续查询 | ◐ 通过 Proxy 以 2 秒客户端超时取消含外表扫描的 8 秒语句，连续 3 轮均有界退出；取消后查询恢复 `5/74`；find/getMore 中途取消及服务端资源指标仍未完成 |
 | UH-009 | stale mapping/client | plan 后 ALTER/DISABLE/ENABLE/DROP connection 或 table mapping | 执行期检测 version/generation；新 statement 不使用 stale client；旧 lease 完成或取消后才退休 | ◐ disable/enable 生命周期已测，stale plan 未完成 |
 | UH-010 | Snapshot/PITR 冲突 | 分别执行 database/account bulk restore、direct external-table restore；检查 table/mapping、按 scope 复制的 connection、DROP/recreate 和 orphan mapping | 按 #26495：bulk restore 跳过 MongoDB external table 和 mapping，connection 按 scope 复制；direct restore 明确拒绝；无 orphan `mo_mongodb_tables`，源 Mongo collection 不被 restore 改写 | ⏸️ |
 
@@ -518,7 +518,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 | TX-002 | `REPLACE ... SELECT` 与 watermark update 同事务 | target 成功且 commit 后 watermark 才推进；source scan、转换、写入、commit 任一失败均不推进 | ⏸️ |
 | TX-003 | 两 scheduler 同时锁同一 control row | 仅一个 generation 推进 watermark；另一个有界等待/拒绝/重试；无重复推进和 orphan lock | ⏸️ |
 | TX-004 | 并发读与 connection ALTER/DISABLE/credential rotation | 已开始 statement 按旧 lease 合同完成或取消；新 statement 使用新 generation；不发生 session 串线 | ◐ disable/enable 已测，并发 generation 未完成 |
-| TX-005 | 多客户端读/写同一 target | 约束、可见性、冲突和 rollback 与本地 source 等价；错误后所有连接均可复用 | ◐ 10 路并发只读已通过，读写冲突未完成 |
+| TX-005 | 多客户端读/写同一 target | 约束、可见性、冲突和 rollback 与本地 source 等价；错误后所有连接均可复用 | ◐ 12 路并发只读均返回 `5/74`，错误后外表与集群健康；读写冲突未完成 |
 | TX-006 | commit 前断连、commit ack 不确定、CN migration | 恢复后 target/watermark 只能出现一次已提交状态；必要时进入专用 recovery/chaos workflow，不以客户端重试次数判断结果 | ⏸️ |
 
 并发类至少 10 轮；低概率 generation、cursor failover、commit-ack 场景使用 10–20 个 fresh generation。固定 sleep 不作为就绪判断，使用 version、lease、cursor、watermark 和最终数据作为信号。
@@ -530,8 +530,8 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 | SEC-001 | system account、tenant admin、普通用户 | 只有合同规定角色可 CREATE/ALTER/DROP/SHOW connection/table；普通用户经 GRANT 只能 SELECT | ✅ 低权限真实 Mongo DDL 边界已通过 |
 | SEC-002 | tenant A/B 同名 connection/table/secret | connection ID、mapping、secret resolver、Mongo database/collection 按 tenant 隔离；A 不能查 B | ⏸️ |
 | SEC-003 | metadata/plan/log/EXPLAIN | SHOW CONNECTIONS、SHOW CREATE TABLE、EXPLAIN、pipeline、query history、CN/Mongo command monitor 和 report 均不得出现 password、URI userinfo、endpoint、CA PEM 或 query literal | ◐ EXPLAIN/SHOW CREATE 及 View 结果未泄露已通过，日志/全链路未完成 |
-| SEC-004 | host egress | seed、SRV 结果、ReplicaSet member 每次 socket dial 均重新校验 suffix/CIDR；loopback、link-local、multicast、metadata endpoint 默认拒绝 | ⏸️ |
-| SEC-005 | least privilege source | Mongo 只读账号只可读目标 database/collection；尝试写入、读其他 database/collection、使用错误 auth_source 均失败，collection hash 不变 | ⏸️ |
+| SEC-004 | host egress | seed、SRV 结果、ReplicaSet member 每次 socket dial 均重新校验 suffix/CIDR；loopback、link-local、multicast、metadata endpoint 默认拒绝 | ◐ 未配置 CIDR 的 IP endpoint 连续 3/3 fail-closed；SRV/member 重校验及特殊地址组合未完成 |
+| SEC-005 | least privilege source | Mongo 只读账号只可读目标 database/collection；尝试写入、读其他 database/collection、使用错误 auth_source 均失败，collection hash 不变 | ◐ `mo_source` 直接写 `mongodb_source.events` 被 Mongo 拒绝，读 `admin.system.users` 也被拒绝；源集合计数保持 5，外表查询保持 `5/74`；错误 auth_source 和 collection hash 尚未完成 |
 | SEC-006 | marker injection | generic external table 元数据中出现 `MO_MONGODB:` 或类似文本不能改变对象类型或权限；应有非 admin 真实 E2E 回归 | ✅ |
 | SEC-007 | true tenant E2E 与 secret precedence | account admin 创建；普通用户 SELECT/ingest；account-scoped secret rotation；system/tenant secret precedence；跨租户同名对象和失败日志检查 | 真实 tenant 身份下权限、mapping、secret resolver 均隔离；轮换后新旧 generation 行为符合合同；日志不含 credential/URI/namespace | ⏸️ |
 
@@ -542,7 +542,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 | ID | 故障 | 环境/操作 | 预期 | 测试结果 |
 |---|---|---|---|---|
 | REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 | ◐ 当前 namespace 删除一个 CN Pod 期间 20/20 查询为 4/70，恢复为 3 Ready 且 CR Ready；事务中断点/getMore 未覆盖 |
-| REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ◐ 当前 namespace 删除 PRIMARY Pod 后，secondaryPreferred+majority 查询 20/20 为 4/70，恢复为唯一 PRIMARY；local/primaryPreferred/getMore 未覆盖 |
+| REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ◐ 当前 namespace 删除 PRIMARY Pod 后，`primary+majority` 查询恢复为 `5/74`，最终为 1 PRIMARY + 2 SECONDARY；`local`/`primaryPreferred`/getMore 未覆盖 |
 | REC-007 | DN restart | 当前 namespace 删除 `nightly-regression-dis-dn-0`，等待 CR/Pod 恢复后重新扫描 | DN 恢复后外表查询可继续；CR Ready；无 catalog/mapping 残留 | ✅ DN Pod 删除后快速恢复，CR 保持 Ready；Mongo 外表基线连续 3 次为 `4/70` |
 | REC-003 | 网络断流/超时 | find 后断 socket、DNS/SRV 不可达、仅 member 不可达 | 有界错误；target/watermark 原子；连接和 CN 后续查询恢复 | ⏸️ |
 | REC-004 | Snapshot | 在 external table 存在/被 drop 前后创建 snapshot，按正式 scope restore 到隔离目标 | 外部 collection 不被伪造恢复；mapping 与 table ID 一致或按明确 policy 跳过/拒绝；无 orphan dependency | ⏸️ |
@@ -607,6 +607,17 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - 可写 fixture 尝试：为第一期 24 类型矩阵在本 namespace 临时创建 1 Pod、`emptyDir`、`mongo:8.0.12` 的 `mongodb-cov-writable`；调度器报告无可用余量（`Insufficient memory`/`Too many pods`，其余节点受 taint 限制），Pod 未启动，随后已删除该 StatefulSet/Service/Secret/Pod。因没有可写 Mongo fixture，24 类型边界仍不能执行；未改动现有 3 节点 Mongo 或 MO 组件。
 - CLUSTER TABLE：尝试在临时数据库创建/写入/读取/截断 cluster table，当前测试账号返回 `ERROR 20101 do not have privilege to execute the statement`，后续确认对象不存在并清理数据库；该能力要求 system admin，故 E4 多租户/cluster table 仍为环境阻塞，不判为产品缺陷。
 - 本轮新增可执行证据仍未覆盖：完整 24×4×8 参数化矩阵、真实写入/边界 BSON fixture、bytes/scan/conversion budget、长 cursor/getMore/网络故障、事务并发/watermark/commit-ack、TLS/SRV/TXT、多租户、Snapshot/PITR、NESR 和大数据/稳定性性能。
+
+### 本轮继续执行记录（2026-09-07，`mo-search-commit-4fdb9e916-20260907`）
+
+- 版本与拓扑：MatrixOne `commit-4fdb9e916`，3 CN / 1 DN / 3 Log / 2 Proxy，CR 保持 `Ready`；MongoDB 8.0.12，3-member `rs0`，最终为 1 PRIMARY + 2 SECONDARY。只操作本 namespace 的 Mongo fixture、Secret、配置和端口转发。
+- 基线与交叉查询：5 行显式 schema 外表连续读取为 `count=5, sum(measurement)=74`；filter、group、aggregate、self-join、UNION、JSON、BINARY、DATETIME/TIMESTAMP mapping 均通过；外表 DROP/recreate 后仍为 5 行。
+- 目标约束交叉：`INSERT ... SELECT` 写入单列 PK、复合 PK、UNIQUE、NOT NULL、AUTO_INCREMENT、GENERATED target；成功路径结果正确，NOT NULL/UNIQUE 冲突无部分写入，目标约束失败后连接可复用。
+- E2 并发：通过 Proxy 发起 12 路并发 scan-only 查询，所有返回 `5/74`；与 CN Pod 删除、Mongo PRIMARY Pod 删除恢复组合后，最终 MO/Mongo 均健康，外表仍返回 `5/74`。
+- 只读权限：Mongo `mo_source` 直接写 `mongodb_source.events`、读取 `admin.system.users` 均被拒绝，源集合计数保持 5；该项补齐 SEC-005 的写入和跨库读取证据，但错误 `auth_source`、collection hash 尚未完成。
+- 取消恢复：含外表扫描的 8 秒语句由客户端 2 秒超时取消，连续 3 轮均有界退出；取消后新查询恢复 `5/74`。这只证明客户端断连后的可复用性，不替代 find/getMore 中途取消和 cursor/lease 指标检查。
+- allowlist：使用未配置 CIDR 的 IP endpoint 创建连接，连续 3 轮均在建连接阶段返回 `MongoDB IP endpoint requires an explicit CIDR allowlist`，随后清理临时 connection，原外表仍为 `5/74`。
+- 本轮仍未完成：完整 24×`strict/try_null`×`nullable/NOT NULL` 矩阵、pushed>0、getMore/网络断流、并发 watermark/commit-ack、TLS/SRV/TXT、多租户/Cluster Table、普通/Iceberg External 跨源、Snapshot/PITR、NESR 和大数据/稳定性性能；没有新增可归因于产品的重复 Bug。
 
 ### 本轮继续执行记录（2026-08-20，`mo-search-commit-c8e3fa745-20260820`）
 
