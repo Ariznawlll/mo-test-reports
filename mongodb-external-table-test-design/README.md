@@ -679,7 +679,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 | 资源上限 | 16 stages、17 stages、超过 64 KiB | ✅ 16 stages 3/3 成功；17 stages/超 64 KiB 各 3/3 拒绝 | 目标构建行为与当前实现常量一致 |
 | filter + 普通 residual | 显式 filter 叠加 `site_id='site-west'` 或 `measurement>0`；含投影/`OR` 变体 | ❌ 各 3/3 panic | `EXPLAIN` 显示 `pushed=0`、`residual`；CN 日志栈指向 `pkg/sql/colexec.(*ColumnExpressionExecutor).Eval` `evalExpression.go:1685`，随后 `FunctionExpressionExecutor`/`Filter`。普通查询和 `AND 1=1` 对照正常 |
 
-失败后的安全性检查：目标 namespace 的 CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3 轮仍为 `COUNT=5, SUM(measurement)=74`。当前证据说明该组合会向客户端暴露内部 panic，但尚未满足“官方最新 main 三轮复现、控制组、重复搜索”后才提交新 Bug 的门禁；不与 #27415 的 `DATE_FORMAT + ORDER BY` panic 重复归类。
+失败后的安全性检查：目标 namespace 的 CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3 轮仍为 `COUNT=5, SUM(measurement)=74`。该组合会向客户端暴露内部 panic，已提交 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，并在 issue 中注明当前镜像不是官方最新 main，需继续做主线复核；不与 #27415 的 `DATE_FORMAT + ORDER BY` panic 重复归类。
 
 另外，`events_aggregate` 的普通无 `__mo_query` 扫描中聚合字段因源文档没有对应字段而显示 NULL；使用 `$group` pipeline 产生 `event_count/avg_measurement` 后映射正确，因此该现象按 fixture/mapping 语义处理，不作为 #27536 缺陷。
 

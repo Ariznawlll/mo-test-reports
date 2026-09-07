@@ -112,6 +112,6 @@
 | 资源上限 | ✅ | 16 stages 连续 3/3 成功；17 stages、超过 64 KiB 各 3/3 返回 size/stage limit 错误 |
 | 显式 filter + 普通 residual | ❌ | 叠加 `site_id='site-west'`、`measurement>0`、`OR`、投影变体各 3/3 触发 `index out of range`；`EXPLAIN` 为 `pushed=0`、`residual`，CN 日志栈落在 `ColumnExpressionExecutor.Eval` `evalExpression.go:1685` → `FunctionExpressionExecutor` → `Filter` |
 
-失败后检查：CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3/3 为 `COUNT=5, SUM(measurement)=74`。该失败当前先记录为目标构建上的新问题候选，尚未提交新 Bug：需在官方最新 main 上完成 3/3 复现并检索重复 issue 后再决定是否归因和提报。
+失败后检查：CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3/3 为 `COUNT=5, SUM(measurement)=74`。该失败已提交为 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，issue 已指派 `iamlinjunhong`，标签为 `kind/bug`、`needs-triage`，Issue Type 为 `Bug`；正文注明当前构建不是官方最新 main，需继续主线复核。
 
 `events_aggregate` 直接扫描时聚合列显示 NULL，是因为源 collection 文档没有这两个字段；使用 `$group` pipeline 生成同名输出字段后映射正常，未作为本 Issue 缺陷。
