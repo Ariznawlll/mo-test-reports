@@ -500,7 +500,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 | UH-001 | 功能开关/allowlist | enable 关闭、account 不在 allowed-accounts、loopback/host/CIDR 不匹配、discovered member 不匹配 | fail-closed；不打开 Mongo socket；无 client/catalog 半状态 | ◐ 未配置 CIDR 的 IP endpoint 建连接连续 3/3 在建连阶段拒绝并清理；功能开关、account、discovered member 等组合未完成 |
 | UH-002 | DDL 参数 | hosts 与 srv_host 同时/同时缺失、URI/userinfo、错误 scheme、未知 option、非法 path/mode/type、max_parallelism≠1 | CREATE/ALTER 在 scan 前拒绝；原 connection/table/version 不变；不能注入 generic external metadata | ◐ unsupported type/部分 DDL 已测，参数全集未完成 |
 | UH-003 | 权限绕过 | 普通用户创建 generic external table，其 filepath/option/rel_createsql 含 Mongo marker，尝试复用 admin connection | 必须按可信 catalog discriminator 拒绝；普通用户不能借 generic metadata 使用 Mongo connection；这是 P0 必测回归 | ✅ |
-| UH-004 | 认证/TLS/发现 | secret 缺失或格式错误、SCRAM 错误、CA/hostname/过期证书、SRV/TXT/DNS 失败、ReplicaSet member 不可达 | 错误可定位但不泄露 credential/URI；无 stale client、cursor、lease；同连接可再次执行 | ◐ TLS required 连接非 TLS Mongo 的负向探针已执行并清理临时对象，返回 server selection/auth failure；正向 TLS、SCRAM 错误、SRV/TXT/DNS 和 member 不可达矩阵未完成 |
+| UH-004 | 认证/TLS/发现 | secret 缺失或格式错误、SCRAM 错误、CA/hostname/过期证书、SRV/TXT/DNS 失败、ReplicaSet member 不可达 | 错误可定位但不泄露 credential/URI；无 stale client、cursor、lease；同连接可再次执行 | ◐ 当前 target 错误 `auth_source`、缺失 Secret 各 3/3 稳定失败，TLS required 连接非 TLS Mongo 也 fail-closed，临时对象均清理；正向 TLS、SRV/TXT/DNS 和 member 不可达矩阵未完成 |
 | UH-005 | 转换错误 | strict 类型错误；try_null nullable 类型错误/overflow；try_null 超出 error count/rate；invalid BSON | strict 整句失败；try_null 只在 nullable 时转 NULL；超限失败；已 append 行全部回滚 | ✅ 核心 strict/try_null/overflow 已通过 |
 | UH-006 | 游标中途失败 | find 成功后 getMore/network/timeout/failover 失败 | 不在 operator 内从头重读；statement 失败，target/watermark 不推进；重跑完整旧 `[low,high)` 可恢复 | ⏸️ |
 | UH-007 | 目标约束失败 | source 中途产生 target PK/UNIQUE/FK/CHECK/NOT NULL 冲突 | 按语句合同失败或替换；失败路径不留半写入、错误索引、错误 watermark；auto_increment 仅允许文档化的 gap | ✅ PK/UNIQUE/FK/CHECK/NOT NULL 核心组合已通过 |
@@ -529,7 +529,7 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 |---|---|---|---|
 | SEC-001 | system account、tenant admin、普通用户 | 只有合同规定角色可 CREATE/ALTER/DROP/SHOW connection/table；普通用户经 GRANT 只能 SELECT | ✅ 低权限真实 Mongo DDL 边界已通过 |
 | SEC-002 | tenant A/B 同名 connection/table/secret | connection ID、mapping、secret resolver、Mongo database/collection 按 tenant 隔离；A 不能查 B | ⏸️ |
-| SEC-003 | metadata/plan/log/EXPLAIN | SHOW CONNECTIONS、SHOW CREATE TABLE、EXPLAIN、pipeline、query history、CN/Mongo command monitor 和 report 均不得出现 password、URI userinfo、endpoint、CA PEM 或 query literal | ◐ EXPLAIN/SHOW CREATE 及 View 结果未泄露已通过，日志/全链路未完成 |
+| SEC-003 | metadata/plan/log/EXPLAIN | SHOW CONNECTIONS、SHOW CREATE TABLE、EXPLAIN、pipeline、query history、CN/Mongo command monitor 和 report 均不得出现 password、URI userinfo、endpoint、CA PEM 或 query literal | ◐ 当前 target 的 SHOW CREATE TABLE/EXPLAIN 脱敏扫描通过，未发现 password、Mongo URI 或证书；日志/全链路未完成 |
 | SEC-004 | host egress | seed、SRV 结果、ReplicaSet member 每次 socket dial 均重新校验 suffix/CIDR；loopback、link-local、multicast、metadata endpoint 默认拒绝 | ◐ 未配置 CIDR 的 IP endpoint 连续 3/3 fail-closed；SRV/member 重校验及特殊地址组合未完成 |
 | SEC-005 | least privilege source | Mongo 只读账号只可读目标 database/collection；尝试写入、读其他 database/collection、使用错误 auth_source 均失败，collection hash 不变 | ◐ `mo_source` 直接写 `mongodb_source.events` 被 Mongo 拒绝，读 `admin.system.users` 也被拒绝；源集合计数保持 5，外表查询保持 `5/74`；错误 auth_source 和 collection hash 尚未完成 |
 | SEC-006 | marker injection | generic external table 元数据中出现 `MO_MONGODB:` 或类似文本不能改变对象类型或权限；应有非 admin 真实 E2E 回归 | ✅ |
@@ -541,9 +541,9 @@ overlap 只能吸收 overlap 内的新增/更新；overlap 前的历史修正必
 
 | ID | 故障 | 环境/操作 | 预期 | 测试结果 |
 |---|---|---|---|---|
-| REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 | ◐ 当前 namespace 删除一个 CN Pod 期间 20/20 查询为 4/70，恢复为 3 Ready 且 CR Ready；事务中断点/getMore 未覆盖 |
-| REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ◐ 当前 namespace 删除 PRIMARY Pod 后，`primary+majority` 查询恢复为 `5/74`，最终为 1 PRIMARY + 2 SECONDARY；`local`/`primaryPreferred`/getMore 未覆盖 |
-| REC-007 | DN restart | 当前 namespace 删除 `nightly-regression-dis-dn-0`，等待 CR/Pod 恢复后重新扫描 | DN 恢复后外表查询可继续；CR Ready；无 catalog/mapping 残留 | ✅ DN Pod 删除后快速恢复，CR 保持 Ready；Mongo 外表基线连续 3 次为 `4/70` |
+| REC-001 | CN restart | scan-only 与 target transaction 分别在 cursor 前、getMore 中、commit 前重启 CN | 已提交 target/control 保留；未提交不出现；旧 cursor/lease 不泄漏；重跑 bounded range 可恢复 | ◐ 当前 namespace 删除一个 CN Pod 后查询恢复为 `5/74`，恢复为 3 Ready 且 CR Ready；事务中断点/getMore 未覆盖 |
+| REC-002 | Mongo primary failover | E2，切换 primary，分别测试 majority/local、primary/secondaryPreferred | 允许中的 find 行为符合 driver/read policy；getMore 失败不隐藏重读；bounded ingest 从旧 watermark 重跑 | ◐ 删除 PRIMARY Pod 后 `primary+majority` 查询恢复为 `5/74`，删除 SECONDARY Pod 后连续 5 次仍为 `5/74`，最终均恢复为 1 PRIMARY + 2 SECONDARY；`local`/`primaryPreferred`/getMore 未覆盖 |
+| REC-007 | DN restart | 当前 namespace 删除 `nightly-regression-dis-dn-0`，等待 CR/Pod 恢复后重新扫描 | DN 恢复后外表查询可继续；CR Ready；无 catalog/mapping 残留 | ✅ 当前 namespace 删除 DN Pod 后恢复为 Running，CR 回到 Ready，外表连续 3 次为 `5/74` |
 | REC-003 | 网络断流/超时 | find 后断 socket、DNS/SRV 不可达、仅 member 不可达 | 有界错误；target/watermark 原子；连接和 CN 后续查询恢复 | ⏸️ |
 | REC-004 | Snapshot | 在 external table 存在/被 drop 前后创建 snapshot，按正式 scope restore 到隔离目标 | 外部 collection 不被伪造恢复；mapping 与 table ID 一致或按明确 policy 跳过/拒绝；无 orphan dependency | ⏸️ |
 | REC-005 | PITR | 在 mapping/target/control 变更前后恢复到时点 | target/control/catalog 与时点一致；恢复范围外对象不变；恢复后 connection 可管理、可重建、可清理 | ⏸️ |
@@ -619,6 +619,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - allowlist：使用未配置 CIDR 的 IP endpoint 创建连接，连续 3 轮均在建连接阶段返回 `MongoDB IP endpoint requires an explicit CIDR allowlist`，随后清理临时 connection，原外表仍为 `5/74`。
 - 约束与事务补测：REPLACE 目标为 `5/74`；CHECK 与 FK 冲突后目标均为 0 行；带二级索引目标点查返回 4 行。自建 control/target 的 rollback 后为 `target=0, control=0`，commit 后为 `target=5, control=5`；同一 control row 的持锁事务使第二事务 3 秒有界退出，锁释放后第三次更新成功。
 - 多租户与 TLS 负向补测：system 创建临时 tenant A/B 成功，但 tenant 侧解析 `secret://env` 凭证失败，未形成隔离通过结论，临时 account 已清理；TLS required 连接非 TLS Mongo 的负向探针返回 server selection/auth failure，临时对象已清理。
+- 认证、stale 与恢复补测：错误 `auth_source`、缺失 Secret 各 3/3 返回稳定错误；在途查询在 connection disable 后完成，新查询被拒绝，enable 后恢复 `5/74`；SHOW CREATE TABLE/EXPLAIN 脱敏扫描通过；删除 Mongo SECONDARY 和 DN Pod 后分别恢复查询 `5/74`，CR 最终回到 `Ready`。
 - 本轮仍未完成：完整 24×`strict/try_null`×`nullable/NOT NULL` 矩阵、pushed>0、getMore/网络断流、并发 watermark/commit-ack、TLS/SRV/TXT、多租户/Cluster Table、普通/Iceberg External 跨源、Snapshot/PITR、NESR 和大数据/稳定性性能；没有新增可归因于产品的重复 Bug。
 
 ### 本轮继续执行记录（2026-08-20，`mo-search-commit-c8e3fa745-20260820`）
