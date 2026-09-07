@@ -683,6 +683,15 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 
 另外，`events_aggregate` 的普通无 `__mo_query` 扫描中聚合字段因源文档没有对应字段而显示 NULL；使用 `$group` pipeline 产生 `event_count/avg_measurement` 后映射正确，因此该现象按 fixture/mapping 语义处理，不作为 #27536 缺陷。
 
+### 2026-09-07 继续补测：投影、dotted path、边界与 getMore 条件
+
+- 普通无 `__mo_query` 的列重排 3/3 正常；使用临时显式 schema 映射 `payload.a`、`payload.b` 和 `arr`，全列/重排、pipeline 全投影和部分投影均 3/3 返回 `2/x/[1,2,3]` 或对应 NULL，临时表已删除，源 collection 未修改。
+- `events_aggregate` 的 `$project` 字段重排 3/3 正常；pipeline 输出与外表映射列顺序、类型一致。pipeline 将 `event_count` 产出为字符串时，3/3 返回稳定的 BIGINT 转换错误，未暴露 panic，基线仍为 `5/74`。
+- 显式 filter 的普通行投影（单列、三列重排）及外层 `LIMIT` 各 3/3 触发 `ColumnExpressionExecutor.Eval` 越界 panic；`COUNT(*)` + `LIMIT` 3/3 正常。单列投影复现已追加到 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，不重复提单。
+- `__mo_query` selector 的 `OR`、`LIKE` 各 3/3 按单值/常量等价约束拒绝；单值 `IN` 和可常量折叠表达式各 3/3 执行成功，未判为多 pipeline 支持。pipeline envelope 追加 `allowDiskUse` 各 3/3 拒绝，符合“不允许 query text 覆盖运行时选项”。
+- `$sort`、`$unwind` 各 3/3 在发往 MongoDB 前被 allowlist 拒绝。#27536 将二者列为首期候选 stage，但当前实现的 allowlist 和单测均未放行，已单独提交 [#28337](https://github.com/matrixorigin/matrixone/issues/28337)，指派 `iamlinjunhong`，标签为 `kind/bug`、`needs-triage`，Issue Type 为 `Bug`；在研发确认前不将其记为“功能通过”。
+- 指标端点存在 Mongo command/cursor/pool/scan/转换错误等指标，当前 5 行 fixture 使用默认 `batch-rows=8192` 时未出现 `get_more`；为强行改变配置曾仅在本 namespace 临时 patch CN ConfigMap 并串行重启 CN，查询仍为 `5/74`，随后已恢复原配置并确认 3 CN Ready。因此 getMore 中途失败、网络断流和服务端取消仍不能标记通过，不能用这次单 batch 结果替代。
+
 ## 可观测性与资源清理
 
 每个成功和失败 case 都要检查：

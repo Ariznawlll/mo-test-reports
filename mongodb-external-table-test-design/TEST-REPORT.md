@@ -115,3 +115,21 @@
 失败后检查：CR 仍为 `Ready`，3 CN/1 DN/Mongo 三节点均 `Running` 且重启数为 0；外表基线连续 3/3 为 `COUNT=5, SUM(measurement)=74`。该失败已提交为 [#28333](https://github.com/matrixorigin/matrixone/issues/28333)，并追加了外层 `ORDER BY` 的 3/3 复现；issue 已指派 `iamlinjunhong`，标签为 `kind/bug`、`needs-triage`，Issue Type 为 `Bug`；正文注明当前构建不是官方最新 main，需继续主线复核。
 
 `events_aggregate` 直接扫描时聚合列显示 NULL，是因为源 collection 文档没有这两个字段；使用 `$group` pipeline 生成同名输出字段后映射正常，未作为本 Issue 缺陷。
+
+## 9. 2026-09-07 继续补测：投影、dotted path、边界与 getMore 条件
+
+仍只操作 129 上的 `mo-search-commit-4fdb9e916-20260907` namespace。
+
+| 项目 | 结果 | 证据/结论 |
+|---|---|---|
+| 普通投影重排对照 | ✅ | 无 `__mo_query` 的 `measurement, device_id, site_id` 连续 3/3 正常返回 5 行 |
+| dotted `MONGODB_PATH` | ✅ | 临时显式 schema 映射 `payload.a`、`payload.b`、`arr`；全列/重排、pipeline 全投影和部分投影各 3/3 正确返回 `2/x/[1,2,3]` 或对应 NULL；临时 mapping 已用 `DROP TABLE` 清理 |
+| pipeline 输出投影/重排 | ✅ | `events_aggregate` 的 `$project` 重排连续 3/3 返回 `device-001|1|30` |
+| pipeline 转换失败 | ✅ | 将 `event_count` 产出为字符串，连续 3/3 稳定返回 `BIGINT` 转换错误；没有 panic，基线仍为 `5/74` |
+| 显式 filter 普通行投影 | ❌ | 单列、三列重排各 3/3 为 `ColumnExpressionExecutor.Eval` 越界；外层 `LIMIT` 也 3/3 越界，已补充 [#28333](https://github.com/matrixorigin/matrixone/issues/28333) |
+| 显式 filter 聚合边界 | ✅ | `COUNT(*)` + `LIMIT 1` 连续 3/3 返回 1；说明问题集中在行投影/下游表达式组合，不是 filter count 本身 |
+| selector/envelope 边界 | ✅ | `OR`、`LIKE` 各 3/3 按单值 selector 约束拒绝；单值 `IN`、常量折叠表达式各 3/3 正常；query text 追加 `allowDiskUse` 各 3/3 拒绝 |
+| `$sort/$unwind` | ❌/待契约确认 | 各 3/3 在 MongoDB 操作前返回 `pipeline stage is not allowed`；#27536 将二者列为首期候选，已提交 [#28337](https://github.com/matrixorigin/matrixone/issues/28337)，指派 `iamlinjunhong`，标签 `kind/bug`、`needs-triage`，类型 Bug |
+| getMore/指标 | ⏸️ | 指标端点确认存在 `find/aggregate/get_more/kill_cursors`、cursor、pool、scan 文档/字节和转换错误指标；5 行 fixture 配默认 `batch-rows=8192` 只产生单 batch。曾在本 namespace 临时 patch CN ConfigMap 并串行重启尝试调到 2，但运行时未生效；已恢复 ConfigMap，3 CN Ready，不能据此宣称 getMore 已覆盖 |
+
+本轮 cleanup：临时 dotted mapping 已删除；MongoDB collection 未修改；目标外表基线仍为 `COUNT(*)=5, SUM(measurement)=74`；3 CN、1 DN、3 Mongo 节点均 Running 且重启数为 0。当前构建仍为 `commit-4fdb9e916`，不是官方最新 main，#28333/#28337 均需主线镜像复核。
