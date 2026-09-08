@@ -1,0 +1,3 @@
+PASS	p64	rows=16384;result=(256, 16128, 4161408);p50_ms=7.708;plan=table-scan-group
+PASS	p320	rows=81920;result=(256, 81664, 20938624);p50_ms=36.807;plan=table-scan-group
+PASS	p640	rows=163840;result=(256, 163584, 41910144);p50_ms=72.516;plan=table-scan-group

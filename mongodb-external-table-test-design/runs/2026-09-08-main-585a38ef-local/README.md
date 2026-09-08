@@ -39,3 +39,7 @@
 - #28337：修复提交 `39225f5fbc63b44a190cdd43f954ee07d78e6cdc`（PR #28344），官方 E2E `explicit-sort-and-unwind-pipeline`，以及 user query stage validation UT。
 
 本次验证覆盖功能正确性、非法输入、边界、并发控制和资源清理；big-data、TLS/SRV、多成员故障、Snapshot/PITR、stability/Chaos 不属于这两个缺陷的必要复现路径，仍由 MongoDB External Table 总体验收计划单独执行。
+
+## 相关 Issue 扩展验证
+
+同一二进制后续又完成了 #27123、#27536、#27266/#27269 以及 #27068 轻量 smoke 验证。结果、边界和未覆盖项见 [`related-issues-validation.md`](related-issues-validation.md)。
