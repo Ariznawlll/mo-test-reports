@@ -23,8 +23,10 @@
 |---|---:|---|
 | 官方 MongoDB E2E | PASS 25/25 | [`official-report.json`](official-report.json) |
 | 扩展交叉矩阵 | 145 PASS / 13 FAIL，共 158 项 | [`local-matrix-summary.json`](local-matrix-summary.json)、[`local-matrix-cases.tsv`](local-matrix-cases.tsv) |
-| `pkg/sql/mongodb -race` | PASS 3/3 | 串行、`-vet=off`、同一 SHA |
-| `pkg/sql/colexec/mongoscan -race` | PASS 3/3 | 串行、`-vet=off`、同一 SHA |
+| `pkg/sql/mongodb -race` | PASS 10/10 | 串行、`-vet=off`、同一 SHA |
+| `pkg/sql/colexec/mongoscan -race` | PASS 10/10 | 串行、`-vet=off`、同一 SHA |
+| `pkg/sql/colexec/aggexec -race` | PASS 10/10 | 串行、`-vet=off`、同一 SHA |
+| `pkg/sql/colexec/timewin -race` | PASS 10/10 | 串行、`-vet=off`、同一 SHA |
 | 官方 unit 相关包 | PASS | Python 11/11；`mongodb`、`mongoscan`、`aggexec`、`timewin`、MySQL parser、`plan`、`compile`、`frontend` 均通过 |
 
 扩展矩阵通过项覆盖：

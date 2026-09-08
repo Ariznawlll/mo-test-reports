@@ -721,7 +721,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 
 | 层级 | 放入内容 | 资产/门禁 | 测试结果 |
 |---|---|---|---|
-| UT | BSON path、类型转换、时间域/scale、NOT NULL、pushdown candidate、budget reservation、max_by ownership/complexity、envelope trusted discriminator | `pkg/sql/mongodb/*_test.go`、`pkg/sql/colexec/mongoscan/*_test.go`、`pkg/sql/colexec/aggexec/*maxby*_test.go`；关键用例 `-race -count=10` | ◐ 官方相关 Python 11/11 与八个 Go package 通过；`mongodb`、`mongoscan` race 各 3/3 通过，尚未按准入目标执行 `-count=10` |
+| UT | BSON path、类型转换、时间域/scale、NOT NULL、pushdown candidate、budget reservation、max_by ownership/complexity、envelope trusted discriminator | `pkg/sql/mongodb/*_test.go`、`pkg/sql/colexec/mongoscan/*_test.go`、`pkg/sql/colexec/aggexec/*maxby*_test.go`；关键用例 `-race -count=10` | ✅ 官方相关 Python 11/11 与八个 Go package 通过；`mongodb`、`mongoscan`、`aggexec`、`timewin` race 各 10/10 通过 |
 | BVT | connection/table DDL、SHOW/EXPLAIN 脱敏、全类型代表值、只读、失败原子、target constraints、推下残差控制 | `test/mongodb/sql/` 或 `test/distributed/cases/mongodb/`；每个 case ≥3 轮 | ◐ 本轮 TKE BVT 代表组合已通过 |
 | MOTR | 多连接、tenant/admin/普通用户、view/temp/cluster target、Join/CTAS/REPLACE、并发 fence、cancel/断连/stale generation | `test/mongodb/mongodb_e2e_local_test.go` 扩展或 `motr/suites/14_issue_regression`；并发 ≥10 轮 | ◐ 权限/Join/CTAS/并发读已测，完整 MOTR 未完成 |
 | big-data | 300 万 raw rows、宽/长 varlen、scan/decoded budget、GAPFILL 大窗口、many-group max_by | Nightly 专用 MongoDB/MatrixOne 环境；报告必须含资源与结果摘要 | ⏸️ |
