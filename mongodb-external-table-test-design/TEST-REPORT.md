@@ -143,3 +143,15 @@
 - [`runs/2026-09-07-main-8edac647-local/`](runs/2026-09-07-main-8edac647-local/)
 
 本轮没有发现新的产品缺陷。#27346 的 `TRUNCATE` 黑盒回归符合预期；#27347/#27348 的 mapping/DDL 白盒拒绝路径符合预期，但公开 SQL 黑盒 DDL 仍需单独复测。完整 24 类型交叉矩阵、TLS/SRV、多租户、多成员/网络/getMore 故障、Snapshot/PITR、NESR、big-data、stability 和 Chaos 未由本地归档覆盖，因此不改变 Issue #26229 的完整验收结论。
+
+## 11. 2026-09-08 最新 main 本地扩展交叉测试
+
+在官方 `main` SHA `f72ca9efbeb3a7c673701e4a135cc6670c33cfde` 上执行官方 MongoDB E2E 和扩展交叉矩阵。官方 E2E 为 25/25 PASS；扩展矩阵共 158 项，145 PASS、13 FAIL。结构化结果、逐项明细、可复现脚本和校验和已归档到：
+
+- [`runs/2026-09-08-main-f72ca9ef-local/`](runs/2026-09-08-main-f72ca9ef-local/)
+
+本地通过范围包括当前 converter 支持的全部 23 个 MO 类型/类型族、源表列属性和禁止约束、只读 DML、永久/临时/分区/View/CTAS/cluster 权限边界/file external、普通目标表全部主要约束、查询与 pipeline 边界、显式事务、10 路并发和双 tenant 隔离。`mongodb`、`mongoscan` race 各重复 3/3 通过，cursor/pool 最终为 `open=134, close=134, checked_out=0`，归档敏感值扫描和本轮资源残留均为 0。
+
+13 个失败全部归属于已登记问题：[#28333](https://github.com/matrixorigin/matrixone/issues/28333) 的 4 种显式 filter + residual/projection/order-limit 组合各 3/3 越界 panic，共 12 项；[#28341](https://github.com/matrixorigin/matrixone/issues/28341) 的 strict 转换失败指标不增长，共 1 项。已修复的 [#28337](https://github.com/matrixorigin/matrixone/issues/28337) `$sort`/`$unwind` 各 3/3 通过，并通过相邻边界验证。本轮未发现第三类新缺陷。
+
+big-data、TLS/SRV/mongos、多成员和 getMore 网络故障、Snapshot/PITR、stability/Chaos、NESR cutover 仍需专用环境，不属于本地完成范围。

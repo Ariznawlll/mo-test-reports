@@ -24,8 +24,8 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 
 ## 支持证据与版本基线
 
-- MatrixOne main SHA：`ccb37f591b07e9901da2e0e7b5cb1733485e8771`。
-- 核验日期：2026-08-18。
+- MatrixOne main SHA：`f72ca9efbeb3a7c673701e4a135cc6670c33cfde`。
+- 核验日期：2026-09-08。
 - Feature 证据：Issue #26229、PR #26424、研发用户指南和 `pkg/sql/mongodb/`、`pkg/sql/colexec/mongoscan/`、`pkg/sql/plan/`、`test/mongodb/`。
 - MatrixOne 表对象证据：[CREATE TABLE](https://docs.matrixorigin.cn/en/dev/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-table/)、[CREATE TEMPORARY TABLE](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Develop/schema-design/create-temporary-table/)、[CREATE CLUSTER TABLE](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-cluster-table/)、[CREATE EXTERNAL TABLE](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-external-table/)、[CREATE VIEW](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/SQL-Reference/Data-Definition-Language/create-view/)。
 - Schema/constraint 证据：现有 `test/distributed/cases/ddl/`、`table/`、`foreign_key/`、`auto_increment/`、`temporary/`、`view/` 和 [Primary Key](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Develop/schema-design/data-integrity/primary-key-constraints/)、[foreign_key_checks](https://docs.matrixorigin.cn/en/v26.3.0.12/MatrixOne/Reference/Variable/system-variables/foreign_key_checks/)。
@@ -117,12 +117,14 @@ MVP 执行约束为单 CN、`max_parallelism=1`。MongoDB source 只读，外表
 
 | 环境 | MatrixOne | MongoDB | 用途 | 测试结果 |
 |---|---|---|---|---|
-| E1 单机功能 | 当前 main，1 CN/1 TN | 8.0.12 单节点 ReplicaSet | BVT、类型、DDL、查询、DML | ⏸️ 本轮未使用 |
+| E1 单机功能 | 当前 main，1 CN/1 TN | 8.0.12 单节点 ReplicaSet | BVT、类型、DDL、查询、DML | ◐ 官方 E2E 25/25；扩展矩阵 145/158，通过项覆盖本地计划范围，13 个失败均对应已登记 #28333/#28341 |
 | E2 分布式 | 3 CN/多 TN，但 Mongo scan 固定单 CN | 3 member ReplicaSet | session、failover、stale client、恢复 | ◐ 3 CN/1 DN、三节点 Mongo；基础 scan、并发读、CN Pod 删除和 Mongo PRIMARY Pod 删除恢复已测；多 TN 未覆盖 |
 | E3 TLS/SRV | 1–3 CN | TLS 私有 CA、SRV/TXT、hostname | 网络、安全、发现和 allowlist | ⏸️ 环境未提供 |
-| E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope | ◐ 临时 tenant A/B 可创建，但 tenant 侧解析 `secret://env` 凭证失败；对象已清理，Mongo 外表隔离未形成通过结论 |
+| E4 多租户 | system + tenant A/B | 独立 database/credential | tenant、view、cluster table、secret scope | ◐ 本地 system + tenant A/B 已验证 account-scoped secret、同名 connection/table、扫描和 catalog 隔离；独立 database/credential 与跨租户授权攻击仍待专用环境 |
 | E5 故障注入 | 可 kill CN/TN、代理断流 | 可断 find/getMore/primary | 原子性、取消、重试、恢复 | ◐ 当前 namespace 的 CN、DN Pod 和 Mongo PRIMARY Pod 删除已通过；网络和 getMore 断流未执行 |
 | E6 big-data | Nightly 独占环境 | 有索引的千万级 collection | 容量、稳定性、资源、性能 | ⏸️ 环境未提供 |
+
+本地扩展 run（2026-09-08，MatrixOne `f72ca9efbeb3a7c673701e4a135cc6670c33cfde`）执行官方 E2E 25 项和扩展交叉矩阵 158 项：官方 25/25 通过，扩展 145 项通过、13 项失败。通过项覆盖 converter 全部 23 个 MO 类型/类型族、源表列属性和禁止约束、只读 DML、正式表对象互操作、目标表主要约束、查询边界、显式事务、10 路并发和双 tenant 隔离；失败均为既有 #28333（12 项）和 #28341（1 项）。#28337 `$sort`/`$unwind` 在当前 main 各 3/3 通过。完整证据见 [`runs/2026-09-08-main-f72ca9ef-local/`](runs/2026-09-08-main-f72ca9ef-local/)。
 
 配置覆盖：默认 enable、省略 allowlist、显式 enable/disable、account allowlist、host suffix/CIDR、loopback、timeout、batch rows/bytes、max value/scan/decoded bytes、conversion error count/rate、source concurrency。所有 secret 使用随机测试值和 reference，不写进 SQL fixture。
 
@@ -719,7 +721,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 
 | 层级 | 放入内容 | 资产/门禁 | 测试结果 |
 |---|---|---|---|
-| UT | BSON path、类型转换、时间域/scale、NOT NULL、pushdown candidate、budget reservation、max_by ownership/complexity、envelope trusted discriminator | `pkg/sql/mongodb/*_test.go`、`pkg/sql/colexec/mongoscan/*_test.go`、`pkg/sql/colexec/aggexec/*maxby*_test.go`；关键用例 `-race -count=10` | ⏸️ 本轮未执行源码 UT |
+| UT | BSON path、类型转换、时间域/scale、NOT NULL、pushdown candidate、budget reservation、max_by ownership/complexity、envelope trusted discriminator | `pkg/sql/mongodb/*_test.go`、`pkg/sql/colexec/mongoscan/*_test.go`、`pkg/sql/colexec/aggexec/*maxby*_test.go`；关键用例 `-race -count=10` | ◐ 官方相关 Python 11/11 与八个 Go package 通过；`mongodb`、`mongoscan` race 各 3/3 通过，尚未按准入目标执行 `-count=10` |
 | BVT | connection/table DDL、SHOW/EXPLAIN 脱敏、全类型代表值、只读、失败原子、target constraints、推下残差控制 | `test/mongodb/sql/` 或 `test/distributed/cases/mongodb/`；每个 case ≥3 轮 | ◐ 本轮 TKE BVT 代表组合已通过 |
 | MOTR | 多连接、tenant/admin/普通用户、view/temp/cluster target、Join/CTAS/REPLACE、并发 fence、cancel/断连/stale generation | `test/mongodb/mongodb_e2e_local_test.go` 扩展或 `motr/suites/14_issue_regression`；并发 ≥10 轮 | ◐ 权限/Join/CTAS/并发读已测，完整 MOTR 未完成 |
 | big-data | 300 万 raw rows、宽/长 varlen、scan/decoded budget、GAPFILL 大窗口、many-group max_by | Nightly 专用 MongoDB/MatrixOne 环境；报告必须含资源与结果摘要 | ⏸️ |
@@ -746,7 +748,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 
 ### 准入条件
 
-1. 使用当前 main 完整 SHA `177a149f457be15f5bb14c723bdf0ea94254fea7` 构建；相关 MongoDB 路径与 `test/mongodb` 已完成新鲜度审计。
+1. 使用当前 main 完整 SHA `f72ca9efbeb3a7c673701e4a135cc6670c33cfde` 构建；相关 MongoDB 路径与 `test/mongodb` 已完成新鲜度审计。
 2. MongoDB 8.0.12、官方 Go Driver v2.8.0、Docker/Go/Python/OpenSSL 可用；E1 至少可运行，E2～E6 按用例启用。
 3. 所有测试 secret 使用临时 account-scoped `secret://` reference，报告/log/artifact 已脱敏；不把凭据写入 SQL 或 fixture。
 4. 回归验证已合入 #26495 的 P0 条件：可信类型 discriminator/权限边界、低精度时间不误下推、时间域校验与 scale、decoded/vector budget、Snapshot/PITR bulk skip/direct reject/connection scope copy、`max_by` 多组复杂度。

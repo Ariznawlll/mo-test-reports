@@ -1,0 +1,159 @@
+case	status	detail
+seed-mongodb	PASS	ok
+matrix-setup	PASS	ok
+type-bool	PASS	value=1
+type-signed-integers	PASS	value=-128|32767|-2147483648|9223372036854775807
+type-unsigned-integers	PASS	value=255|65535|4294967295|9223372036854775807
+type-float-double	PASS	value=3.5|-1.25
+type-decimal64	PASS	value=123456789012.3456
+type-decimal128	PASS	value=12345678901234567890.1234
+type-decimal256	PASS	value=1234567890123456789012345678901234
+type-date	PASS	value=2026-09-08
+type-datetime	PASS	value=2026-09-08 12:34:56.789
+type-timestamp	PASS	value=2026-09-08 12:34:56.789
+type-char	PASS	value=1
+type-varchar	PASS	value=hello🙂
+type-text	PASS	value=text-value
+type-binary	PASS	value=01020000
+type-varbinary	PASS	value=010203
+type-blob	PASS	value=00FF80
+type-objectid-char	PASS	value=64b000000000000000009999
+type-objectid-binary	PASS	value=64B000000000000000009999
+type-json-document	PASS	value=v
+type-json-array	PASS	value=3
+type-json-bson-wrapper	PASS	value=OBJECT
+null-missing-undefined-try-null	PASS	value=4|7
+strict-conversion-rejected	PASS	rejected as expected
+nested-path-and-case-sensitive	PASS	value=5|4|9
+nested-path-strict-invalid-parent	PASS	rejected as expected
+unicode-width-counts-characters	PASS	value=中文🙂
+unicode-width-overflow-try-null	PASS	value=1
+scalar-overflow-try-null	PASS	value=5
+source-default-null-allowed	PASS	ok
+source-default-null-scan	PASS	value=4
+source-not-null-ddl-allowed	PASS	ok
+source-not-null-runtime	PASS	rejected as expected
+source-nonnull-default-rejected	PASS	rejected as expected
+source-primary-key-rejected	PASS	rejected as expected
+source-unique-rejected	PASS	rejected as expected
+source-index-rejected	PASS	rejected as expected
+source-check-rejected	PASS	rejected as expected
+source-auto-increment-rejected	PASS	rejected as expected
+source-fk-parent-setup	PASS	ok
+source-generated-rejected	PASS	rejected as expected
+source-foreign-key-rejected	PASS	rejected as expected
+source-time-type-rejected	PASS	rejected as expected
+source-uuid-type-rejected	PASS	rejected as expected
+source-datalink-type-rejected	PASS	rejected as expected
+source-geometry-type-rejected	PASS	rejected as expected
+source-vector-type-rejected	PASS	rejected as expected
+source-rejected-ddl-no-catalog-residue	PASS	value=0
+source-insert-read-only	PASS	rejected as expected
+source-update-read-only	PASS	rejected as expected
+source-delete-read-only	PASS	rejected as expected
+source-replace-read-only	PASS	rejected as expected
+source-truncate-read-only	PASS	rejected as expected
+source-preserved-after-dml-rejection	PASS	value=2|30
+source-alter-schema-rejected	PASS	rejected as expected
+connection-missing-discovery-rejected	PASS	rejected as expected
+connection-ambiguous-discovery-rejected	PASS	rejected as expected
+connection-uri-userinfo-rejected	PASS	rejected as expected
+connection-auth-mechanism-rejected	PASS	rejected as expected
+connection-read-preference-rejected	PASS	rejected as expected
+connection-unknown-option-rejected	PASS	rejected as expected
+mapping-schema-mode-rejected	PASS	rejected as expected
+mapping-conversion-mode-rejected	PASS	rejected as expected
+mapping-parallelism-rejected	PASS	rejected as expected
+connection-drop-with-dependency-rejected	PASS	rejected as expected
+connection-missing-secret-ddl	PASS	ok
+connection-missing-secret-runtime	PASS	rejected as expected
+connection-missing-secret-cleanup	PASS	ok
+connection-invalid-ddl-no-catalog-residue	PASS	value=0
+target-parent-setup	PASS	ok
+table-permanent-target	PASS	ok
+table-permanent-join	PASS	value=1|10|a
+table-view-create	PASS	ok
+table-view-scan	PASS	value=2|30
+table-ctas	PASS	ok
+table-ctas-result	PASS	value=2|30
+table-partition-target	PASS	ok
+table-partition-result	PASS	value=2|30
+table-temporary-target	PASS	ok
+table-temporary-session-isolation	PASS	rejected as expected
+table-cluster-target-user-rejected	PASS	rejected as expected
+table-file-external-create	PASS	ok
+table-file-external-join	PASS	value=2|3
+target-default	PASS	ok
+target-default-result	PASS	value=2|14
+target-auto-generated-index	PASS	ok
+target-auto-generated-result	PASS	value=2|1|2|60
+target-cluster-by	PASS	ok
+target-cluster-by-result	PASS	value=2|30
+target-pk-setup	PASS	ok
+target-pk-atomic-reject	PASS	rejected as expected
+target-pk-rollback	PASS	value=0
+target-unique-setup	PASS	ok
+target-unique-atomic-reject	PASS	rejected as expected
+target-unique-rollback	PASS	value=0
+target-fk-setup	PASS	ok
+target-fk-atomic-reject	PASS	rejected as expected
+target-fk-rollback	PASS	value=0
+target-check-setup	PASS	ok
+target-check-atomic-reject	PASS	rejected as expected
+target-check-rollback	PASS	value=0
+target-notnull-setup	PASS	ok
+target-notnull-atomic-reject	PASS	rejected as expected
+target-notnull-rollback	PASS	value=0
+target-replace-setup	PASS	ok
+target-replace-result	PASS	value=2|30
+issue-28333-residual-measurement-run-1	FAIL	exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin
+issue-28333-residual-site-run-1	FAIL	exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin
+issue-28333-projection-run-1	FAIL	exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat
+issue-28333-order-limit-run-1	FAIL	exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat
+issue-28337-sort-run-1	PASS	value=5
+issue-28337-unwind-run-1	PASS	value=5
+issue-28333-residual-measurement-run-2	FAIL	exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin
+issue-28333-residual-site-run-2	FAIL	exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin
+issue-28333-projection-run-2	FAIL	exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat
+issue-28333-order-limit-run-2	FAIL	exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat
+issue-28337-sort-run-2	PASS	value=5
+issue-28337-unwind-run-2	PASS	value=5
+issue-28333-residual-measurement-run-3	FAIL	exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin
+issue-28333-residual-site-run-3	FAIL	exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin
+issue-28333-projection-run-3	FAIL	exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat
+issue-28333-order-limit-run-3	FAIL	exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat
+issue-28337-sort-run-3	PASS	value=5
+issue-28337-unwind-run-3	PASS	value=5
+query-cte	PASS	value=2|30
+query-derived-subquery	PASS	value=20
+query-union-all	PASS	value=4
+query-group-having	PASS	value=2|15.0000
+query-window	PASS	value=1|10|10;2|20|30
+query-sort-32-fields-valid	PASS	value=5
+query-sort-33-fields-rejected	PASS	rejected as expected
+query-unwind-199-segments-valid	PASS	value=0
+query-unwind-200-segments-rejected	PASS	rejected as expected
+query-16-stages-valid	PASS	value=1
+query-17-stages-rejected	PASS	rejected as expected
+query-depth-33-rejected	PASS	rejected as expected
+query-over-64k-rejected	PASS	rejected as expected
+query-write-stage-rejected	PASS	rejected as expected
+query-cross-collection-rejected	PASS	rejected as expected
+query-baseline-after-boundaries	PASS	value=5|74
+transaction-scan-commit	PASS	value=2
+transaction-scan-rollback	PASS	value=2
+transaction-target-rollback	PASS	value=0
+transaction-target-commit	PASS	value=2
+concurrency-10-readers	PASS	10/10 exact results
+tenant-create	PASS	ok
+tenant-a-same-name-ddl	PASS	ok
+tenant-b-same-name-ddl	PASS	ok
+tenant-a-scan	PASS	value=2|30
+tenant-b-scan	PASS	value=2|30
+tenant-system-catalog-isolation	PASS	value=2|2|0
+observability-try-null-query	PASS	value=4
+observability-try-null-conversion-metric	PASS	before=25 after=26
+issue-28341-strict-conversion-query	PASS	rejected as expected
+issue-28341-strict-conversion-metric	FAIL	metric unchanged before=26 after=26
+observability-cursor-pool-cleanup	PASS	open=134 close=134 checked_out=0
+cleanup-sql	PASS	ok
