@@ -772,3 +772,7 @@ big-data 报告必须保存数据行数、分布、拓扑、阈值、超时、�
 - `GAPFILL` 上限、`max_by` 浮点 tolerance、300 万 raw rows 的 nightly 门槛、NESR 客户峰值门槛、source protection 和最大 cursor 时长需要产品/运维给出明确数值。
 - 当前文档与 main README 在“功能默认 enable”描述上曾有差异；以当前 main README 为实现基线，同时要求 release 文档、配置参考和错误合同统一后再宣称正式支持。
 - MongoDB JSON 的 Canonical Extended JSON 表示由当前 main converter 实现注释明确，但 Issue #26229 和研发用户文档未说明其对 `JSON_EXTRACT`/`JSON_CONTAINS` 的用户影响；#27414 跟踪“保留类型标签”是否为正式合同，并要求补充示例或提供规范化模式。
+
+## 2026-09-08 #28333 / #28337 修复复测增量
+
+官方 `main` SHA `585a38efd152fadf216c8675b7b997a35ca8deb1` 的本地验证结果已归档到 [`runs/2026-09-08-main-585a38ef-local/`](runs/2026-09-08-main-585a38ef-local/)：官方 E2E 26/26 PASS；#28333 四种查询形态各 3/3 PASS；#28337 `$sort`/`$unwind` 各 3/3 PASS，8 项邻接边界全部符合预期；两个相关包的 focused UT 均在 `-race -count=10` 下通过。扩展矩阵唯一失败为无关的既有 #28341，不改变 #28333/#28337 的通过结论。

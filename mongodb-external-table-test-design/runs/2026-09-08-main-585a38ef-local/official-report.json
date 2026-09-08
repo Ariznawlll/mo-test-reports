@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "cases": [
+    "secret-backed-ddl",
+    "show-connections-admin-metadata-redaction",
+    "show-create-redaction-roundtrip",
+    "non-admin-marker-injection-boundary",
+    "json-relaxed-extended-conversion",
+    "fixed-binary-padding",
+    "truncate-read-only-source-preserved",
+    "scan-projection-pushdown-null-conversion",
+    "prepared-scan-binary-and-text-reuse-recovery-metadata",
+    "explicit-filter-residual",
+    "explicit-filter-and-query-column",
+    "explicit-reducing-aggregation-pipeline",
+    "explicit-sort-and-unwind-pipeline",
+    "explicit-query-explain-redaction",
+    "explicit-query-fail-closed",
+    "insert-select-primary-key-targets",
+    "date-format-order-by",
+    "low-precision-temporal-residual",
+    "decoded-vector-budget-enforced",
+    "multi-batch-cancel-recovery",
+    "mongoscan-timewin-gapfill",
+    "atomic-aggregate-watermark",
+    "conversion-error-atomic-rollback",
+    "bounded-idempotent-replay",
+    "credential-generation-rotation",
+    "connection-disable-enable"
+  ],
+  "transfer_reduction": {
+    "raw_scan_documents": 5,
+    "pipeline_documents": 1
+  }
+}
