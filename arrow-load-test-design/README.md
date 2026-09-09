@@ -1,6 +1,8 @@
 # Issue #23684：Apache Arrow IPC `LOAD DATA` 测试设计
 
-> 状态：测试设计，待产品合同确认后执行。本文不把候选实现或研发 Issue comment 当作已发布的产品支持声明。
+> 状态：测试设计；候选提交的阶段测试已开始，结果见
+> [2026-09-09 阶段测试记录](test-results-20260909.md)。产品合同与外部 release
+> gate 仍待确认。本文不把候选实现或研发 Issue comment 当作已发布的产品支持声明。
 
 ## Feature 背景与范围
 
