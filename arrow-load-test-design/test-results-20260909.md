@@ -5,12 +5,13 @@
 **测试不通过。** 研发确认以 Issue comment 的 default-on 描述为验收 Oracle；候选
 提交在省略配置时却将 local、S3/stage 和 distributed 三个 admission gate 默认设为
 `false`，公开 SQL 因配置关闭而拒绝 Arrow LOAD。候选代码及现有回归测试都明确固化
-了该错误默认值。
+了该错误默认值。已提交并指派研发的缺陷：
+[matrixorigin/matrixone#28517](https://github.com/matrixorigin/matrixone/issues/28517)。
 
-除默认策略外，显式 opt-in 后本地可执行范围内的功能、异常原子性、
-S3-compatible、分布式、资源生命周期和竞态测试通过，但不能抵消必需 Happy Path
-失败。真实云厂商、精确 Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、
-Chaos 和确定性 worker-loss 也尚未完成。
+除默认策略外，显式 opt-in 后本地已执行范围通过，但研发补充 comment 收紧后的
+versioned-object、确定性 transaction stage、物理连接恢复、per-CN 执行证据和 metrics
+分层语义仍有缺口，不能再把原整包 PASS 表述为这些能力已全覆盖。真实云厂商、精确
+Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、Chaos 也尚未完成。
 
 ## 基线与环境
 
@@ -18,6 +19,7 @@ Chaos 和确定性 worker-loss 也尚未完成。
 |---|---|
 | MatrixOne 提交 | `f0c31cd4b830be32442cf329e0a3fb08aa9c16c3` |
 | 提交说明 | `feat(load): add bounded Arrow IPC ingestion path (#28145)` |
+| 增量复核提交 | 最新 `main@cd04bb4c1af5bc595e2147dc645dfa754f4c395b`（包含上述实现提交） |
 | 工作树 | 独立、干净的 detached worktree；未使用主工作树未提交改动 |
 | 平台 | macOS Darwin 23.5.0, arm64 |
 | Go | 1.26.5；仓库声明 1.26.4，因此本轮不是 exact-release toolchain 证明 |
@@ -39,6 +41,28 @@ Chaos 和确定性 worker-loss 也尚未完成。
 上述 PASS 表示对应显式 opt-in 或组件路径本身通过，不代表 Feature 总结论通过。
 默认配置 Happy Path 与权威需求不符，因此总判定仍为测试不通过。
 
+## 研发补充 comment 后的增量测试与缺口
+
+根据[研发补充 comment](https://github.com/matrixorigin/matrixone/issues/23684#issuecomment-5597540449)，
+本轮在最新 main 重新执行了能够落地的 focused case，并逐项审计现有 Oracle。
+
+| 验收项 | 最新 main 执行结果 | 判定 |
+|---|---|---|
+| File/Stream × LZ4/ZSTD、损坏 compression metadata、decoded-size 超限、retained compressed record | 相关 `arrowio` 用例 `-count=3` 全部 PASS | 已覆盖对应组件 Oracle；dictionary+compression 组合仍缺 |
+| schema field/depth/custom metadata、wire/decoded body 限制 | 相关 `arrowio` 用例 `-count=3` 全部 PASS | 只证明现有 N/N+1 等点；尚未逐层补齐 N-1/N/N+1 和 output/statement 双边界 |
+| Stream 尾部/截断与 SQL statement rollback | reader EOS 用例和 `CorruptInputRollback/truncated_stream` 各 3/3 PASS | 精确“全部 record 合法、仅 EOS 损坏”的 SQL case 仍缺 |
+| MinIO direct File/Stream、stage、多对象 rollback、ETag 替换、cancel | `TestArrowLoadBVT/LocalMinIO` 3/3 PASS，输出明确无 `SKIP` | 无 versioning 的同 key 替换已覆盖；versioned v1/v2/delete-v1 尚缺 |
+| SDK conditional request 与 zero-copy/COW/lifetime | fileservice/arrowbridge/vector focused case `-count=3` PASS | 组件路径通过；跨 next batch/Reset/Free 的完整 owner 状态序列仍缺 |
+| post-admission/pre-publish shutdown | 现有 rollout 会在 shutdown 期间释放 publish barrier，并允许重启后 0 或全量 | **Oracle 不合格**；comment 要求 barrier 持至 termination 且重启后只能 0 行 |
+| 2-CN fanout | 现有 public test 只校验 count/distinct/id range | **证据不足**；未证明每个 CN 实际执行，也未覆盖 late remote-shard failure |
+| transaction 分阶段 | commit-success restart 已通过 | commit-ACK 不确定点、`BEGIN→INSERT→failed LOAD` 的 statement/transaction 边界缺失 |
+| cancel/恢复 | 现有 `sql.DB` 后续成功及 reader cleanup 通过 | 不能证明原物理连接复用；固定 `sql.Conn`/`connection_id()`、KILL QUERY、disconnect 缺失 |
+| rows/batches/errors metrics | 成功 reader publish 与 error category UT 通过 | rows/batches 是 pre-commit reader publish 计数；缺 late-fail/rollback 语义 case，errors 不覆盖所有 gate/planner/commit 错误 |
+| 独立生产者 fixture | 当前 fixture 由 Arrow Go 生成 | **缺失**：需新增并记录 PyArrow 版本的 File/Stream |
+
+因此这次增量测试发现的不是“其余全部没问题”，而是：已执行 focused case 没发现新的
+运行时断言失败，但现有 suite 对研发列出的多个关键 Oracle 只有部分覆盖或没有资产。
+
 ## 已确认缺陷：省略配置时 Arrow LOAD 被关闭
 
 - 预期：按研发确认的 Issue comment，省略 Arrow 配置时 local File/Stream、
@@ -56,7 +80,9 @@ Chaos 和确定性 worker-loss 也尚未完成。
 
 `-race` 首次把两个大型包并行链接时因测试机临时磁盘峰值不足而 build failed
 （`errno=28`），这不是产品断言失败。保留小包通过结果后，将 `external` 与
-`compile` 串行重跑，二者均通过且未报告 race；没有删除用户文件或清理全局缓存。
+`compile` 串行重跑，二者均通过且未报告 race。随后在最新 main 增量复核前，为解决
+同一磁盘不足清理了可再生的 Go build cache（约 12 GiB）并重新编译；未删除工作区或
+用户源文件。
 
 ## 已验证的设计矩阵
 
@@ -77,15 +103,18 @@ Chaos 和确定性 worker-loss 也尚未完成。
 - 多对象中后续对象损坏、对象在条件读取前被替换、读取取消；均验证 statement 不发布
   部分 Arrow rows，并用后续成功语句证明连接/reader 可复用。
 - 显式事务可见性、两会话隔离、commit 前故障注入回滚、与逐行 `INSERT` 对账。
-- 集群关闭时已 admission 的 LOAD 只允许全成或全败；随后以全 gate 关闭配置重启，
-  再 roll forward 到 distributed 关闭的串行模式。
+- 现有 rollout 测试只验证集群关闭期间已 admission 的 LOAD 最终为全成或全败，并验证
+  gate 关闭重启及串行 roll-forward；该用例未满足 comment 对已知 pre-publish 终止后
+  **必须零行**的更严格 Oracle，不能记为该项完成。
 - commit 后重启读取持久数据；默认 local/S3 gate 均在 I/O 前 fail closed。
 
 ### 资源与可观测性
 
 - buffer/range/capacity lease 的 retain/release、强制释放、晚到释放、failed-generation
   生命周期和 allocation terminal one-shot。
-- 读取/转换/commit/cancel 错误路径的 Close 与 allocation account 清理；Arrow 指标注册。
+- 读取/转换/commit/cancel 错误路径的 Close 与 allocation account 清理；Arrow 指标注册
+  和成功 reader publish 增量。尚未用 late failure 证明 rows/batches 与 committed rows
+  分离，也未按 reader/planner/gate/commit 分层验证 errors。
 - 畸形 IPC 的 fuzz 路径没有 panic 或测试可见泄漏。
 
 ## 未完成项与 blocker
@@ -98,6 +127,12 @@ Chaos 和确定性 worker-loss 也尚未完成。
 | 真实 provider | 未执行 AWS S3、OSS、COS；MinIO 仅证明 S3-compatible integration |
 | 混合版本/发布物 | 未执行 exact-release Linux artifact、MORPC v56/v57 混部及升级顺序 |
 | 故障注入 | 缺少 2-CN post-admission deterministic worker-loss；不能用 sleep/processlist 猜测替代 |
+| Object versioning | 缺少 MinIO versioning 下计划 v1、写 v2 保留 v1、删除计划 v1 的确定性三段用例 |
+| Transaction stage | 现有 rollout Oracle 过宽；缺 commit-ACK 不确定点及显式事务中 prior INSERT + failed LOAD |
+| 连接恢复 | 缺固定物理连接的 context cancel、server KILL QUERY 与 socket disconnect 分类验证 |
+| 分布式证据 | 现有 2-CN 仅查聚合行数/范围，缺 per-CN shard 参与和 late remote-shard rollback |
+| Metrics | 缺 reader publish 后 late failure/rollback 与非 reader-layer error 的增量语义测试 |
+| 独立 fixture | 缺记录 PyArrow 版本的独立 File/Stream 生产者资产 |
 | 规模/稳定性/Chaos | 未执行 1/10/100 GiB、宽表、小 batch、压力、长稳、网络/节点故障和 Nightly workflow |
 | Owner/CI | capability owner、security、release owner 审批和正式 CI 结果尚缺 |
 
