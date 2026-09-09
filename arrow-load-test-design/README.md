@@ -1,8 +1,9 @@
 # Issue #23684：Apache Arrow IPC `LOAD DATA` 测试设计
 
 > 状态：测试设计；候选提交的阶段测试已开始，结果见
-> [2026-09-09 阶段测试记录](test-results-20260909.md)。产品合同与外部 release
-> gate 仍待确认。本文不把候选实现或研发 Issue comment 当作已发布的产品支持声明。
+> [2026-09-09 阶段测试记录](test-results-20260909.md)。研发已确认以 Issue comment
+> 的 default-on 合同为准，候选实现因此测试不通过；外部 release gate 仍待完成。
+> 该确认作为本轮测试 Oracle，不代替正式发布文档。
 
 ## Feature 背景与范围
 
@@ -17,12 +18,12 @@ payload 或 Arrow Flight。
 交互。它不把真实 AWS/OSS/COS、生产压测或混合版本发布准入伪装成本地
 回归已完成的工作。
 
-**合同阻塞项。** 研发的 [Issue comment](https://github.com/matrixorigin/matrixone/issues/23684#issuecomment-5537676762)
+**合同结论与实现缺陷。** 研发的 [Issue comment](https://github.com/matrixorigin/matrixone/issues/23684#issuecomment-5537676762)
 说省略配置时本地、S3/stage 与 distributed 都默认可用；候选实现的
 [delivery decision](https://github.com/matrixorigin/matrixone/blob/f0c31cd4b830be32442cf329e0a3fb08aa9c16c3/docs/design/evidence/23684_arrow_load_delivery_decision.md)
 和 `#28145` 则规定三个 admission gate 默认 `false`。二者是互斥的可观察
-合同。本设计把默认值测试分成 `POLICY-OFF` 和 `POLICY-ON` 两个 profile；
-在产品 owner 选择其一前，任何一组都不能作为发布通过结论。
+合同。研发已确认以 Issue comment 为准，因此 `POLICY-ON` 是验收 Oracle；候选实现
+及其 `POLICY-OFF` 回归测试固化了错误预期，必须修复后再执行通过性验证。
 
 ## 支持证据与版本基线
 
@@ -37,8 +38,8 @@ payload 或 Arrow Flight。
   与候选分支设计，发布 owner 仍需补充正式文档/发布说明。
 - 新鲜度审计：能力目录基线 `bdbd613fdece966769eb68481a3e58bfbc36b30c`
   已落后当前 `main`。`main` 已含 #28145 的实现与测试资产；因 Arrow
-  尚无正式产品支持声明，本设计采用更窄的 fail-closed 候选合同，并把
-  default-on comment 作为待确认变体。
+  尚无正式产品支持声明，仍需补充发布文档；测试验收按研发已确认的
+  default-on comment 执行，现有 fail-closed 候选合同记为实现缺陷。
 
 ## 验收目标与非目标
 
@@ -302,19 +303,19 @@ suite 和 CI。任何无关 suite 失败单列名称与证据，不写“全量�
 
 ## 准入、退出、风险与待确认项
 
-**准入。** 指定精确 candidate/release artifact；产品 owner 书面选择 `POLICY-OFF`
-或 `POLICY-ON` 并同步设计、文档与 BVT；提供 1-CN/2-CN、MinIO、可控对象替换与
+**准入。** 指定精确 candidate/release artifact；按已确认的 `POLICY-ON` 同步实现、
+设计、文档与 BVT；提供 1-CN/2-CN、MinIO、可控对象替换与
 post-admission 同步钩子；测试账号最小权限且不输出凭据。
 
 **退出。** 所有适用 UT/BVT/MOTR 三轮通过，失败路径逐项证明零部分 publish，资源
-清理通过；多 CN、object identity、commit failure、restart、协议版本与所选默认
+清理通过；多 CN、object identity、commit failure、restart、协议版本与已确认默认
 policy 均有独立证据。Nightly/chaos/real-provider/owner 项未完成时，结果只能是
 “候选实现局部验证”，不能称 release-ready。
 
-**剩余风险与待确认。**
+**剩余风险与待处理。**
 
-1. 产品默认值冲突：Issue comment 为 default-on，而 PR/候选设计为 default-off。
-   在 owner 书面裁决前冻结相反 profile 的 result baseline。
+1. 已确认缺陷：Issue comment 为 default-on，而 PR/候选实现与回归测试为
+   default-off；修复前本 Feature 的测试结论为不通过。
 2. Arrow 尚缺正式发布文档与正式兼容声明；维护者 comment 不足以升级 capability
    catalog 为 `supported`。
 3. S3/stage/distributed 的 aggregate admission、真实 AWS/OSS/COS、exact Linux

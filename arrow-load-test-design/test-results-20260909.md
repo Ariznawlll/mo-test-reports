@@ -2,14 +2,15 @@
 
 ## 结论
 
-候选提交在本地可执行范围内的 Arrow IPC `LOAD DATA` 功能、异常原子性、
-S3-compatible、分布式、资源生命周期和竞态测试通过。本轮没有发现可稳定复现的
-产品缺陷。
+**测试不通过。** 研发确认以 Issue comment 的 default-on 描述为验收 Oracle；候选
+提交在省略配置时却将 local、S3/stage 和 distributed 三个 admission gate 默认设为
+`false`，公开 SQL 因配置关闭而拒绝 Arrow LOAD。候选代码及现有回归测试都明确固化
+了该错误默认值。
 
-当前结果仅为**候选实现局部验证通过，不是 release-ready**。Issue 研发 comment
-描述的 default-on 与候选实现/测试证明的 fail-closed 仍冲突；真实云厂商、精确
-Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、Chaos 和确定性 worker-loss
-也尚未完成。
+除默认策略外，显式 opt-in 后本地可执行范围内的功能、异常原子性、
+S3-compatible、分布式、资源生命周期和竞态测试通过，但不能抵消必需 Happy Path
+失败。真实云厂商、精确 Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、
+Chaos 和确定性 worker-loss 也尚未完成。
 
 ## 基线与环境
 
@@ -34,6 +35,24 @@ Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、Chao
 | generation 门禁 | 失败 generation、旧 record 存活、terminal owner 禁止复活，各 20 轮 | PASS | fresh-generation 与生命周期边界 |
 | Race | 上述核心竞态用例，`-race` 1 轮 | PASS | 未报告 data race |
 | Fuzz | `FuzzArrowIPCPlanningAndOpenNeverPanicOrLeak`，15 秒 | PASS | 9 个基线种子，21,542 次执行，新增 4 个 interesting inputs，无 panic/leak |
+
+上述 PASS 表示对应显式 opt-in 或组件路径本身通过，不代表 Feature 总结论通过。
+默认配置 Happy Path 与权威需求不符，因此总判定仍为测试不通过。
+
+## 已确认缺陷：省略配置时 Arrow LOAD 被关闭
+
+- 预期：按研发确认的 Issue comment，省略 Arrow 配置时 local File/Stream、
+  S3/stage 和 distributed 路径默认可用；显式开关仅用于回滚关闭。
+- 实际：`FrontendParameters.SetDefaultValues()` 后 `Enabled`、`S3Enabled`、
+  `DistributedEnabled` 均为 `false`；无配置的公开 SQL 在读取输入前返回
+  `disabled by configuration`。
+- 稳定性：无配置拒绝路径随 public-path suite 连续执行 3/3；目标表始终为 0 行。
+- 正常对照：显式打开对应 gate 后，local、MinIO/stage 和 2-CN distributed
+  public-path suite 连续执行 3/3 并完成完整数据校验。
+- 回归资产问题：`TestArrowLoadDefaultsAndProgrammaticOptIn`、
+  `TestLaunchTAEComposeProfileKeepsArrowLoadFailClosed` 和 gate-disabled BVT 正在断言
+  default-off，需随实现修复同步改成 default-on 正向 baseline，并保留显式 false
+  的回滚拒绝用例。
 
 `-race` 首次把两个大型包并行链接时因测试机临时磁盘峰值不足而 build failed
 （`errno=28`），这不是产品断言失败。保留小包通过结果后，将 `external` 与
@@ -73,7 +92,7 @@ Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、Chao
 
 | 项目 | 状态与原因 |
 |---|---|
-| Default policy | BLOCKED：Issue comment 是 default-on，候选实现及当前回归资产是 fail-closed；需产品 owner 书面裁决后才能冻结相应 baseline |
+| Default policy | FAIL：研发确认 Issue comment 的 default-on 为准；候选实现及当前回归资产却是 fail-closed |
 | `mo-tester` SQL BVT | 本轮未跑共享 compose 脚本；其现有资产只覆盖 default gate reject，不能替代已通过的 opt-in public-path Go suite，也仍应进入正式 CI |
 | 权限/租户隔离 | 未执行 `SEC-01..04` 的 GRANT/REVOKE、跨租户 stage/object、审计脱敏 |
 | 真实 provider | 未执行 AWS S3、OSS、COS；MinIO 仅证明 S3-compatible integration |
@@ -86,7 +105,8 @@ Linux 发布物、混合版本、权限与租户隔离、规模/稳定性、Chao
 
 - 本轮实际执行的本地 UT 与 Go public-path BVT/MOTR：通过。
 - 普通用例 3 轮、并发 10 轮、generation 20 轮：达到测试设计中的本地重复门禁。
-- Release gate：未达到；上述 blocker 关闭前不得写“全量通过”或“可发布”。
+- Feature 总结论：默认配置必需 Happy Path 失败，**测试不通过。**
+- Release gate：未达到；默认策略修复并关闭上述 blocker 前不得写“全量通过”或“可发布”。
 
 ## 核心复现命令
 
