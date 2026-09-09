@@ -6,6 +6,7 @@
 
 | 日期 | 报告 | 说明 |
 |------|------|------|
+| 2026-09-09 | [Apache Arrow IPC LOAD DATA 测试设计](arrow-load-test-design/README.md) | Issue #23684：覆盖 File/Stream、类型转换、对象存储、分布式、事务原子性、恢复、资源和 release gate；记录 default-on 与 fail-closed 合同冲突 |
 | 2026-08-17 | [MongoDB External Table 测试设计](mongodb-external-table-test-design/README.md) | Issue #26229：MongoDB 原生外部表的表类型、列约束、事务、权限、恢复与交叉覆盖矩阵 |
 | 2026-08-12 | [Iceberg 外部表功能测试设计](iceberg-external-table-test-design/README.md) | Issue #23359：REST Catalog、跨引擎对账、snapshot/delete/DML、Nessie ref、维护、资源与安全边界 |
 | 2026-06-12 | [Checkpoint Dump 工具测试记录](checkpoint-dump-test/checkpoint_dump_test_record_20260612.md) | 基于 129 服务器回归 `mo-data` 的 database 级 dump、restore.sql load、parallel 修复验证和行数校验 |
