@@ -333,9 +333,9 @@ Timestamp→TIMESTAMP/DATETIME 无损和有损拒绝；`COMP-03` 确认普通 My
 | CMP-FILE | 2 batch，File × LZ4/ZSTD | 解码所有列；Close 后 retained record 有效；pending/active=0 | `TestIPCFileAndStreamCompression`、`TestCompressedIPCRecordOutlivesReaderAndOwnsAllocation/file-*` | `C1`，PASS 3/3 |
 | CMP-STREAM | 2 batch，Stream × LZ4/ZSTD | 同上，且合法 EOS 后停止 | 同上 `/stream-*` | `C1`，PASS 3/3 |
 | CMP-CORRUPT | File/Stream，损坏 prefix/codec/decoded-size=N+1 | publish 前 typed error；无 decode allocation；pending/active=0 | `TestIPCCompressionMetadataRejectedBeforeDecodeAllocation` | `C1`，PASS 3/3 |
-| CMP-DICT | File/Stream，dictionary delta + compression | 每个 batch 所有 dictionary 值精确 | 现有 compression 与 dictionary replay 分开，缺组合 fixture | MISSING |
-| IPC-EOS | 所有 record 合法，仅尾 EOS 缺失；1-CN SQL | reader 在消费完 records 后报错；SQL 表仅保留 seed，随后正常 LOAD 成功 | `TestIPCStreamRequiresEOSMarker`；BVT 的 `truncated_stream` 还包含 body 截断 | `C1`/`C3`，PASS 3/3；精确尾 EOS SQL 为 PARTIAL |
-| IPC-ZERO | schema-only 零行 与 zero-byte/no-schema | 前者成功 0 行，后者格式错误且 0 行 | 没有成对 public-path 资产 | MISSING |
+| CMP-DICT | File/Stream × LZ4/ZSTD，dictionary delta + compression | 每个 batch 所有 dictionary 值精确；Close 后 pending/active=0 | `TestIPCDictionaryCompressionForFileAndStream` | `C6`，PASS 3/3 |
+| IPC-EOS | 所有 record 合法，仅尾 EOS 缺失；1-CN SQL | reader 在消费完 records 后报错；SQL 表仅保留 seed，随后正常 LOAD 成功且精确两行 | `TestIPCStreamRequiresEOSMarker`、`TestArrowLoadBVT/InputBoundaryAtomicity/valid_records_missing_stream_eos` | `C6`，PASS 3/3 |
+| IPC-ZERO | schema-only 零行（File/Stream）与 zero-byte/no-schema | 前者成功 0 行，后者格式错误且 seed 不变 | `TestArrowLoadBVT/InputBoundaryAtomicity` | `C6`，PASS 3/3 |
 | LIM-SCHEMA | field N/N+1、depth N/N+1、metadata N/N+1 | N 成功、N+1 在 Arrow Go 深分配前失败；pending/active=0 | `TestIPCSchemaFieldAndDepthLimits`、`TestIPCSchemaMetadataAndUnionLimits` | `C1`，PASS 3/3；N-1 为 PARTIAL |
 | LIM-BODY | wire body 与 decoded body 上限 | 分别命中 N-1/N/N+1；失败后 pending/active=0 | `TestIPCBodyLimitForFileAndStream`、compression metadata test | `C1`，PARTIAL：尚非每层三点 |
 | LIM-OUTPUT | output batch、statement capacity | N-1/N/N+1；拒绝不发布 batch/rows，pending/active=0 | 有 admission/capacity 单测，缺完整双边界 public-path | PARTIAL |
@@ -345,7 +345,7 @@ Timestamp→TIMESTAMP/DATETIME 无损和有损拒绝；`COMP-03` 确认普通 My
 | TXN-PREPUBLISH | 1-CN，post-admission/pre-publish barrier，shutdown | barrier 持有至 termination；重启后必须 0 新增行 | `TestArrowLoadRolloutRollbackDrain` 提前释放并允许 0/全量 | MISSING；现有 Oracle 不合格 |
 | TXN-COMMITTED | LOAD 已返回 success 后 restart | 全部行与列持久存在 | `testArrowClusterRestart` | 既有整包，PASS 3/3 |
 | TXN-ACK | commit-ACK 不确定点断连 | 最终仅全量或 0；重试前查重，不能声明幂等 | 无精确 commit-ACK hook | MISSING |
-| TXN-PRIOR | `BEGIN → INSERT(seed) → failed LOAD` | 检查本/他会话及随后 COMMIT/ROLLBACK，确定 statement 与 transaction rollback 边界 | `testArrowExplicitTransaction` 仅含成功 LOAD | MISSING |
+| TXN-PRIOR | `BEGIN → INSERT(seed) → failed LOAD`，分别 COMMIT/ROLLBACK | failed LOAD 只回滚本 statement；本会话仍见 prior INSERT、他会话在 commit 前不可见；commit 后精确保留，rollback 后精确删除 | `TestArrowLoadBVT/FailedLoadInsideExplicitTransaction` | `C6`，PASS 3/3 |
 | CONN-CANCEL | 固定 `sql.Conn` + `connection_id()` | context cancel 后明确原物理连接是否可用；bounded cleanup | 现有 cancel 只证明池/reader 可继续 | PARTIAL |
 | CONN-KILL | observer 执行 server `KILL QUERY` | 被杀 statement 0 行；事务、连接、lease 在 deadline 内符合合同 | 无 Arrow public-path subtest | MISSING |
 | DIST-CN | 2-CN、每 CN 至少一 shard、带不同 payload | 记录 per-CN execution/shard；按主键比较所有列 | `TestArrowLoadMultiCN` 只查 count/distinct/range | PARTIAL |
@@ -364,6 +364,7 @@ C2: mo-cgo-test -v -count=3 -run 'TestArrowLoadBVT/LocalMinIO' ./pkg/tests/arrow
 C3: mo-cgo-test -v -count=3 -run 'TestArrowLoadBVT/CorruptInputRollback/truncated_stream' ./pkg/tests/arrowload
 C4: mo-cgo-test -count=3 -run '^(TestArrowLoadGateDisabled|TestArrowLoadGateDistributedDisabledSoftFallback)$' ./pkg/tests/arrowload
 C5: mo-cgo-test -count=3 -run '<object-SDK|borrow|COW|transactional-allocation>' ./pkg/fileservice ./pkg/container/arrowbridge ./pkg/container/vector
+C6: mo-cgo-test -count=3 -run '<DictionaryCompression|InputBoundaryAtomicity|FailedLoadInsideExplicitTransaction>' ./pkg/sql/colexec/external/arrowio ./pkg/tests/arrowload
 ```
 
 ## 回归分层与已有资产
