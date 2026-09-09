@@ -87,8 +87,8 @@ dictionary compression，不能以普通未压缩 IPC 通过代替。
   文档承诺的指标、错误分类与脱敏，不固定内部 plan 文本。
 
 未纳入 CDC、PITR、GPU 与 data branch：研发合同没有 Arrow 专属入口或发布
-承诺；若 Arrow 默认开放或进入正式版本，应在相应 Feature 的写入/恢复矩阵
-中重新评估，而不是以本设计的未覆盖推断安全。
+承诺；big-data 则新增固定 PyArrow 100M/COS 用例，专门验证规模导入，不替代
+这些能力自身的写入/恢复矩阵，也不得从本设计的未覆盖推断安全。
 
 ## 架构、入口、数据流与状态对象
 
@@ -287,6 +287,13 @@ cancel 与 socket disconnect，并为 statement、transaction、lease 和 gorout
 小 fixture 先证明 File/Stream、mapping、转换与 statement 原子合同；不以“大数据
 跑完”取代语义 oracle。以下仅在对应 release gate 允许时进入 Nightly：
 
+- `BIG-01`：PyArrow 17.0.0 固定生成 100,000,000 行、400 个 record batch 的
+  File+LZ4 数据集，上传到固定 COS key
+  `mo-big-data/arrow/arrow_load_100M_lz4.arrow`；3-CN 显式打开 local/S3/
+  distributed gate，以 `parallel 'true'` 导入。精确 Oracle 同时检查 row count、
+  row_id distinct/min/max/sum、NULL 数、dictionary 基数与 shard 基数；生成器输出
+  SHA-256 manifest，数据对象不进入 Git。本地生成物大小为 403,038,202 bytes，
+  SHA-256 为 `0609554d92c0e2fc686f36ee3870fa982960c7970cc80a29220f9f2328364e93`。
 - `PERF-01`：跨 record-batch/range、对象和 statement capacity 阈值，记录精确阈值、
   100%/NULL-heavy/high-cardinality/dictionary-heavy/long-varlen 分布、行数、计划、
   peak memory、pinned/copy bytes、结果摘要和清理。
@@ -354,7 +361,8 @@ Timestamp→TIMESTAMP/DATETIME 无损和有损拒绝；`COMP-03` 确认普通 My
 | ZC-COW | borrowed view 执行 COW 与 allocation failure | 新 backing 分离；失败保留旧 view；最终容量归零 | `TestFixedExplicitCOW`、transactional materialize/allocation tests | `C5`，PASS 3/3（组件层） |
 | METRIC-PUBLISH | reader publish 后，事务 late failure/rollback | rows/batches 可增长，表可 0 行；两者不是 committed-row 指标 | 成功 publish counter UT；无 late-fail/rollback metric case | PARTIAL |
 | METRIC-ERROR | reader/planner/gate/commit 各一失败 | 只要求 reader-layer 增 error；其他层不增加 | category/registration UT，无跨层 public case | PARTIAL |
-| FIX-PYARROW | 独立 PyArrow 生成 File/Stream，记录版本 | 所有列与 SQL oracle 一致 | 当前 fixture 由 Arrow Go 生成 | MISSING |
+| FIX-PYARROW | 独立 PyArrow 生成 File/Stream，记录版本 | 所有列与 SQL oracle 一致 | PyArrow 17.0.0 File+LZ4 生成器及 10,003 行 SQL smoke | PARTIAL：Stream 与 100M Nightly 尚缺 |
+| BIG-100M | PyArrow 17.0.0，File+LZ4，100M 行/400 batch，固定 COS，3-CN | count/distinct/min/max/sum/NULL/dictionary/shard 精确匹配；记录 load 耗时 | `big_data` 分支：generator/SQL/golden/TKE；`main` 分支：`big-data-test.yml` matrix | 固定对象已上传；1-CN 真实 COS LOAD Oracle PASS；等待 3-CN Nightly |
 
 本表中的执行命令：
 
@@ -381,8 +389,14 @@ C6: mo-cgo-test -count=3 -run '<DictionaryCompression|InputBoundaryAtomicity|Fai
 - MOTR：`pkg/tests/arrowload/arrow_load_multicn_test.go`、`arrow_load_minio_test.go`、
   `arrow_load_rollout_test.go`；需要补 deterministic worker-loss/gate-skew 与真实
   client protocol case。
-- big-data/stability：现有 `arrow_load_benchmark_test.go` 是本地基准，不能作为
-  Nightly admission/pressure 覆盖；按 `PERF-*`、`STAB-01` 新增 workflow。
+- big-data：按仓库现行双分支流程，在 `big_data` 资产分支补 `BIG-01` 固定 100M
+  PyArrow/COS generator、manifest、SQL golden 和 3-CN gate，在 `main` workflow
+  分支注册 main-only matrix case。对应候选提交为
+  `big_data@c031b14838c66d4e200bda38b5cbef52f9c56e55` 与
+  `main@640a40cd01815f367cae9dab097ebc92dbca4c48`；固定对象已上传且
+  1-CN 真实 COS LOAD 已通过，3-CN Nightly 尚未执行，不能标记其为 PASS。
+  `arrow_load_benchmark_test.go` 仍只是本地基准，后续按 `PERF-*`、`STAB-01`
+  补资源阈值与长稳。
 - recovery/chaos：已有重启和 deterministic shutdown 是控制用例；精确发布 artifact
   mixed-version、真实 provider、2-CN worker-loss 为未完成 release gate。
 

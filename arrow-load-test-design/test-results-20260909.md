@@ -13,7 +13,10 @@ dictionary+compression、零行/空文件、精确 Stream EOS 和显式事务 pr
 也已在最新 main 连续 3/3 通过；versioned-object、确定性 pre-publish/commit-ACK、
 物理连接恢复、per-CN 执行证据和 metrics 分层语义仍有缺口，不能把整包 PASS 表述为
 这些能力已全覆盖。真实云厂商、精确 Linux 发布物、混合版本、权限与租户隔离、
-规模/稳定性、Chaos 也尚未完成。
+规模/稳定性、Chaos 也尚未完成。100M big-data 固定数据集的生成器、SQL/golden 和
+3-CN gate 已补到 `big_data` 资产分支，main-only matrix 注册已补到 `main` workflow
+分支；fixture 已上传 COS，并在独立 1-CN 的真实 MySQL/COS 路径完成精确 Oracle
+验证；3-CN Nightly 尚未执行。
 
 ## 基线与环境
 
@@ -22,6 +25,8 @@ dictionary+compression、零行/空文件、精确 Stream EOS 和显式事务 pr
 | MatrixOne 提交 | `f0c31cd4b830be32442cf329e0a3fb08aa9c16c3` |
 | 提交说明 | `feat(load): add bounded Arrow IPC ingestion path (#28145)` |
 | 增量复核提交 | 最新 `main@cd04bb4c1af5bc595e2147dc645dfa754f4c395b`（包含上述实现提交） |
+| big-data 资产提交 | `big_data@c031b14838c66d4e200bda38b5cbef52f9c56e55` |
+| workflow 注册提交 | `main@640a40cd01815f367cae9dab097ebc92dbca4c48` |
 | 工作树 | 独立 worktree；基于最新 main 建立 `codex/arrow-load-comment-cases` 本地分支，仅修改两处 Arrow 测试资产；未使用主工作树未提交改动 |
 | 平台 | macOS Darwin 23.5.0, arm64 |
 | Go | 1.26.5；仓库声明 1.26.4，因此本轮不是 exact-release toolchain 证明 |
@@ -41,6 +46,8 @@ dictionary+compression、零行/空文件、精确 Stream EOS 和显式事务 pr
 | Fuzz | `FuzzArrowIPCPlanningAndOpenNeverPanicOrLeak`，15 秒 | PASS | 9 个基线种子，21,542 次执行，新增 4 个 interesting inputs，无 panic/leak |
 | Comment 增量用例 | dictionary+compression、input boundary/EOS、failed LOAD in explicit transaction，各 3 轮 | PASS | File/Stream × LZ4/ZSTD 字典；schema-only/zero-byte/缺 EOS；COMMIT/ROLLBACK 与双会话可见性 |
 | 最新 main 回归 | `pkg/tests/arrowload` 整包 1 轮；`LocalMinIO` 6 个子用例额外 3 轮 | PASS | 完整 BVT 最终 PASS；MinIO 3/3 明确无 SKIP |
+| PyArrow 跨语言 smoke | PyArrow 17.0.0，File+LZ4+dictionary，10,003 行/10 batch，真实 MySQL SQL 路径 | PASS | count=10,003、NULL=1,001、dictionary=1,024、row_id/shard 边界精确匹配 |
+| big-data 100M 资产 | 固定 COS key、100M 行/400 batch、3-CN distributed、SQL golden | 1-CN COS PASS / 3-CN Nightly 待执行 | COS 对象与 manifest 已上传；真实 MySQL/S3 Arrow LOAD 耗时 941.954 秒，行数、ID 范围/总和、NULL、dictionary、shard Oracle 全部精确匹配；未触发 TKE |
 
 上述 PASS 表示对应显式 opt-in 或组件路径本身通过，不代表 Feature 总结论通过。
 默认配置 Happy Path 与权威需求不符，因此总判定仍为测试不通过。
@@ -63,7 +70,7 @@ dictionary+compression、零行/空文件、精确 Stream EOS 和显式事务 pr
 | transaction 分阶段 | 新增 `FailedLoadInsideExplicitTransaction`，COMMIT/ROLLBACK 两分支 3/3 PASS；commit-success restart 已通过 | failed LOAD 仅回滚当前 statement，prior INSERT 的本/他会话可见性及最终提交/回滚精确符合预期；commit-ACK 不确定点仍缺 |
 | cancel/恢复 | 现有 `sql.DB` 后续成功及 reader cleanup 通过 | 不能证明原物理连接复用；固定 `sql.Conn`/`connection_id()`、KILL QUERY、disconnect 缺失 |
 | rows/batches/errors metrics | 成功 reader publish 与 error category UT 通过 | rows/batches 是 pre-commit reader publish 计数；缺 late-fail/rollback 语义 case，errors 不覆盖所有 gate/planner/commit 错误 |
-| 独立生产者 fixture | 当前 fixture 由 Arrow Go 生成 | **缺失**：需新增并记录 PyArrow 版本的 File/Stream |
+| 独立生产者 fixture | 新增固定 PyArrow 17.0.0 生成器；File+LZ4+dictionary 的 10,003 行真实 SQL smoke PASS；100M 文件逐 batch Oracle 与真实 COS LOAD PASS | **部分完成**：3-CN Nightly 与独立 Stream fixture 尚缺 |
 
 因此这次增量测试关闭了四项明确缺口，但不能外推为“其余全部没问题”：已执行
 focused case 和完整 `arrowload` suite 没发现新的产品断言失败，研发列出的其余关键
@@ -146,8 +153,8 @@ MinIO 明确返回 `minimum free drive threshold`，该轮判为无效环境失�
 | 连接恢复 | 缺固定物理连接的 context cancel、server KILL QUERY 与 socket disconnect 分类验证 |
 | 分布式证据 | 现有 2-CN 仅查聚合行数/范围，缺 per-CN shard 参与和 late remote-shard rollback |
 | Metrics | 缺 reader publish 后 late failure/rollback 与非 reader-layer error 的增量语义测试 |
-| 独立 fixture | 缺记录 PyArrow 版本的独立 File/Stream 生产者资产 |
-| 规模/稳定性/Chaos | 未执行 1/10/100 GiB、宽表、小 batch、压力、长稳、网络/节点故障和 Nightly workflow |
+| 独立 fixture | PyArrow 17.0.0 File+LZ4 生成器与 manifest 已补，小规模跨语言 LOAD PASS；Stream 生产者和 100M 线上对象仍待完成 |
+| 规模/稳定性/Chaos | 100M/400-batch 固定 COS Nightly 资产已补但尚未上传/执行；1/10/100 GiB、宽表、小 batch、压力、长稳、网络/节点故障仍未执行 |
 | Owner/CI | capability owner、security、release owner 审批和正式 CI 结果尚缺 |
 
 ## 阶段判定
