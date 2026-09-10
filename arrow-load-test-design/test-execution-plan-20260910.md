@@ -39,3 +39,5 @@
 | NIGHTLY | 固定 100M COS asset 的 Big Data 回归定义已合并；main 调度 PR 仍未合并，未触发 TKE/Nightly。 | 未完成 | 3-CN run URL、实际 CN 数、资源/耗时与完整 Oracle。 |
 
 **本轮结论：** 已执行的本地用例均通过，未发现可复现产品失败；但研发 comment 的 OBJ/CONN/DIST/OBS 等关键验收项尚无完整证据，不能宣布 feature 测试完成或无风险。
+
+**全量回归复核：** 随后以相同构建参数执行 `go test ./pkg/tests/arrowload -count=1`，结果 PASS，耗时 96.922s；该包内的 BVT、gate、2-CN、rollout/drain 与 materialize 顶层用例均被重新执行。
