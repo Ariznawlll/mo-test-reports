@@ -1,0 +1,797 @@
+{
+  "status": "failed",
+  "passed": 145,
+  "failed": 13,
+  "cases": [
+    {
+      "case": "seed-mongodb",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "matrix-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "type-bool",
+      "status": "PASS",
+      "detail": "value=1"
+    },
+    {
+      "case": "type-signed-integers",
+      "status": "PASS",
+      "detail": "value=-128|32767|-2147483648|9223372036854775807"
+    },
+    {
+      "case": "type-unsigned-integers",
+      "status": "PASS",
+      "detail": "value=255|65535|4294967295|9223372036854775807"
+    },
+    {
+      "case": "type-float-double",
+      "status": "PASS",
+      "detail": "value=3.5|-1.25"
+    },
+    {
+      "case": "type-decimal64",
+      "status": "PASS",
+      "detail": "value=123456789012.3456"
+    },
+    {
+      "case": "type-decimal128",
+      "status": "PASS",
+      "detail": "value=12345678901234567890.1234"
+    },
+    {
+      "case": "type-decimal256",
+      "status": "PASS",
+      "detail": "value=1234567890123456789012345678901234"
+    },
+    {
+      "case": "type-date",
+      "status": "PASS",
+      "detail": "value=2026-09-08"
+    },
+    {
+      "case": "type-datetime",
+      "status": "PASS",
+      "detail": "value=2026-09-08 12:34:56.789"
+    },
+    {
+      "case": "type-timestamp",
+      "status": "PASS",
+      "detail": "value=2026-09-08 12:34:56.789"
+    },
+    {
+      "case": "type-char",
+      "status": "PASS",
+      "detail": "value=1"
+    },
+    {
+      "case": "type-varchar",
+      "status": "PASS",
+      "detail": "value=hello🙂"
+    },
+    {
+      "case": "type-text",
+      "status": "PASS",
+      "detail": "value=text-value"
+    },
+    {
+      "case": "type-binary",
+      "status": "PASS",
+      "detail": "value=01020000"
+    },
+    {
+      "case": "type-varbinary",
+      "status": "PASS",
+      "detail": "value=010203"
+    },
+    {
+      "case": "type-blob",
+      "status": "PASS",
+      "detail": "value=00FF80"
+    },
+    {
+      "case": "type-objectid-char",
+      "status": "PASS",
+      "detail": "value=64b000000000000000009999"
+    },
+    {
+      "case": "type-objectid-binary",
+      "status": "PASS",
+      "detail": "value=64B000000000000000009999"
+    },
+    {
+      "case": "type-json-document",
+      "status": "PASS",
+      "detail": "value=v"
+    },
+    {
+      "case": "type-json-array",
+      "status": "PASS",
+      "detail": "value=3"
+    },
+    {
+      "case": "type-json-bson-wrapper",
+      "status": "PASS",
+      "detail": "value=OBJECT"
+    },
+    {
+      "case": "null-missing-undefined-try-null",
+      "status": "PASS",
+      "detail": "value=4|7"
+    },
+    {
+      "case": "strict-conversion-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "nested-path-and-case-sensitive",
+      "status": "PASS",
+      "detail": "value=5|4|9"
+    },
+    {
+      "case": "nested-path-strict-invalid-parent",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "unicode-width-counts-characters",
+      "status": "PASS",
+      "detail": "value=中文🙂"
+    },
+    {
+      "case": "unicode-width-overflow-try-null",
+      "status": "PASS",
+      "detail": "value=1"
+    },
+    {
+      "case": "scalar-overflow-try-null",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "source-default-null-allowed",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "source-default-null-scan",
+      "status": "PASS",
+      "detail": "value=4"
+    },
+    {
+      "case": "source-not-null-ddl-allowed",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "source-not-null-runtime",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-nonnull-default-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-primary-key-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-unique-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-index-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-check-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-auto-increment-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-fk-parent-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "source-generated-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-foreign-key-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-time-type-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-uuid-type-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-datalink-type-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-geometry-type-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-vector-type-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-rejected-ddl-no-catalog-residue",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "source-insert-read-only",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-update-read-only",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-delete-read-only",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-replace-read-only",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-truncate-read-only",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "source-preserved-after-dml-rejection",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "source-alter-schema-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-missing-discovery-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-ambiguous-discovery-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-uri-userinfo-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-auth-mechanism-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-read-preference-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-unknown-option-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "mapping-schema-mode-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "mapping-conversion-mode-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "mapping-parallelism-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-drop-with-dependency-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-missing-secret-ddl",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "connection-missing-secret-runtime",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "connection-missing-secret-cleanup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "connection-invalid-ddl-no-catalog-residue",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "target-parent-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-permanent-target",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-permanent-join",
+      "status": "PASS",
+      "detail": "value=1|10|a"
+    },
+    {
+      "case": "table-view-create",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-view-scan",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "table-ctas",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-ctas-result",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "table-partition-target",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-partition-result",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "table-temporary-target",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-temporary-session-isolation",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "table-cluster-target-user-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "table-file-external-create",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "table-file-external-join",
+      "status": "PASS",
+      "detail": "value=2|3"
+    },
+    {
+      "case": "target-default",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-default-result",
+      "status": "PASS",
+      "detail": "value=2|14"
+    },
+    {
+      "case": "target-auto-generated-index",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-auto-generated-result",
+      "status": "PASS",
+      "detail": "value=2|1|2|60"
+    },
+    {
+      "case": "target-cluster-by",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-cluster-by-result",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "target-pk-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-pk-atomic-reject",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "target-pk-rollback",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "target-unique-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-unique-atomic-reject",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "target-unique-rollback",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "target-fk-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-fk-atomic-reject",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "target-fk-rollback",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "target-check-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-check-atomic-reject",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "target-check-rollback",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "target-notnull-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-notnull-atomic-reject",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "target-notnull-rollback",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "target-replace-setup",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "target-replace-result",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "issue-28333-residual-measurement-run-1",
+      "status": "FAIL",
+      "detail": "exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin"
+    },
+    {
+      "case": "issue-28333-residual-site-run-1",
+      "status": "FAIL",
+      "detail": "exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin"
+    },
+    {
+      "case": "issue-28333-projection-run-1",
+      "status": "FAIL",
+      "detail": "exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat"
+    },
+    {
+      "case": "issue-28333-order-limit-run-1",
+      "status": "FAIL",
+      "detail": "exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat"
+    },
+    {
+      "case": "issue-28337-sort-run-1",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "issue-28337-unwind-run-1",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "issue-28333-residual-measurement-run-2",
+      "status": "FAIL",
+      "detail": "exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin"
+    },
+    {
+      "case": "issue-28333-residual-site-run-2",
+      "status": "FAIL",
+      "detail": "exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin"
+    },
+    {
+      "case": "issue-28333-projection-run-2",
+      "status": "FAIL",
+      "detail": "exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat"
+    },
+    {
+      "case": "issue-28333-order-limit-run-2",
+      "status": "FAIL",
+      "detail": "exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat"
+    },
+    {
+      "case": "issue-28337-sort-run-2",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "issue-28337-unwind-run-2",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "issue-28333-residual-measurement-run-3",
+      "status": "FAIL",
+      "detail": "exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin"
+    },
+    {
+      "case": "issue-28333-residual-site-run-3",
+      "status": "FAIL",
+      "detail": "exit=1 expected=1 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [1] with length 1:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/matrixorigin"
+    },
+    {
+      "case": "issue-28333-projection-run-3",
+      "status": "FAIL",
+      "detail": "exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat"
+    },
+    {
+      "case": "issue-28333-order-limit-run-3",
+      "status": "FAIL",
+      "detail": "exit=1 expected=device-001 actual= ERROR 20101 (HY000) at line 1: internal error: panic runtime error: index out of range [2] with length 2:  runtime.panicBounds64  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/panic.go:236 runtime.panicBounds  /opt/homebrew/Cellar/go/1.26.5/libexec/src/runtime/asm_arm64.s:1770 github.com/matrixorigin/matrixone/pkg/sql/colexec.(*ColumnExpressionExecutor).Eval  /private/tmp/matrixone-mongodb-test-8edac647/pkg/sql/colexec/evalExpression.go:1685 github.com/mat"
+    },
+    {
+      "case": "issue-28337-sort-run-3",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "issue-28337-unwind-run-3",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "query-cte",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "query-derived-subquery",
+      "status": "PASS",
+      "detail": "value=20"
+    },
+    {
+      "case": "query-union-all",
+      "status": "PASS",
+      "detail": "value=4"
+    },
+    {
+      "case": "query-group-having",
+      "status": "PASS",
+      "detail": "value=2|15.0000"
+    },
+    {
+      "case": "query-window",
+      "status": "PASS",
+      "detail": "value=1|10|10;2|20|30"
+    },
+    {
+      "case": "query-sort-32-fields-valid",
+      "status": "PASS",
+      "detail": "value=5"
+    },
+    {
+      "case": "query-sort-33-fields-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-unwind-199-segments-valid",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "query-unwind-200-segments-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-16-stages-valid",
+      "status": "PASS",
+      "detail": "value=1"
+    },
+    {
+      "case": "query-17-stages-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-depth-33-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-over-64k-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-write-stage-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-cross-collection-rejected",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "query-baseline-after-boundaries",
+      "status": "PASS",
+      "detail": "value=5|74"
+    },
+    {
+      "case": "transaction-scan-commit",
+      "status": "PASS",
+      "detail": "value=2"
+    },
+    {
+      "case": "transaction-scan-rollback",
+      "status": "PASS",
+      "detail": "value=2"
+    },
+    {
+      "case": "transaction-target-rollback",
+      "status": "PASS",
+      "detail": "value=0"
+    },
+    {
+      "case": "transaction-target-commit",
+      "status": "PASS",
+      "detail": "value=2"
+    },
+    {
+      "case": "concurrency-10-readers",
+      "status": "PASS",
+      "detail": "10/10 exact results"
+    },
+    {
+      "case": "tenant-create",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "tenant-a-same-name-ddl",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "tenant-b-same-name-ddl",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "case": "tenant-a-scan",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "tenant-b-scan",
+      "status": "PASS",
+      "detail": "value=2|30"
+    },
+    {
+      "case": "tenant-system-catalog-isolation",
+      "status": "PASS",
+      "detail": "value=2|2|0"
+    },
+    {
+      "case": "observability-try-null-query",
+      "status": "PASS",
+      "detail": "value=4"
+    },
+    {
+      "case": "observability-try-null-conversion-metric",
+      "status": "PASS",
+      "detail": "before=25 after=26"
+    },
+    {
+      "case": "issue-28341-strict-conversion-query",
+      "status": "PASS",
+      "detail": "rejected as expected"
+    },
+    {
+      "case": "issue-28341-strict-conversion-metric",
+      "status": "FAIL",
+      "detail": "metric unchanged before=26 after=26"
+    },
+    {
+      "case": "observability-cursor-pool-cleanup",
+      "status": "PASS",
+      "detail": "open=134 close=134 checked_out=0"
+    },
+    {
+      "case": "cleanup-sql",
+      "status": "PASS",
+      "detail": "ok"
+    }
+  ]
+}

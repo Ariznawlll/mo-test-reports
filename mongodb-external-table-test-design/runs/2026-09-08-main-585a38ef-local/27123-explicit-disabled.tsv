@@ -1,0 +1,12 @@
+PASS	explicit-disabled-system-1	rejected-as-expected
+PASS	explicit-disabled-tenant-a-1	rejected-as-expected
+PASS	explicit-disabled-tenant-b-1	rejected-as-expected
+PASS	explicit-disabled-system-2	rejected-as-expected
+PASS	explicit-disabled-tenant-a-2	rejected-as-expected
+PASS	explicit-disabled-tenant-b-2	rejected-as-expected
+PASS	explicit-disabled-system-3	rejected-as-expected
+PASS	explicit-disabled-tenant-a-3	rejected-as-expected
+PASS	explicit-disabled-tenant-b-3	rejected-as-expected
+PASS	explicit-disabled-table-gate-system	rejected-as-expected
+PASS	explicit-disabled-table-gate-tenant-a	rejected-as-expected
+PASS	explicit-disabled-table-gate-tenant-b	rejected-as-expected

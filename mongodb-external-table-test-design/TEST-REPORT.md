@@ -135,3 +135,33 @@
 | 转换失败资源闭环 | ✅/观测性缺口 | pipeline 产出字符串到 BIGINT 连续 3/3 返回稳定转换错误；各 CN cursor `open=close`、`pool_checked_out_connections=0`。`conversion_errors_total` 未因业务转换错误递增，已提交 [#28341](https://github.com/matrixorigin/matrixone/issues/28341)，请求研发确认/补齐指标合同 |
 
 本轮 cleanup：临时 dotted mapping 已删除；MongoDB collection 未修改；目标外表基线仍为 `COUNT(*)=5, SUM(measurement)=74`；3 CN、1 DN、3 Mongo 节点均 Running 且重启数为 0。当前构建仍为 `commit-4fdb9e916`，不是官方最新 main，#28333/#28337 均需主线镜像复核。
+
+## 10. 2026-09-07 最新 main 本地回归归档
+
+在官方 `main` SHA `8edac64737db2633c250a527cffdf04707cd8c21` 上，以 macOS 本地单进程 MatrixOne 和 MongoDB 8.0.12 单节点 ReplicaSet 执行官方 `make test-mongodb-e2e-local`。独立运行 3 次，每轮均为 `status=passed`、24 个场景；三份结构化报告、校验和、白盒复核和清理记录已归档到：
+
+- [`runs/2026-09-07-main-8edac647-local/`](runs/2026-09-07-main-8edac647-local/)
+
+本轮没有发现新的产品缺陷。#27346 的 `TRUNCATE` 黑盒回归符合预期；#27347/#27348 的 mapping/DDL 白盒拒绝路径符合预期，但公开 SQL 黑盒 DDL 仍需单独复测。完整 24 类型交叉矩阵、TLS/SRV、多租户、多成员/网络/getMore 故障、Snapshot/PITR、NESR、big-data、stability 和 Chaos 未由本地归档覆盖，因此不改变 Issue #26229 的完整验收结论。
+
+## 11. 2026-09-08 最新 main 本地扩展交叉测试
+
+在官方 `main` SHA `f72ca9efbeb3a7c673701e4a135cc6670c33cfde` 上执行官方 MongoDB E2E 和扩展交叉矩阵。官方 E2E 为 25/25 PASS；扩展矩阵共 158 项，145 PASS、13 FAIL。结构化结果、逐项明细、可复现脚本和校验和已归档到：
+
+- [`runs/2026-09-08-main-f72ca9ef-local/`](runs/2026-09-08-main-f72ca9ef-local/)
+
+本地通过范围包括当前 converter 支持的全部 23 个 MO 类型/类型族、源表列属性和禁止约束、只读 DML、永久/临时/分区/View/CTAS/cluster 权限边界/file external、普通目标表全部主要约束、查询与 pipeline 边界、显式事务、10 路并发和双 tenant 隔离。`mongodb`、`mongoscan`、`aggexec`、`timewin` race 各重复 10/10 通过，cursor/pool 最终为 `open=134, close=134, checked_out=0`，归档敏感值扫描和本轮资源残留均为 0。
+
+13 个失败全部归属于已登记问题：[#28333](https://github.com/matrixorigin/matrixone/issues/28333) 的 4 种显式 filter + residual/projection/order-limit 组合各 3/3 越界 panic，共 12 项；[#28341](https://github.com/matrixorigin/matrixone/issues/28341) 的 strict 转换失败指标不增长，共 1 项。已修复的 [#28337](https://github.com/matrixorigin/matrixone/issues/28337) `$sort`/`$unwind` 各 3/3 通过，并通过相邻边界验证。本轮未发现第三类新缺陷。
+
+big-data、TLS/SRV/mongos、多成员和 getMore 网络故障、Snapshot/PITR、stability/Chaos、NESR cutover 仍需专用环境，不属于本地完成范围。
+
+## 12. 2026-09-08 #28333 / #28337 最新 main 修复验证
+
+在官方 `main` SHA `585a38efd152fadf216c8675b7b997a35ca8deb1` 上，以本地单进程 MatrixOne 和 Docker MongoDB 单节点 ReplicaSet 完成修复复测。官方 E2E 为 26/26 PASS；扩展矩阵为 157/158 PASS，唯一失败归属于无关的已登记 Issue #28341。
+
+- #28333：显式 filter 与 residual measurement、residual site、projection、order-limit 四种组合各执行 3 次，共 12/12 PASS；未再出现 `ColumnExpressionExecutor.Eval` 越界。compile focused UT 在 `-race -count=10` 下通过。
+- #28337：原 `$sort`/`$unwind` 各执行 3 次，共 6/6 PASS；32/33 sort fields、199/200 unwind segments、16/17 stages、写阶段和跨 collection 共 8 项边界/拒绝用例全部符合预期。MongoDB user-query focused UT 在 `-race -count=10` 下通过。
+- 运行后基线仍为 `5/74`，10 路并发结果一致，cursor/pool 为 `open=135, close=135, checked_out=0`；Mongo 容器 `RestartCount=0`、`OOMKilled=false`，MatrixOne 日志未见 panic、fatal、OOM 或越界。
+
+完整结构化证据和复现脚本见 [`runs/2026-09-08-main-585a38ef-local/`](runs/2026-09-08-main-585a38ef-local/)。本轮对 #28333 和 #28337 的测试结论均为通过。

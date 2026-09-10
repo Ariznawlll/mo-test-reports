@@ -1,0 +1,14 @@
+PASS	issue-27269-ordinary-control-1	denied-as-expected
+PASS	issue-27269-mongodb-no-select-1	denied-as-expected
+PASS	issue-27269-grant-existing-session-1	5
+PASS	issue-27266-prepared-before-revoke-1	5
+PASS	issue-27266-prepared-revoke-matches-ordinary-1	both-allowed-session-snapshot
+PASS	issue-27266-existing-session-revoke-matches-ordinary-1	both-allowed-session-snapshot
+PASS	issue-27266-new-session-after-revoke-1	denied-as-expected
+PASS	issue-27266-new-session-ordinary-control-1	denied-as-expected
+PASS	issue-27266-view-before-revoke-1	5
+PASS	issue-27266-view-existing-session-observed-1	allowed=true
+PASS	issue-27266-view-base-control-1	5
+PASS	issue-27266-ordinary-view-base-control-1	1
+FAIL	issue-27266-view-new-session-after-revoke-1	mongodb=True,ordinary=True
+SUMMARY	FAIL	1-failed-cases
