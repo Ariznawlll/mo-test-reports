@@ -30,14 +30,14 @@
 |---|---|---|---|
 | CFG | `TestArrowLoadGateDisabled` 和 `TestArrowLoadGateS3Disabled` 各重复 3 次，均通过；总耗时 68.058s。显式开启路径包含在 BVT 中，BVT 1/1 通过。 | 部分完成 | 显式 opt-in 成功路径尚未按相同 Oracle 重复 3 次。 |
 | TYPE | `go test ./pkg/sql/colexec/external/arrowio -count=1 -v` 通过，0.816s；覆盖 File/Stream × LZ4/ZSTD、字典、EOS、解压大小/metadata/body/schema 限制、条件读取、lease/retain 与 fuzz seed。 | 部分完成 | 系统级 File/Stream fixture 和所有 N-1/N/N+1 容量边界尚未逐项形成执行证据。 |
-| OBJ | 1-CN BVT 1/1 通过，19.511s，真实本地 MinIO 路径实际执行而非 Skip；底层 conditional identity UT 也通过。 | 部分完成 | 尚未在真实 versioned/non-versioned MinIO 执行 ETag 变化、v1/v2 固定、删除 v1、Stream GET 后更新 key 的四个控制。 |
-| TXN | BVT 包含约束/损坏输入回滚、显式事务、双会话隔离、提交阶段注入失败与重试，1/1 通过；rollout/drain 3/3 通过，71.735s。 | 部分完成 | rollout 用例当前接受“原子提交或原子回滚”，不能证明研发要求的 pre-publish 窗口必须零新增；ACK 不确定窗口和 `BEGIN → INSERT → failed LOAD` 的精确语义仍需独立证据。 |
-| CONN | gate 拒绝已执行。 | 未完成 | 权限拒绝、服务端 KILL QUERY、客户端 cancel、客户端断连及相应 connection ID/重连控制均未覆盖。 |
+| OBJ | 新增并执行 `TestExternalArrowLoadVersionedMinIOIdentity` 3/3（3.631s）：File v1 在 latest 写入损坏 v2 后仍返回 v1、精确删除 v1 后 fail-closed、Stream v1 在 latest 更新后仍返回 v1。现有 BVT 的非 versioning ETag 变化回滚仍通过。 | 部分完成 | 需要在公开 SQL 路径把 versioned File/Stream 的单次 GET 观测也固定为回归证据。 |
+| TXN | 新增 `TestArrowLoadFailedStatementKeepsEarlierTransactionWrite`：`BEGIN → INSERT → 损坏 Arrow LOAD → COMMIT` 后仅保留前序 INSERT，合法重试成功；与 KILL/断连用例合并重复 3 次通过，115.234s。 | 部分完成 | ACK 不确定窗口仍需单独的、可观察提交确认边界证据。 |
+| CONN | 新增真实 MinIO 条件 GET 场景：`KILL QUERY` 3/3 取消在途对象读取、零部分写入、固定连接可复用并重试；客户端物理断连 3/3 取消读取、connection ID 消失、表仅保留 seed、重连重试成功。无 INSERT 权限的 S3 LOAD 3/3 会在拒绝前访问对象存储，已提交 [#28618](https://github.com/matrixorigin/matrixone/issues/28618)。 | 部分完成（存在缺陷） | 当前 main 上权限拒绝顺序不满足“拒绝前不读对象”的预期；客户端 context cancel 的公开路径已有 BVT，但尚未以本轮固定连接表格独立重复。 |
 | DIST | `TestArrowLoadMultiCN` 在独立 2-CN 集群重复 3 次，全部通过，37.607s；每次检查行数、distinct ID 和 ID 范围。 | 部分完成 | 没有每个 shard 的参与 CN 证据，也没有“远端 shard 已进入执行后晚失败、全部回滚”的用例。 |
 | MEM | Arrow I/O 生命周期 UT 1/1 通过；`TestArrowLoadForceMaterializeFallback` 3/3 通过，36.576s，验证 borrow 与强制 materialize 的 payload/copy 指标差异。 | 部分完成 | 仍需把 COW、最后 owner Release 与 allocation 断言整理为研发要求的可审计证据表。 |
-| OBS | materialize 用例验证两个 payload/copy counter 的预期增量。 | 未完成 | rows/batches/errors/lease 在 reader publish、rollback、planner/gate 拒绝和重启后的完整口径尚未验证。 |
+| OBS | 新增 `TestArrowLoadMetricsPublishBeforeTransactionCommit` 3/3（38.907s）：显式事务中成功 LOAD 后 ROLLBACK，表仍为 0 行，但 reader 的 records/batches/rows 各加 1。 | 部分完成 | reader error 与 gate/planner 拒绝的 counter 区隔、重启后 lease/metric 恢复仍需补充。 |
 | NIGHTLY | 固定 100M COS asset 的 Big Data 回归定义已合并；main 调度 PR 仍未合并，未触发 TKE/Nightly。 | 未完成 | 3-CN run URL、实际 CN 数、资源/耗时与完整 Oracle。 |
 
-**本轮结论：** 已执行的本地用例均通过，未发现可复现产品失败；但研发 comment 的 OBJ/CONN/DIST/OBS 等关键验收项尚无完整证据，不能宣布 feature 测试完成或无风险。
+**本轮结论：** 新增的 VersionID、事务、KILL QUERY、客户端断连和指标发布用例均通过；但权限拒绝先访问对象存储的缺陷已在 official main 稳定复现 3/3，见 [#28618](https://github.com/matrixorigin/matrixone/issues/28618)。同时 DIST 的远端晚失败、MEM 的最终 owner release、OBS 的错误/重启语义和 3-CN Nightly 仍未形成完整证据，因此不能宣布 feature 测试完成或无风险。
 
-**全量回归复核：** 随后以相同构建参数执行 `go test ./pkg/tests/arrowload -count=1`，结果 PASS，耗时 96.922s；该包内的 BVT、gate、2-CN、rollout/drain 与 materialize 顶层用例均被重新执行。
+**全量回归复核：** 以相同构建参数执行 `go test ./pkg/tests/arrowload -count=1`，结果 PASS，耗时 132.832s；并执行 `go test ./pkg/sql/colexec/external -count=1`，结果 PASS，耗时 39.213s。前者覆盖 BVT、gate、2-CN、rollout/drain、MinIO 与新增 lifecycle 用例；后者覆盖 reader、VersionID、lease/ownership 与指标单测。
