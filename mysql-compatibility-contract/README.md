@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-09-06
+更新时间：2026-09-14
 
 ## 状态定义
 
@@ -17,10 +17,55 @@
 
 ## 目录
 
+- [函数与随机数](#函数与随机数)
 - [DML / Upsert](#dml--upsert)
 - [视图写入](#视图写入)
 - [类型转换与非严格语义](#类型转换与非严格语义)
 - [新增条目的证据要求](#新增条目的证据要求)
+
+---
+
+## 函数与随机数
+
+### RAND-001：不支持 `RAND(seed)`，且不提供随机序列可复现性契约
+
+**状态：契约限制**
+
+最小 SQL：
+
+```sql
+SELECT RAND();
+SELECT RAND(7);
+```
+
+**MySQL 对照：** MySQL 接受 `RAND(seed)`，seed 可用于初始化其伪随机数序列。
+
+**MatrixOne 行为：**
+
+- 无参 `RAND()` 保持可用，现有行为不变；
+- `RAND(seed)` 当前被拒绝，返回 `ERROR 20203 (HY000): invalid argument function rand, bad value [BIGINT]`；
+- 这表示 MySQL seeded-RAND 语法在 MO 中不受支持，而不是已支持能力的数据正确性回归。
+
+**契约边界：**
+
+- MatrixOne 不承诺生成与 MySQL 相同的随机数序列；
+- MatrixOne 不承诺自身随机数算法在不同版本之间保持不变；
+- 即使存在 seed，不同执行计划或并行调度也不能据此承诺稳定的“行到随机值”映射；
+- 因此，MO 不会仅为 MySQL 语法兼容实现 `RAND(seed)`，不会替换生成器以匹配 MySQL，也不为该函数提供跨版本或跨执行计划的确定性/可复现性契约。
+
+**使用建议：** 需要稳定、可重放的随机值时，应在应用侧生成并将值持久化；不要把 `RAND()` 或假设存在的 `RAND(seed)` 用作可复现业务结果的依据。
+
+**关联记录：**
+
+- [#28577：RAND(seed) is unavailable for deterministic random sequences](https://github.com/matrixorigin/matrixone/issues/28577)
+- [#28577 产品决策评论：not planned](https://github.com/matrixorigin/matrixone/issues/28577#issuecomment-5661781879)
+
+**证据：**
+
+- 官方 `main`：`a72a224ce85fd13aa919fb56dab58b8c60b366dc`，2026-09-14，本地单节点 CN/TN/LogService；同一 SQL 连续 3 轮结果一致；
+- 代码注册仅保留无参 RAND overload：[`pkg/sql/plan/function/list_builtIn.go`](https://github.com/matrixorigin/matrixone/blob/a72a224ce85fd13aa919fb56dab58b8c60b366dc/pkg/sql/plan/function/list_builtIn.go#L9204-L9233)。
+
+除非产品决策明确变化，否则不要将 `RAND(seed)` 重新作为待修复兼容性缺陷处理，也不要基于该语法要求增加 MySQL 序列一致性或可复现性保证。
 
 ---
 
