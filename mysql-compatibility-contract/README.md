@@ -19,6 +19,7 @@
 
 - [函数与随机数](#函数与随机数)
 - [聚合函数与结果元数据](#聚合函数与结果元数据)
+- [索引与最终一致性](#索引与最终一致性)
 - [DML / Upsert](#dml--upsert)
 - [视图写入](#视图写入)
 - [类型转换与非严格语义](#类型转换与非严格语义)
@@ -117,6 +118,56 @@ SELECT GROUP_CONCAT(v ORDER BY id) FROM t;
 - 该条目记录的是明确的产品范围决策，而不是“BLOB 等同于二进制”的推论；
 - 验证文本/二进制语义时，应同时检查 `VARCHAR`、`VARBINARY`、`group_concat_max_len=4/512/513`、prepared 跨阈值执行、完整协议元数据及 NUL/非 UTF-8 字节保真；
 - 除非产品决策变化，或上述语义检查发现独立正确性问题，否则不要仅因未对齐 MySQL 的 512-byte 类型阈值而重新打开 #28663。
+
+---
+
+## 索引与最终一致性
+
+### FULLTEXT2-001：COPY ALTER 后的 FULLTEXT2 查询不提供立即一致性
+
+**状态：契约限制**
+
+适用操作：对带有未受影响 FULLTEXT2 索引的表执行 COPY ALTER，例如：
+
+```sql
+SET experimental_fulltext2_index = 1;
+ALTER TABLE docs ADD COLUMN extra INT;
+SELECT id FROM docs WHERE MATCH(body) AGAINST('quantum');
+```
+
+**MatrixOne 契约边界：**
+
+- FULLTEXT2 是异步、最终一致索引，不提供同步索引或 DDL 完成即 `MATCH` 可见的保证；
+- COPY ALTER 成功返回后，替换表的 FULLTEXT2 索引可能仍在异步重建/刷新；此时 `MATCH ... AGAINST` 可以短暂返回空集或旧索引结果，即使底表 `LIKE` 等扫描结果已包含目标行；
+- 调用方不得把 `ALTER TABLE` 的成功返回当作 FULLTEXT2 搜索结果已就绪的信号。需要依赖索引结果的流程必须设计等待、重试或其他应用侧最终一致性处理；
+- MatrixOne 不承诺该窗口为零，也不为该场景提供同步化语义。
+
+**不被本条目豁免的正确性问题：**
+
+- 索引在应用已满足其明确的就绪/重试条件后仍永久不能收敛；
+- 基表与 FULLTEXT2 结果在已收敛状态下持续不一致，或存在数据丢失、损坏；
+- 产品后来提供公开的就绪接口，却在该接口已确认就绪后仍返回错误结果。
+
+以上情况仍应作为独立 bug 跟踪；本条仅排除“DDL 返回后立即查询尚未收敛”的兼容性或同步性要求。
+
+**使用建议：**
+
+- 对强一致读取要求，不能把刚完成 COPY ALTER 的 FULLTEXT2 `MATCH` 作为唯一判断依据；
+- 业务应在可接受的最终一致性窗口内重试，或在需要立即精确结果时采用不依赖该异步索引的查询/流程；
+- 不要将内部隐藏索引表、CDC `tag` 等实现细节当作应用兼容接口；它们仅可用于内部测试或诊断。
+
+**关联记录：**
+
+- [#28837：COPY ALTER leaves an unaffected FULLTEXT2 index empty](https://github.com/matrixorigin/matrixone/issues/28837)
+- [#28837 产品决策评论：FULLTEXT2 is eventually-consistent / WON'T FIX](https://github.com/matrixorigin/matrixone/issues/28837#issuecomment-5711671000)
+- [#28879：首次重建与缓存刷新修复](https://github.com/matrixorigin/matrixone/pull/28879)
+- [#29028：避免保留空索引 generation 的后续修复](https://github.com/matrixorigin/matrixone/pull/29028)
+
+**证据与后续：**
+
+- 官方 main `0370bb4d6b118da29e164c54aa34ee010ed897bc`，2026-09-17，本地单 CN 验证：三个独立 COPY ALTER 场景中，ALTER 后首次 `MATCH` 为空，随后替换索引恢复并返回原有命中；这只说明当前观测到最终收敛，不构成窗口时长 SLA；
+- 现有回归 [`fulltext2_copy_alter.sql`](https://github.com/matrixorigin/matrixone/blob/main/test/distributed/cases/pessimistic_transaction/fulltext2/fulltext2_copy_alter.sql) 在替换索引 durable base 就绪后验证搜索结果；多 CN 路径目前因 #28985 被 skip；
+- 除非产品决策改变为同步索引语义，或发现上述独立正确性问题，否则不要仅依据 ALTER 后短暂空结果重新打开 #28837。
 
 ---
 
