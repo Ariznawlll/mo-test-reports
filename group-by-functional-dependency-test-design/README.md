@@ -121,10 +121,9 @@ proof 不应写入 Catalog、存储层或跨 session 共享，也不应在 query
 ### 环境
 
 - MatrixOne：官方 `main`，完整 SHA 必须与执行记录一致。
-- BVT：单 CN 标准 distributed test 环境，`ONLY_FULL_GROUP_BY` 显式设置并在结尾恢复。
-- MOTR：标准 MySQL 端口，至少两个独立物理连接；binary prepare 使用 Go `database/sql` + `go-sql-driver/mysql`。
+- MOTR：单 CN 标准 MySQL 端口，至少两个独立物理连接；binary prepare 使用 Go `database/sql` + `go-sql-driver/mysql`，`ONLY_FULL_GROUP_BY` 由用例显式设置并恢复。
 - 兼容性 Oracle：MySQL 8.0.45，记录 `SELECT VERSION()` 与 `@@session.sql_mode`；仅比较双方共同支持的语法。
-- 重复：普通 BVT 3 轮；prepared/DDL 与多 session 10 轮 fresh database；planner benchmark 5 轮并报告 `ns/op`、`allocs/op`。
+- 重复：MOTR 场景至少执行 3 轮，每轮包含 10 个 fresh database；planner benchmark 5 轮并报告 `ns/op`、`allocs/op`。
 - 每轮使用唯一 database 名，清理失败直接判失败，不使用共享表或固定 sleep。
 
 ### 数据模型
@@ -144,37 +143,37 @@ proof 不应写入 Catalog、存储层或跨 session 共享，也不应在 query
 
 | 用例 ID | 验收目标 / capability_id / 不变量 | 前置状态与输入/操作 | 预期结果与独立 Oracle | 状态/清理断言 | 环境 / 测试层 |
 |---|---|---|---|---|---|
-| FD-HP-001 | 原 issue；`sql.relational-query`；PK 决定同表列 | 创建原三表数据，执行 issue 原 SQL | 成功；结果逐行等于把 `job.source` 加入 GROUP BY 的控制查询 | 原表行数不变；drop database 成功 | 1-CN / BVT，3 轮 |
-| FD-HP-002 | SELECT/HAVING/ORDER；`sql.mysql-compatibility` | 按 PK 分组，在表达式、HAVING、ORDER BY 引用 payload | 成功且表达式值、过滤、顺序与完整分组 Oracle 一致 | session mode 恢复 | BVT |
-| FD-HP-003 | 非空单列 UNIQUE；`schema.constraints` | `UNIQUE(k)` 且 `k NOT NULL`，按 k 分组选择 payload | 每组唯一 payload 和精确 SUM/COUNT | 不改变索引或数据 | BVT + planner UT |
-| FD-HP-004 | 非空复合 UNIQUE；`schema.constraints` | `UNIQUE(a,b)`，以 `GROUP BY b,a` 分组 | 成功；键顺序不影响完整性；与显式 payload 分组相同 | cleanup | BVT + UT |
-| FD-HP-005 | nullable UNIQUE；`schema.constraints` | 所有 nullable components 均在 WHERE 中 `IS NOT NULL`，完整键分组 | 仅非 NULL 行进入；payload 唯一且结果精确 | NULL 行仍存在且未被修改 | BVT + UT |
-| FD-HP-006 | WHERE 单值；`sql.mysql-compatibility` | 非分组列由 `col = literal/parameter` 的 AND 条件限制 | 成功；值等于 literal/parameter，聚合精确 | prepared 可重复执行 | BVT + binary prepare |
-| FD-HP-007 | 派生表；`query.optimizer-and-plan` | 直接列投影、重命名、嵌套两层后按导出键分组 | 成功；投影前后结果一致 | 不缓存跨 query proof | BVT + UT |
-| FD-HP-008 | CTE/VIEW；`schema.ddl-lifecycle` | 非递归 CTE、VIEW 直接投影完整键 | 成功；与基表查询一致 | DROP VIEW 后无残留 | BVT |
-| FD-HP-009 | INNER JOIN；`sql.relational-query` | ON、逗号 JOIN + WHERE、USING 三种等值入口 | 分组侧键可决定唯一侧 payload；三种结果相同 | fanout COUNT/SUM 精确 | BVT + UT |
-| FD-HP-010 | LEFT/RIGHT JOIN；外连接方向不变量 | 加入 matched、unmatched、NULL FK，按 preserved-side determinant 分组 | unmatched 行 payload 为 NULL；LEFT/RIGHT 归一化结果一致 | 不丢行、不重复行 | BVT + UT |
-| FD-HP-011 | JOIN chain；闭包传递性 | child → parent → parent_alias 的安全等值链 | 允许末端 payload；结果等于完整分组 Oracle | 每个 binding 独立 | BVT + UT |
-| FD-HP-012 | `session.prepared-statement` | SQL PREPARE 与 COM_STMT_PREPARE 重复执行不同参数 | 每次使用当前参数，结果 metadata/value 正确 | deallocate/close handle 后无残留 | BVT + MOTR scenario |
+| FD-HP-001 | 原 issue；`sql.relational-query`；PK 决定同表列 | 创建原三表数据，执行 issue 原 SQL | 成功；结果逐行等于把 `job.source` 加入 GROUP BY 的控制查询 | 原表行数不变；drop database 成功 | 1-CN / MOTR，3 轮 |
+| FD-HP-002 | SELECT/HAVING/ORDER；`sql.mysql-compatibility` | 按 PK 分组，在表达式、HAVING、ORDER BY 引用 payload | 成功且表达式值、过滤、顺序与完整分组 Oracle 一致 | session mode 恢复 | MOTR |
+| FD-HP-003 | 非空单列 UNIQUE；`schema.constraints` | `UNIQUE(k)` 且 `k NOT NULL`，按 k 分组选择 payload | 每组唯一 payload 和精确 SUM/COUNT | 不改变索引或数据 | MOTR + planner UT |
+| FD-HP-004 | 非空复合 UNIQUE；`schema.constraints` | `UNIQUE(a,b)`，以 `GROUP BY b,a` 分组 | 成功；键顺序不影响完整性；与显式 payload 分组相同 | cleanup | MOTR + UT |
+| FD-HP-005 | nullable UNIQUE；`schema.constraints` | 所有 nullable components 均在 WHERE 中 `IS NOT NULL`，完整键分组 | 仅非 NULL 行进入；payload 唯一且结果精确 | NULL 行仍存在且未被修改 | MOTR + UT |
+| FD-HP-006 | WHERE 单值；`sql.mysql-compatibility` | 非分组列由 `col = literal/parameter` 的 AND 条件限制 | 成功；值等于 literal/parameter，聚合精确 | prepared 可重复执行 | MOTR + binary prepare |
+| FD-HP-007 | 派生表；`query.optimizer-and-plan` | 直接列投影、重命名、嵌套两层后按导出键分组 | 成功；投影前后结果一致 | 不缓存跨 query proof | MOTR + UT |
+| FD-HP-008 | CTE/VIEW；`schema.ddl-lifecycle` | 非递归 CTE、VIEW 直接投影完整键 | 成功；与基表查询一致 | DROP VIEW 后无残留 | MOTR |
+| FD-HP-009 | INNER JOIN；`sql.relational-query` | ON、逗号 JOIN + WHERE、USING 三种等值入口 | 分组侧键可决定唯一侧 payload；三种结果相同 | fanout COUNT/SUM 精确 | MOTR + UT |
+| FD-HP-010 | LEFT/RIGHT JOIN；外连接方向不变量 | 加入 matched、unmatched、NULL FK，按 preserved-side determinant 分组 | unmatched 行 payload 为 NULL；LEFT/RIGHT 归一化结果一致 | 不丢行、不重复行 | MOTR + UT |
+| FD-HP-011 | JOIN chain；闭包传递性 | child → parent → parent_alias 的安全等值链 | 允许末端 payload；结果等于完整分组 Oracle | 每个 binding 独立 | MOTR + UT |
+| FD-HP-012 | `session.prepared-statement` | SQL PREPARE 与 COM_STMT_PREPARE 重复执行不同参数 | 每次使用当前参数，结果 metadata/value 正确 | deallocate/close handle 后无残留 | MOTR scenario |
 | FD-HP-013 | 恢复后的正常控制 | 先触发一个非法 GROUP BY，再在同一连接执行合法 FD 查询 | 非法语句返回后连接仍同步，合法查询成功 | 无 stuck transaction/session | MOTR |
-| FD-BD-001 | 空/单行/多行边界 | 空表、单行、重复 fanout 分别按完整键分组 | 空集、单行和精确 fanout 结果 | 无意外 NULL/重复 | BVT |
-| FD-BD-002 | 完整复合键边界 | GROUP BY 包含完整键加额外列、键列顺序交换 | 仍可选择 payload；结果与完整分组一致 | cleanup | BVT |
-| FD-BD-003 | equality domain；`sql.data-types-and-conversion` | 合法数值、DECIMAL、日期时间、binary 键；同类型等值 JOIN | 支持类型接受且结果精确 | 记录实际类型 metadata | Planner UT + BVT |
-| FD-UN-001 | 不完整复合键 fail closed | `UNIQUE(a,b)` 只 GROUP BY a | 稳定拒绝，cause 含 `must appear in the GROUP BY` | 随后合法查询成功 | BVT + UT |
-| FD-UN-002 | nullable key fail closed | nullable UNIQUE 无过滤、仅部分 component 过滤 | 稳定拒绝；不得从实际数据“碰巧唯一”推导 | 数据不变 | BVT + UT |
-| FD-UN-003 | predicate scope | `IS NOT NULL` 位于 OR、HAVING、nullable-side outer ON | 稳定拒绝；这些位置不能成为当前块非空证明 | 同连接恢复 | UT + BVT |
-| FD-UN-004 | transformed determinant | GROUP BY `k+1`、有损 CAST 或函数表达式 | 稳定拒绝；表达式不能冒充完整 storage key | 无 planner panic | UT + BVT |
-| FD-UN-005 | 跨 binding 隔离 | 按表 A 的键分组却选择无等值证明的表 B payload | 稳定拒绝，即使测试数据碰巧一一对应 | 显式分组控制成功 | BVT |
-| FD-UN-006 | outer join 反向传播 | 从 nullable side 向 preserved side 推导，或 ON 残余列未被 determinant 决定 | 稳定拒绝 | unmatched 数据保留 | UT + BVT |
+| FD-BD-001 | 空/单行/多行边界 | 空表、单行、重复 fanout 分别按完整键分组 | 空集、单行和精确 fanout 结果 | 无意外 NULL/重复 | MOTR |
+| FD-BD-002 | 完整复合键边界 | GROUP BY 包含完整键加额外列、键列顺序交换 | 仍可选择 payload；结果与完整分组一致 | cleanup | MOTR |
+| FD-BD-003 | equality domain；`sql.data-types-and-conversion` | 合法数值、DECIMAL、日期时间、binary 键；同类型等值 JOIN | 支持类型接受且结果精确 | 记录实际类型 metadata | Planner UT + MOTR |
+| FD-UN-001 | 不完整复合键 fail closed | `UNIQUE(a,b)` 只 GROUP BY a | 稳定拒绝，cause 含 `must appear in the GROUP BY` | 随后合法查询成功 | MOTR + UT |
+| FD-UN-002 | nullable key fail closed | nullable UNIQUE 无过滤、仅部分 component 过滤 | 稳定拒绝；不得从实际数据“碰巧唯一”推导 | 数据不变 | MOTR + UT |
+| FD-UN-003 | predicate scope | `IS NOT NULL` 位于 OR、HAVING、nullable-side outer ON | 稳定拒绝；这些位置不能成为当前块非空证明 | 同连接恢复 | UT + MOTR |
+| FD-UN-004 | transformed determinant | GROUP BY `k+1`、有损 CAST 或函数表达式 | 稳定拒绝；表达式不能冒充完整 storage key | 无 planner panic | UT + MOTR |
+| FD-UN-005 | 跨 binding 隔离 | 按表 A 的键分组却选择无等值证明的表 B payload | 稳定拒绝，即使测试数据碰巧一一对应 | 显式分组控制成功 | MOTR |
+| FD-UN-006 | outer join 反向传播 | 从 nullable side 向 preserved side 推导，或 ON 残余列未被 determinant 决定 | 稳定拒绝 | unmatched 数据保留 | UT + MOTR |
 | FD-UN-007 | volatile/null-safe/lossy equality | `RAND()` 残余、`<=>`、跨类型/有损 CAST equality | 稳定拒绝，不能形成 identity proof | 无 hang/panic | UT |
-| FD-UN-008 | 关系边界 | LIMIT、DISTINCT、UNION/INTERSECT、聚合、窗口、递归 CTE 后尝试传播键 | 当前合同均 fail closed；外层显式完整分组控制可执行 | 不泄漏子查询 proof | UT；支持语法补 BVT |
-| FD-UN-009 | grouping sets | ROLLUP/CUBE 某 branch 中键不 active | 稳定拒绝，不把其他 branch 的完整键复用 | 普通 GROUP BY 控制成功 | UT + BVT |
-| FD-UN-010 | 重复 CTE identity | 同一 CTE 两次 CROSS JOIN，按实例 A 键选择实例 B payload | 稳定拒绝；增加 A=B 等值后对应正向用例成功 | binding 不串线 | UT + BVT |
+| FD-UN-008 | 关系边界 | LIMIT、DISTINCT、UNION/INTERSECT、聚合、窗口、递归 CTE 后尝试传播键 | 当前合同均 fail closed；外层显式完整分组控制可执行 | 不泄漏子查询 proof | UT；支持语法补 MOTR |
+| FD-UN-009 | grouping sets | ROLLUP/CUBE 某 branch 中键不 active | 稳定拒绝，不把其他 branch 的完整键复用 | 普通 GROUP BY 控制成功 | UT + MOTR |
+| FD-UN-010 | 重复 CTE identity | 同一 CTE 两次 CROSS JOIN，按实例 A 键选择实例 B payload | 稳定拒绝；增加 A=B 等值后对应正向用例成功 | binding 不串线 | UT + MOTR |
 | FD-LC-001 | UNIQUE lifecycle；`schema.indexes` | prepare 合法查询 → DROP UNIQUE → 插入重复 key/payload → execute | execute 立即拒绝；不得返回任意 payload | 删除冲突行并 ADD UNIQUE 后 execute 恢复 | Binary prepare，10 轮 |
 | FD-LC-002 | VIEW lifecycle；`schema.ddl-lifecycle` | prepare VIEW 查询 → replace 为非 key-preserving 投影 → execute | 替换后拒绝；恢复 key-preserving VIEW 后成功 | 当前 view definition 生效 | Binary prepare，10 轮 |
 | FD-LC-003 | 跨连接失效 | A prepare；B DROP/ADD UNIQUE 或 replace VIEW 并提交；A execute | A 下一次执行观察当前 metadata，不使用陈旧 proof | 两连接均可继续使用 | MOTR multi-client，10 轮 |
 | FD-SE-001 | sql_mode session 隔离 | A=`ONLY_FULL_GROUP_BY`，B=`ONLY_FULL_GROUP_BY,MATRIXONE_NATIVE`，C 关闭该 mode | A 按窄合同接受；B 严格拒绝；C 仅在数据确定时用结果 Oracle，否则只断言语句可执行 | 三连接互不改变 mode | MOTR |
-| FD-SE-002 | 最小权限 | 仅有相关表 SELECT 权限的用户执行合法/非法查询 | 与管理员得到相同语义判定；无权限用户先被权限系统拒绝 | 无额外 metadata/data 可见性 | BVT/MOTR |
+| FD-SE-002 | 最小权限 | 仅有相关表 SELECT 权限的用户执行合法/非法查询 | 与管理员得到相同语义判定；无权限用户先被权限系统拒绝 | 无额外 metadata/data 可见性 | MOTR |
 | FD-PF-001 | 有界规划成本 | 10/50/100 列投影与 1/5/10 层等值链 benchmark | 无超线性失控、panic 或 timeout；报告 ns/op、allocs/op，不设脆弱绝对阈值 | benchmark 后内存回落 | Go benchmark，5 轮 |
 
 ## 正常路径（Happy Path）
@@ -220,7 +219,7 @@ GROUP BY 校验是只读 statement 语义，不新增持久状态。补充以下
 
 ## 恢复与故障注入
 
-该 Feature 不创建后台任务、外部对象或持久化 proof，无节点/网络/存储故障合同，因此不进入 Chaos/recovery。验证 SQL 错误后的同连接恢复、断开后新连接按当前 Catalog 与 sql_mode 重新规划即可。若重启用例复用现有 BVT 环境，只作为 metadata 持久性控制，不作为独立准入门槛。
+该 Feature 不创建后台任务、外部对象或持久化 proof，无节点/网络/存储故障合同，因此不进入 Chaos/recovery。验证 SQL 错误后的同连接恢复、断开后新连接按当前 Catalog 与 sql_mode 重新规划即可。若补充重启用例，复用 MOTR 单 CN 环境，仅作为 metadata 持久性控制，不作为独立准入门槛。
 
 ## 性能、规模与稳定性
 
@@ -262,14 +261,14 @@ MatrixOne 文档把 SELECT 标为 Partial，且当前 SQL Mode 页面仍保留�
 
 ### 本次补充资产
 
-1. [matrixorigin/matrixone#29041](https://github.com/matrixorigin/matrixone/pull/29041) 扩展现有 BVT：加入原 issue 三表 SQL、精确显式分组 Oracle、fanout/zero-child/unmatched-owner/NULL-owner，以及 NULL/空串/最长字符串和 DECIMAL/DATE/DATETIME/VARBINARY 键边界。
-2. [matrixorigin/motr#182](https://github.com/matrixorigin/motr/pull/182) 在 `script/14_issue_regression/` 增加 `issue_27983_group_by_fd_prepare.go/.sh` 及 golden：覆盖四个独立物理连接、binary prepare、UNIQUE/VIEW DDL 失效恢复、sql_mode 隔离、显式事务、最小 SELECT 权限和拒绝后数据不变式。
+1. [matrixorigin/motr#182](https://github.com/matrixorigin/motr/pull/182) 在 `script/14_issue_regression/` 增加 `issue_27983_group_by_fd_prepare.go/.sh` 及 golden，统一承载本次所有新增黑盒覆盖：原 issue 三表 SQL与显式分组 Oracle、fanout/zero-child/unmatched-owner/NULL-owner、NULL/空串/最长字符串、DECIMAL/DATE/DATETIME/VARBINARY 边界、四个独立物理连接、binary prepare、UNIQUE/VIEW DDL 失效恢复、sql_mode 隔离、显式事务、最小 SELECT 权限和拒绝后数据不变式。
+2. [matrixorigin/matrixone#29041](https://github.com/matrixorigin/matrixone/pull/29041) 已关闭且未合入；按当前回归分层决定，本次不新增 BVT，相关黑盒覆盖已全部迁移到 MOTR #182。
 3. Planner equality-domain、关系边界、grouping-mask 及 prepared lifecycle 的底层用例已由 #28848/#28873 随实现合入，本次不重复新建长时 UT。
 
 ### 本次执行结果
 
-- BVT focused：`105/105`，连续 3 轮全部通过；所在 `dml/select` suite：`1257/1257`。
-- MOTR 黑盒场景：10 个 fresh database 内全部断言通过，runner `1/1`，8.16s；场景在修复前 MatrixOne `d57f99abc0` 上会在原 prepared 查询处稳定失败。
+- 既有 distributed suite 的一次性本地兼容验证为 focused `105/105`、连续 3 轮及所在 `dml/select` suite `1257/1257`；该结果只作为验证证据，不新增 BVT 资产。
+- MOTR 黑盒场景：连续 `3/3` 通过，共覆盖 30 个 fresh database，15.69s；包含新增数据/类型边界的精确结果校验。场景在修复前 MatrixOne `d57f99abc0` 上会在原查询处稳定失败。
 - Planner focused UT：5 组用例 `-count=3` 通过；equality-domain UT `-count=3` 通过。
 - Binary prepared DML UT：2 组用例 `-count=3` 通过；同两用例 `-race -count=1` 通过。
 - Planner benchmark：ordinary、8/32 层 projection、4/16 表 join 各 5 轮完成，无 panic、timeout。
@@ -280,9 +279,8 @@ MatrixOne 文档把 SELECT 标为 Partial，且当前 SQL Mode 页面仍保留�
 
 1. Planner focused UT：3 轮。
 2. `pkg/tests/dml` 两个 prepared case：3 轮。
-3. BVT focused case：3 轮，并运行所在 `dml/select` suite 1 轮。
-4. MOTR scenario：10 轮 fresh database，并运行 `14_issue_regression` 相关 shard。
-5. PR 必须通过 SCA；suite 无关失败需单独列出，不得写成全量通过。
+3. MOTR scenario：至少 3 轮，每轮 10 个 fresh database，并运行 `14_issue_regression` 相关 shard。
+4. PR 必须通过 SCA；suite 无关失败需单独列出，不得写成全量通过。
 
 ## 不适用项及原因
 
@@ -307,7 +305,7 @@ MatrixOne 文档把 SELECT 标为 Partial，且当前 SQL Mode 页面仍保留�
 
 1. 原 issue SQL 和全部 required Happy/Boundary/Unhappy case 达到预期；普通 case 3/3、prepared/DDL case 10/10。
 2. 所有成功结果与独立 Oracle 完整一致；所有拒绝结果无部分 output 且连接可恢复。
-3. focused UT、prepared test、BVT、MOTR scenario 和相关 CI 全部通过。
+3. focused UT、prepared test、MOTR scenario 和相关 CI 全部通过；本次不新增 BVT 门禁。
 4. 无 panic、hang、OOM、CN restart、protocol desync、陈旧 plan/proof 或清理残留。
 5. 每个原 issue/研发 comment 场景映射到 case ID 和可复核证据。
 
