@@ -21,7 +21,7 @@ MatrixOne 在 `ONLY_FULL_GROUP_BY` 生效时，需要支持 SQL:1999 可选特�
 
 ## 支持证据与版本基线
 
-- 官方 main：`8e8e1998ef02b1f6233ddb1c2d3208f3b70d2d83`
+- 官方 main：`370c310a994de258ee01e87c31062590a7022f34`
 - 核验日期：`2026-09-17`
 - 正式支持证据：
   - [MatrixOne SQL Mode](https://docs.matrixorigin.cn/en/v26.3.0.13/MatrixOne/Reference/Variable/system-variables/sql-mode/)：公开 `ONLY_FULL_GROUP_BY` 入口及 session/global 生效规则。
@@ -38,7 +38,7 @@ MatrixOne 在 `ONLY_FULL_GROUP_BY` 生效时，需要支持 SQL:1999 可选特�
   - `pkg/tests/dml/group_by_unique_prepared_test.go`
   - `pkg/tests/dml/group_by_dependency_prepared_test.go`
   - `test/distributed/cases/dml/select/mysql_compat_only_full_group_by.sql`
-- 新鲜度审计：能力目录基线为 `bdbd613fdece966769eb68481a3e58bfbc36b30c`，当前 main 已变化。相关路径新增 #28848/#28873 的唯一键、投影、JOIN 依赖推导及 prepared 失效测试，因此本设计以当前 main 和合入 PR 的窄合同为准。公开 SQL Mode 文档仍描述“非聚合列必须显式出现在 GROUP BY”的旧规则，需在发布前同步文档，不能据此扩大到 MySQL 的全部函数依赖推导。
+- 新鲜度审计：能力目录基线为 `bdbd613fdece966769eb68481a3e58bfbc36b30c`，#28848/#28873 合入后以 `8e8e1998ef02b1f6233ddb1c2d3208f3b70d2d83` 完成首轮验证。本轮更新到 `370c310a994de258ee01e87c31062590a7022f34`，两个 SHA 之间上述 GROUP BY 实现和已有测试路径无变化，因此仍以合入 PR 的窄合同为准。公开 SQL Mode 文档仍描述“非聚合列必须显式出现在 GROUP BY”的旧规则，需在发布前同步文档，不能据此扩大到 MySQL 的全部函数依赖推导。
 
 ## 验收目标与非目标
 
@@ -260,11 +260,21 @@ MatrixOne 文档把 SELECT 标为 Partial，且当前 SQL Mode 页面仍保留�
   - `test/distributed/cases/dml/select/mysql_compat_only_full_group_by.result`
 - Benchmark：`pkg/sql/plan/mysql_full_group_by_dependency_bench_test.go`
 
-### 拟补充资产
+### 本次补充资产
 
-1. 扩展现有 BVT，加入原 issue 三表 SQL、精确显式分组 Oracle、key type 与 mode isolation 控制，避免创建重复 suite。
-2. 在 `motr/suites/scenarios/14_issue_regression/` 增加 `issue_27983_group_by_fd_prepare.go/.sh` 及 `out/issue_27983_group_by_fd_prepare.out`，覆盖两个物理连接的 binary prepare + DDL/VIEW invalidation。
-3. 对 planner UT 补足当前合同内但 BVT 不易稳定构造的 equality-domain、关系边界和 grouping-mask 用例。
+1. [matrixorigin/matrixone#29041](https://github.com/matrixorigin/matrixone/pull/29041) 扩展现有 BVT：加入原 issue 三表 SQL、精确显式分组 Oracle、fanout/zero-child/unmatched-owner/NULL-owner，以及 NULL/空串/最长字符串和 DECIMAL/DATE/DATETIME/VARBINARY 键边界。
+2. [matrixorigin/motr#182](https://github.com/matrixorigin/motr/pull/182) 在 `script/14_issue_regression/` 增加 `issue_27983_group_by_fd_prepare.go/.sh` 及 golden：覆盖四个独立物理连接、binary prepare、UNIQUE/VIEW DDL 失效恢复、sql_mode 隔离、显式事务、最小 SELECT 权限和拒绝后数据不变式。
+3. Planner equality-domain、关系边界、grouping-mask 及 prepared lifecycle 的底层用例已由 #28848/#28873 随实现合入，本次不重复新建长时 UT。
+
+### 本次执行结果
+
+- BVT focused：`105/105`，连续 3 轮全部通过；所在 `dml/select` suite：`1257/1257`。
+- MOTR 黑盒场景：10 个 fresh database 内全部断言通过，runner `1/1`，8.16s；场景在修复前 MatrixOne `d57f99abc0` 上会在原 prepared 查询处稳定失败。
+- Planner focused UT：5 组用例 `-count=3` 通过；equality-domain UT `-count=3` 通过。
+- Binary prepared DML UT：2 组用例 `-count=3` 通过；同两用例 `-race -count=1` 通过。
+- Planner benchmark：ordinary、8/32 层 projection、4/16 表 join 各 5 轮完成，无 panic、timeout。
+- 运行二进制为官方 main `370c310a994de258ee01e87c31062590a7022f34`；本地运行期间无竞态报告、CN restart 或 protocol desync。
+- 日志中另有 standalone 环境周期性 `iscp transaction finish timeout`；它与本用例 SQL/plan 时序无关、未影响连接与结果，不归因为 #27983 失败。
 
 ### CI 门禁
 
