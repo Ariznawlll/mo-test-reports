@@ -326,6 +326,51 @@ ON DUPLICATE KEY UPDATE <assignment-list>;
 
 ## 类型转换与非严格语义
 
+### ARITH-001：有符号整数除法使用 `DOUBLE`，不承诺 MySQL 的 `DECIMAL` 精确结果
+
+**状态：契约限制**
+
+当 `/` 的两个操作数均为有符号整数时，MatrixOne 当前将表达式解析为 `DOUBLE`。这与 MySQL 将相应精确数值除法解析为 `DECIMAL` 的类型契约不同。
+
+```sql
+CREATE TABLE src(id INT PRIMARY KEY, s BIGINT);
+INSERT INTO src VALUES
+  (1, 9007199254740992),
+  (2, 9007199254740993);
+
+-- MatrixOne：表达式为 DOUBLE；两个值超过 2^53 后可能折叠为同一值
+SELECT id, s / 1 FROM src ORDER BY id;
+```
+
+**MatrixOne 契约边界：**
+
+- `TINYINT`、`SMALLINT`、`INT`、`BIGINT` 的 signed/signed `/` 结果采用 `DOUBLE` 数值域；
+- 因 IEEE 754 `DOUBLE` 只有 53 位整数精度，绝对值大于 `2^53` 的相邻整数可能转换为同一浮点值；
+- 因此，基于该表达式的过滤、分组、排序、Join、窗口 peer 分组、VIEW 与 CTAS 会一致地使用已解析的 `DOUBLE` 值。该现象不是按 MySQL `DECIMAL` 域执行的兼容性承诺；
+- 显式近似数值操作数同样选择近似数值域；其他操作数类型（例如 `DECIMAL` 或部分 unsigned 组合）可能选择不同的类型规则，不能据此反推 signed/signed `/` 必须使用 `DECIMAL`。
+
+**使用建议：**
+
+- 业务需要保留大整数除法的可区分精度时，应在除法前显式转换为适当的 `DECIMAL(p,s)`，而不是依赖有符号整数 `/` 的隐式类型推导；
+- 对 `WHERE`、`GROUP BY`、Join、CTAS 等关系操作，不要将大于 `2^53` 的有符号整数除法结果当作精确键；
+- 需要整数截断语义或特定舍入规则时，应显式表达该规则，不要将其他数据库的 `/` 类型契约外推到 MatrixOne。
+
+**不被本条目豁免的正确性问题：**
+
+- 同一已解析为 `DOUBLE` 的表达式在字面量、PreparedStatement、优化、执行、过滤、分组、Join、VIEW 或 CTAS 路径中得到不一致的值或类型；
+- 显式 `DECIMAL` / unsigned 组合没有按其自身已解析类型一致执行；
+- 除法导致 panic、会话异常、原子性破坏或其他与数值域选择无关的正确性问题。
+
+**关联记录：**
+
+- [#28580：signed integer division uses DOUBLE and corrupts exact relational results](https://github.com/matrixorigin/matrixone/issues/28580)
+- [#28580 产品决策评论：保留 signed-integer `/` 的 DOUBLE 类型规则](https://github.com/matrixorigin/matrixone/issues/28580#issuecomment-5678396568)
+
+**证据与后续：**
+
+- 研发确认：MySQL 的 `DECIMAL` 路径不是 MatrixOne 的正确性规范；在 `DOUBLE` 域内由舍入造成的值折叠，以及由此带来的关系运算结果，是已选择类型契约的一致后果；
+- 除非产品改变 signed/signed 除法的类型规则，或发现上述跨路径不一致/独立正确性问题，否则不要仅因它与 MySQL 的精确结果不同而重新打开 #28580。
+
 ### CONVERT-001：部分非法字符串的隐式数值转换存在明确行为差异
 
 **状态：行为差异，不等同于“不支持”**
