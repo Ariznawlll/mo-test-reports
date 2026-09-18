@@ -6,6 +6,7 @@
 
 | 日期 | 报告 | 说明 |
 |------|------|------|
+| 2026-09-18 | [内部管理命令支持范围](operational-admin-command-contract/README.md) | 记录已移除且不再支持的 `mo_ctl` 管理命令，避免将其误作公开 SQL 或 MySQL 兼容能力 |
 | 2026-09-17 | [GROUP BY 函数依赖例外测试设计](group-by-functional-dependency-test-design/README.md) | Issue #27983：覆盖 PK/UNIQUE、nullable key、派生关系、JOIN 闭包、外连接、sql_mode、prepared DDL 失效与 MySQL 8.0 对照 |
 | 2026-09-09 | [Apache Arrow IPC LOAD DATA 阶段测试记录](arrow-load-test-design/test-results-20260909.md) | 候选提交 `f0c31cd4b8`：确认 default-on 需求下候选默认关闭，测试不通过；同时记录 opt-in public path、3 轮重复、race 与 fuzz 证据 |
 | 2026-09-09 | [Apache Arrow IPC LOAD DATA 测试设计](arrow-load-test-design/README.md) | Issue #23684：覆盖 File/Stream、类型转换、对象存储、分布式、事务原子性、恢复、资源和 release gate；研发确认以 default-on comment 为准 |
