@@ -227,6 +227,61 @@ WHERE MATCH(body) AGAINST('alpha') + 0 > 0;
 
 ---
 
+### FULLTEXT-002：JSON parser 不承诺将普通 `json_extract*` 当前读改写为 FULLTEXT2 probe
+
+**状态：契约限制**
+
+适用范围：在 JSON 列上创建 `FULLTEXT2 ... WITH PARSER json` 后，以普通 JSON 函数作为
+当前读过滤条件的查询。
+
+```sql
+SET experimental_fulltext2_index = 1;
+CREATE TABLE docs(id INT PRIMARY KEY, doc JSON);
+CREATE FULLTEXT2 INDEX ft_json ON docs(doc) WITH PARSER json;
+
+SELECT id FROM docs
+WHERE json_extract_string(doc, '$.foo') = 'needle';
+```
+
+**MatrixOne 契约边界：**
+
+- `json_extract`、`json_extract_string` 和 `json_extract_float64` 是普通 SQL 谓词；无论表上
+  是否存在 JSON FULLTEXT2 索引，查询都必须保持精确的关系语义，并与无索引 SQL oracle 返回相同的行集；
+- 当前不承诺把这些谓词自动改写为 `fulltext2_search`，也不承诺 `EXPLAIN` 中出现任何特定的全文索引节点；
+  `Table Scan + Filter` 是允许且正确的执行计划；
+- JSON FULLTEXT2 的异步维护不能证明覆盖当前读快照时，优化器必须保留原始 JSON 谓词并回退扫描，不能为了
+  索引加速而返回不完整结果；
+- JSON current-read probe 加速属于独立 Feature，不是现有 JSON parser 的兼容性或性能承诺。不要仅因某个
+  当前读没有走 probe 计划而作为 Bug 提交或重新打开 #27926。
+
+**不被本条目豁免的正确性问题：**
+
+- 带 JSON FULLTEXT2 索引的普通 `json_extract*` 查询与无索引 SQL oracle 返回不同的行集；
+- 产品实际选择 JSON probe 后出现漏行、额外行、事务可见性错误或 DML 后结果不一致；
+- 查询导致 panic、会话中断、资源泄漏，或异步索引在其已明确满足就绪条件后永久无法收敛；
+- 产品以后公开承诺 JSON current-read probe 加速，却仍不执行或不满足该新承诺。
+
+**使用建议：**
+
+- 需要验证普通 JSON 谓词时，以无索引表或扫描路径为 SQL oracle，比对精确行集；
+- 不要把 `EXPLAIN` 是否出现 `fulltext2_search` 当作现有 JSON parser 的验收条件；
+- 若业务需要对 JSON 当前读提供公开的索引加速 SLA，应单独立项并定义快照完整性、异步就绪和多 CN 一致性合同。
+
+**关联记录：**
+
+- [#27926：JSON predicate index probe for current reads](https://github.com/matrixorigin/matrixone/issues/27926)
+- [#27926 研发范围说明：该 probe 功能尚未提供，并非 Bug](https://github.com/matrixorigin/matrixone/issues/27926#issuecomment-5506759750)
+
+**证据与后续：**
+
+- 3 CN / 1 DN 环境中，跨连接完成 insert、update、delete 后，索引表与无索引 oracle 的两轮结果分别一致为
+  `1,4` 和 `4,5`；
+- [MOTR #185](https://github.com/matrixorigin/motr/pull/185) 增加跨连接 current-read 行集一致性覆盖；
+- 除非出现本条列出的独立正确性问题，或产品明确发布 JSON current-read probe 加速合同，否则不要仅依据
+  `EXPLAIN` 缺少全文索引节点重新打开 #27926。
+
+---
+
 ## DML / Upsert
 
 ### ODKU-001：不支持通过 ODKU 更新主键或唯一键列
