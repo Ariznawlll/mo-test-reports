@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-09-17
+更新时间：2026-09-18
 
 ## 状态定义
 
@@ -20,6 +20,7 @@
 - [函数与随机数](#函数与随机数)
 - [聚合函数与结果元数据](#聚合函数与结果元数据)
 - [索引与最终一致性](#索引与最终一致性)
+- [全文索引谓词](#全文索引谓词)
 - [DML / Upsert](#dml--upsert)
 - [视图写入](#视图写入)
 - [类型转换与非严格语义](#类型转换与非严格语义)
@@ -168,6 +169,61 @@ SELECT id FROM docs WHERE MATCH(body) AGAINST('quantum');
 - 官方 main `0370bb4d6b118da29e164c54aa34ee010ed897bc`，2026-09-17，本地单 CN 验证：三个独立 COPY ALTER 场景中，ALTER 后首次 `MATCH` 为空，随后替换索引恢复并返回原有命中；这只说明当前观测到最终收敛，不构成窗口时长 SLA；
 - 现有回归 [`fulltext2_copy_alter.sql`](https://github.com/matrixorigin/matrixone/blob/main/test/distributed/cases/pessimistic_transaction/fulltext2/fulltext2_copy_alter.sql) 在替换索引 durable base 就绪后验证搜索结果；多 CN 路径目前因 #28985 被 skip；
 - 除非产品决策改变为同步索引语义，或发现上述独立正确性问题，否则不要仅依据 ALTER 后短暂空结果重新打开 #28837。
+
+---
+
+## 全文索引谓词
+
+### FULLTEXT-001：`WHERE` 中不支持以算术包装的 `MATCH` 作为全文索引驱动条件
+
+**状态：契约限制**
+
+适用范围：classic `FULLTEXT` 与 `FULLTEXT2` 的全文检索谓词。
+
+```sql
+-- 支持：直接写出成员谓词
+SELECT id FROM docs
+WHERE MATCH(body) AGAINST('alpha') > 0;
+
+-- 不支持：在 WHERE 中以算术表达式包装 MATCH
+SELECT id FROM docs
+WHERE MATCH(body) AGAINST('alpha') + 0 > 0;
+```
+
+**MatrixOne 契约边界：**
+
+- 只有规划器能够证明“命中集合”语义的 `MATCH` 形态，才会被收集为全文索引驱动条件。当前支持裸 `MATCH(...) AGAINST(...) > c`，以及 `CAST`、`ROUND`、`FLOOR`、`CEIL` 等不依赖操作数值且保序的包装；
+- 算术包装 `+`、`-`、`*`、`/` 在 `WHERE` 中均不属于该支持面，包括看似恒等的 `MATCH + 0`、`0 + MATCH`、`MATCH - 0`、`MATCH * 1`、`1 * MATCH` 和 `MATCH / 1`；
+- 同样不要依赖 `COALESCE`、`GREATEST`、`ABS`、`POWER`，或带预编译参数的算术表达式作为 `WHERE` 中的全文索引驱动条件；
+- 此类写法当前会被安全拒绝（该问题中为 `ERROR 20105`），而非退化为错误的索引过滤或错误结果；
+- 在投影列或 `ORDER BY` 中计算全文分数，与在 `WHERE` 中把表达式识别为索引驱动条件，是两条独立的规划路径。前者可用不代表后者受支持。
+
+**设计原因：**
+
+算术包装是否保持成员语义取决于运算值和符号：例如 `* -1`、`* 0`、`+ 5` 会改变比较含义，而预编译除数的符号在规划时也可能未知。MatrixOne 当前不承诺完整的单调性、常量或符号分析，也不为恒等算术 AST 提供兼容性特例。
+
+**使用建议：**
+
+- 将过滤条件改写为裸成员谓词，例如 `MATCH(body) AGAINST(?) > 0`；
+- 如需展示或排序分数，可在 `SELECT` / `ORDER BY` 中单独计算分数；
+- 不要把算术包装的 `MATCH` 在 `WHERE` 中的可接受性当作 MySQL 兼容性承诺。
+
+**不被本条目豁免的正确性问题：**
+
+- 已支持的裸 `MATCH` 谓词或上述明确支持的包装被拒绝、返回遗漏/额外结果，或未走应有的全文索引路径；
+- 全文检索引发 panic、会话中断、资源泄漏，或投影/排序中的分数计算本身错误；
+- 产品以后公开承诺支持某个算术包装形态，却仍然拒绝该形态。
+
+**关联记录：**
+
+- [#29064：arithmetic wrappers around MATCH score prevent FULLTEXT predicate rewrite](https://github.com/matrixorigin/matrixone/issues/29064)
+- [#29064 产品决策评论：算术包装不作为全文索引驱动条件](https://github.com/matrixorigin/matrixone/issues/29064#issuecomment-5718907319)
+- [#29064 覆盖矩阵与复现记录](https://github.com/matrixorigin/matrixone/issues/29064#issuecomment-5713256878)
+
+**证据与后续：**
+
+- 研发已明确将 `20105` 定义为安全拒绝，而不是错误结果；该决策同时不承诺为 `+0`、`*1`、`/1` 等恒等形式提供例外；
+- 除非产品决定扩展全文索引谓词的单调性/常量分析，或发现上述独立正确性问题，否则不要仅因算术包装的 `MATCH` 在 `WHERE` 中被拒绝而重新打开 #29064。
 
 ---
 
