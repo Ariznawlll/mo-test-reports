@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-09-18
+更新时间：2026-09-24
 
 ## 状态定义
 
@@ -20,6 +20,7 @@
 - [函数与随机数](#函数与随机数)
 - [聚合函数与结果元数据](#聚合函数与结果元数据)
 - [索引与最终一致性](#索引与最终一致性)
+- [向量索引数值边界](#向量索引数值边界)
 - [全文索引谓词](#全文索引谓词)
 - [DML / Upsert](#dml--upsert)
 - [视图写入](#视图写入)
@@ -169,6 +170,48 @@ SELECT id FROM docs WHERE MATCH(body) AGAINST('quantum');
 - 官方 main `0370bb4d6b118da29e164c54aa34ee010ed897bc`，2026-09-17，本地单 CN 验证：三个独立 COPY ALTER 场景中，ALTER 后首次 `MATCH` 为空，随后替换索引恢复并返回原有命中；这只说明当前观测到最终收敛，不构成窗口时长 SLA；
 - 现有回归 [`fulltext2_copy_alter.sql`](https://github.com/matrixorigin/matrixone/blob/main/test/distributed/cases/pessimistic_transaction/fulltext2/fulltext2_copy_alter.sql) 在替换索引 durable base 就绪后验证搜索结果；多 CN 路径目前因 #28985 被 skip；
 - 除非产品决策改变为同步索引语义，或发现上述独立正确性问题，否则不要仅依据 ALTER 后短暂空结果重新打开 #28837。
+
+---
+
+## 向量索引数值边界
+
+### HNSW-001：HNSW cosine 不支持零或 float32 次正规查询向量
+
+**状态：契约限制**
+
+适用范围：使用 `cosine_distance` 的 HNSW 索引查询。
+
+**MatrixOne 契约边界：**
+
+- HNSW cosine 依赖 float32 归一化向量。当查询向量为零向量，或其 float32 平方范数下溢时，索引路径会明确拒绝查询，不保证自动回退到精确扫描；
+- 该拒绝是为了避免返回负 cosine distance、`-Inf`、`NaN` 或错误 Top-K 成员，属于受支持范围限制，不是新的稳定性回归；
+- 正常可归一化的查询向量仍应使用 HNSW ANN，且不得产生负距离、非有限 score、虚构 row id，或因 score 导致派生表过滤、聚合、分页和等值连接结果异常。
+
+**已知存储向量限制：**
+
+- 对已存储向量，如果其 norm 超出 float32 可表示范围，底层 usearch 可能返回 `1` 或 `NaN`，与标量 `cosine_distance` 不一致；
+- 研发已评估在 HNSW 异步 CDC 维护阶段拒绝这类向量，但该做法可导致 watermark 无法推进、后续 DML 永久不再应用，或在 update 的 `Remove` 成功而 `Add` 失败后造成索引缺行；
+- 因此该存储侧极端数值差异当前明确保留，不应通过拒绝合法 DML 或中断异步索引维护来规避。调用方不应将 norm 超出 float32 范围的向量用于 HNSW cosine 检索。
+
+**不被本条目豁免的正确性问题：**
+
+- 普通已归一化查询被错误拒绝，或未使用已建好的 HNSW 索引；
+- 受支持向量产生负距离、`Inf`/`NaN`、错误 Top-K 成员或不稳定行集；
+- 拒绝路径导致 panic、会话中断、数据修改或索引维护停滞。
+
+**使用建议：** 使用 HNSW cosine 前，应确保查询和入库向量可在 float32 域内稳定归一化。需要零向量、次正规向量或极端数值的精确 SQL 语义时，不应依赖 HNSW cosine 路径。
+
+**关联记录：**
+
+- [#29082：HNSW cosine search returns wrong or -Inf scores for zero and tiny vectors](https://github.com/matrixorigin/matrixone/issues/29082)
+- [#29100：统一 float32 distance domain 并定义 HNSW 边界](https://github.com/matrixorigin/matrixone/pull/29100)
+- [#29100 研发决策：零/次正规查询 fail-fast，存储向量极端 norm 限制保留](https://github.com/matrixorigin/matrixone/pull/29100#issuecomment-5782272538)
+
+**回归要求：**
+
+- 零/次正规查询应稳定 fail-fast，不得返回伪造 score 或部分行；
+- 正常归一化查询应验证 `LIMIT 1`、`K>1`、派生表过滤、聚合、分页和等值连接，并确认 score 有限且结果集稳定；
+- 回归不得把极端存储向量错误 score 设为“正确期望值”；该项是已知限制，不是可固化的正确结果。
 
 ---
 
