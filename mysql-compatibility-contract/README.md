@@ -192,6 +192,11 @@ SELECT id FROM docs WHERE MATCH(body) AGAINST('quantum');
 - [#29080 研发决策：多 CN 索引缓存采用最终一致性，WON'T FIX](https://github.com/matrixorigin/matrixone/issues/29080#issuecomment-5809996874)
 - [#29024：缓存控制能力](https://github.com/matrixorigin/matrixone/pull/29024)
 
+**当前验证：** 官方 main `5be6cd90b501da225be591ffffe6000bf01f515e` 的本地 2 CN / 1 TN /
+1 LogService 环境中，连续 3 轮在 CN2 预热旧 generation、CN1 执行 `FORCE_SYNC` 后，两端均立即从
+`(alpha,beta,gamma)=(3,0,3)` 切换为 `(0,3,3)`。该结果说明当前实现可及时收敛，但不升级为跨 CN
+立即一致性保证，也不能作为依赖该时序的 MOTR 契约。
+
 除非产品明确增加跨 CN 同步失效语义，否则不要仅因远端 CN 在 `FORCE_SYNC` 返回后短暂读取旧 generation
 而重新作为 Bug 跟踪。
 
