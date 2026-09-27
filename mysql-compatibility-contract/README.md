@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-09-24
+更新时间：2026-09-27
 
 ## 状态定义
 
@@ -170,6 +170,30 @@ SELECT id FROM docs WHERE MATCH(body) AGAINST('quantum');
 - 官方 main `0370bb4d6b118da29e164c54aa34ee010ed897bc`，2026-09-17，本地单 CN 验证：三个独立 COPY ALTER 场景中，ALTER 后首次 `MATCH` 为空，随后替换索引恢复并返回原有命中；这只说明当前观测到最终收敛，不构成窗口时长 SLA；
 - 现有回归 [`fulltext2_copy_alter.sql`](https://github.com/matrixorigin/matrixone/blob/main/test/distributed/cases/pessimistic_transaction/fulltext2/fulltext2_copy_alter.sql) 在替换索引 durable base 就绪后验证搜索结果；多 CN 路径目前因 #28985 被 skip；
 - 除非产品决策改变为同步索引语义，或发现上述独立正确性问题，否则不要仅依据 ALTER 后短暂空结果重新打开 #28837。
+
+### FULLTEXT2-002：`FORCE_SYNC` 重建不保证远端 CN 缓存立即失效
+
+**状态：契约限制**
+
+`ALTER TABLE ... ALTER REINDEX ... FULLTEXT2 FORCE_SYNC` 的同步范围是重建任务本身及执行该语句的 CN，
+不构成所有 CN 的缓存失效屏障。另一个已经缓存旧 generation 的 CN 可能继续返回旧结果，直到其缓存按
+最终一致机制刷新，或通过公开的缓存控制能力显式处理。
+
+**契约边界：**
+
+- `FORCE_SYNC` 返回后，不承诺所有 CN 立即观察到同一 generation；
+- 调用方不得把该语句当作跨 CN 的同步读屏障；
+- 需要立即一致结果时，应避免从可能持有旧缓存的任意 CN 读取，或使用产品提供的缓存控制接口；
+- 缓存最终无法收敛、底表数据错误、重建失败或查询 panic 不属于本条豁免范围。
+
+**关联记录：**
+
+- [#29080：FULLTEXT2 FORCE_SYNC rebuild leaves warm remote CN on the old generation](https://github.com/matrixorigin/matrixone/issues/29080)
+- [#29080 研发决策：多 CN 索引缓存采用最终一致性，WON'T FIX](https://github.com/matrixorigin/matrixone/issues/29080#issuecomment-5809996874)
+- [#29024：缓存控制能力](https://github.com/matrixorigin/matrixone/pull/29024)
+
+除非产品明确增加跨 CN 同步失效语义，否则不要仅因远端 CN 在 `FORCE_SYNC` 返回后短暂读取旧 generation
+而重新作为 Bug 跟踪。
 
 ---
 
@@ -391,6 +415,55 @@ ORDER BY id;
 - 计划中的投影全文扫描和底表扫描使用 INNER JOIN；不同过滤词会形成多个全文扫描的 INNER JOIN 链；
 - 除非出现本条列出的独立正确性问题，或产品决策改变，否则不要仅因投影 `MATCH` 未返回零分行而重新提交
   兼容性 Bug。
+
+---
+
+### FULLTEXT-004：classic FULLTEXT 保留内部 `__DocLen` posting 的前缀可见性
+
+**状态：契约限制**
+
+classic FULLTEXT 将 `__DocLen` 作为内部 posting 存储在词索引中，且不对 `_`、`__` 等前缀查询隐藏它。
+因此 `_`、`__`、`+_` 或 `__*` 可能命中所有具有 posting 的非空文档，即使原文不包含这些字符。
+
+该行为仅描述 classic FULLTEXT 的既有实现；需要避免内部 sentinel 暴露时应使用 FULLTEXT2。普通用户词查询
+出现漏行、额外行或错误分数，以及 FULLTEXT2 出现相同行为，仍应独立作为正确性问题处理。
+
+**关联记录：**
+
+- [#29298：classic fulltext prefix matches the `__DocLen` sentinel](https://github.com/matrixorigin/matrixone/issues/29298)
+- [#29298 研发决策：classic sentinel 设计保留，WON'T FIX](https://github.com/matrixorigin/matrixone/issues/29298#issuecomment-5813040225)
+
+### FULLTEXT-005：classic BOOLEAN 引号只在整个搜索串被包裹时形成短语
+
+**状态：契约限制**
+
+classic FULLTEXT BOOLEAN mode 不支持把表达式内部的引号片段作为短语操作数。例如
+`+"matrix origin"`、`"matrix origin" database`、`+"matrix origin" +database` 不具备 MySQL 风格的
+“内嵌 quoted phrase”语义；只有整个搜索串被引号包裹时，才按当前 classic phrase 路径处理。
+
+调用方需要组合短语与其他 BOOLEAN 条件时，不应依赖该 classic 语法。整个搜索串的短语查询返回错误结果、
+普通未加引号 BOOLEAN 条件错误，或 FULLTEXT2 已承诺语法出现回归，均不属于本条豁免范围。
+
+**关联记录：**
+
+- [#29289：classic BOOLEAN quotes only form a phrase around the entire search string](https://github.com/matrixorigin/matrixone/issues/29289)
+- [#29289 研发决策：BOOLEAN mode 不支持该内嵌 quoted phrase 组合](https://github.com/matrixorigin/matrixone/issues/29289#issuecomment-5812936366)
+
+### FULLTEXT-006：classic JSON parser 的单个 value token 上限为 127 bytes
+
+**状态：契约限制**
+
+classic FULLTEXT 的 JSON value token 按短 keyword/tag 处理，单个 value 的索引输入最多保留 127 bytes。
+位于该边界之后或跨越边界的词可能不被索引，`MATCH` 因此不会命中；调用方不得用 classic JSON parser
+索引依赖超过该上限的长文本 value。
+
+127 bytes 以内的短 value 必须正常索引；截断不得引起 panic、数据修改或索引结构损坏。需要对长 JSON 文本
+执行全文检索时，应使用适合长文本的索引方案，而不是依赖该 classic value-token 路径。
+
+**关联记录：**
+
+- [#29281：classic JSON parser drops tokens past byte 127](https://github.com/matrixorigin/matrixone/issues/29281)
+- [#29281 研发决策：JSON value 作为短 keyword/tag，127-byte cap 按设计保留](https://github.com/matrixorigin/matrixone/issues/29281#issuecomment-5813593994)
 
 ---
 
