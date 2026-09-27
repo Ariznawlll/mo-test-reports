@@ -325,6 +325,75 @@ WHERE json_extract_string(doc, '$.foo') = 'needle';
 
 ---
 
+### FULLTEXT-003：classic FULLTEXT 的投影 `MATCH` 只返回相关行，不补齐零分行
+
+**状态：契约限制**
+
+适用范围：表上存在 classic `FULLTEXT` 索引，并在投影列表中直接计算
+`MATCH(...) AGAINST(...)` 分数。
+
+```sql
+CREATE TABLE docs(id INT PRIMARY KEY, body VARCHAR(100));
+CREATE FULLTEXT INDEX ft ON docs(body);
+INSERT INTO docs VALUES
+  (1, 'hello world'),
+  (2, 'hello there'),
+  (3, 'world');
+
+SELECT id, MATCH(body) AGAINST('world') AS score
+FROM docs
+ORDER BY id;
+```
+
+**MySQL 对照：** MySQL 将投影中的 `MATCH` 作为逐行分数表达式；未命中 `world` 的
+`id=2` 仍保留在结果中，分数为 `0`。
+
+**MatrixOne 契约边界：**
+
+- classic FULLTEXT 会把可使用索引的投影 `MATCH` 改写为全文索引扫描；该扫描只产生与投影检索词相关的行，
+  不会为其余底表行补齐 `score=0`；
+- 因此，上述查询只返回 `id=1,3`。即使外层存在 `WHERE id=2` 或
+  `WHERE id IN (1,2,3)`，不匹配投影检索词的行仍不会出现在结果中；
+- 当 `WHERE MATCH(body) AGAINST('hello')` 与投影
+  `MATCH(body) AGAINST('world')` 使用不同检索词时，当前执行路径相当于取两个全文索引扫描的交集，
+  因而只保留同时命中两者的行；
+- 普通模式与 `IN BOOLEAN MODE` 都适用本条边界；对投影分数再使用 `ROUND` 等包装，
+  不会改变其行集语义；
+- MatrixOne 不承诺为了兼容 MySQL 而扫描并补齐所有未命中行。该行为是出于避免在超大表上为少量命中结果
+  生成大量零分行的产品取舍，不作为待修复 Bug。
+
+**使用建议：**
+
+- 需要全文相关行及其分数时，应把检索条件明确写入 `WHERE MATCH(...) AGAINST(...)`，并让投影使用相同的
+  `MATCH` 表达式；
+- 需要保留全部底表行并展示未命中行的零分时，不要依赖 MatrixOne 当前的投影 `MATCH` 语义；应拆分底表读取
+  与全文检索结果，并在应用侧或经验证的关系查询中完成补齐；
+- 不要假设仅将 `MATCH` 放入 SELECT 列表就一定保持输入行数。
+
+**不被本条目豁免的正确性问题：**
+
+- 已命中投影检索词的行仍被遗漏，或幸存行的分数计算错误；
+- 过滤条件中的裸 `WHERE MATCH` 返回额外行、遗漏相关行，或与同一表达式的投影结果不一致；
+- 相同的 `MATCH` 同时用于过滤和投影时，被错误地重复改写并改变行集；
+- 全文索引已经满足其公开的就绪条件后仍永久不收敛，或查询引发 panic、会话中断、资源泄漏；
+- 产品以后公开承诺支持 MySQL 风格的“保留全部底表行并补零分”，但实际结果仍不满足该承诺。
+
+**关联记录：**
+
+- [#29299：classic fulltext MATCH in the SELECT list inner-joins the index scan and drops rows with score 0](https://github.com/matrixorigin/matrixone/issues/29299)
+- [#29299 研发决策评论：只返回相关行，不修复零分行补齐](https://github.com/matrixorigin/matrixone/issues/29299#issuecomment-5809939130)
+
+**证据与后续：**
+
+- 官方 `main` `66da3877e9e77f01083c4aac0cb9f94ab6e11fe6`，本地 classic FULLTEXT 表验证；
+  裸投影、主键过滤、`IN` 过滤、派生表计数、不同检索词的过滤/投影组合及 boolean mode 均表现为只保留
+  投影检索词相关行；
+- 计划中的投影全文扫描和底表扫描使用 INNER JOIN；不同过滤词会形成多个全文扫描的 INNER JOIN 链；
+- 除非出现本条列出的独立正确性问题，或产品决策改变，否则不要仅因投影 `MATCH` 未返回零分行而重新提交
+  兼容性 Bug。
+
+---
+
 ## DML / Upsert
 
 ### ODKU-001：不支持通过 ODKU 更新主键或唯一键列
