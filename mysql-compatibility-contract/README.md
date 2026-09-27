@@ -470,6 +470,36 @@ classic FULLTEXT 的 JSON value token 按短 keyword/tag 处理，单个 value �
 - [#29281：classic JSON parser drops tokens past byte 127](https://github.com/matrixorigin/matrixone/issues/29281)
 - [#29281 研发决策：JSON value 作为短 keyword/tag，127-byte cap 按设计保留](https://github.com/matrixorigin/matrixone/issues/29281#issuecomment-5813593994)
 
+### FULLTEXT-007：classic BOOLEAN bare `*` 表示 match-all
+
+**状态：行为差异**
+
+在 MatrixOne classic FULLTEXT 的 BOOLEAN mode 中，bare `*` 被定义为 match-all，而不是无效或无意义的
+truncation operator：
+
+- `AGAINST('*' IN BOOLEAN MODE)` 匹配所有具有全文索引 posting 的文档；
+- BOOLEAN mode 中没有 `+` / `-` 的项按 OR-of-optional-terms 组合，因此
+  `AGAINST('* apple' IN BOOLEAN MODE)` 等价于 `match-all OR apple`，同样返回所有已索引文档；
+- 返回不包含 `apple` 的文档是 bare `*` 自身命中的结果，不应按 `apple` 的 false positive 处理。
+
+该语义是 MatrixOne 明确保留的 classic FULLTEXT 产品契约，调用方不得按“bare `*` 必须被忽略或拒绝”设计
+断言。需要只匹配 `apple` 时，应移除 bare `*`；需要前缀查询时，应将 `*` 附着在非空词干之后。
+
+**不被本条目豁免的正确性问题：**
+
+- bare `*` 没有按上述 match-all 契约执行，而是返回类型错误、执行错误或部分行；
+- 查询引发 panic、会话中断或索引损坏；
+- 带非空词干的正常前缀查询返回错误结果。
+
+**关联记录：**
+
+- [#29287：classic BOOLEAN bare `*` searches the empty prefix](https://github.com/matrixorigin/matrixone/issues/29287)
+- [#29287 研发决策：bare `*` 定义为 match-all，`* apple` 为 OR(all, apple)](https://github.com/matrixorigin/matrixone/issues/29287#issuecomment-5813467251)
+
+**当前实现备注：** 官方 main `5be6cd90b501da225be591ffffe6000bf01f515e` 上，bare `*` 和
+`* apple` 连续 3 轮均返回 `ERROR 20203`，没有满足上述产品契约。该现象应作为独立实现回归处理，不能以此
+将 #29287 原先“match-all 是错误结果”的预期重新成立。
+
 ---
 
 ## DML / Upsert
