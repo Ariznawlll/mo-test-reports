@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-09-27
+更新时间：2026-10-02
 
 ## 状态定义
 
@@ -21,6 +21,7 @@
 - [聚合函数与结果元数据](#聚合函数与结果元数据)
 - [索引与最终一致性](#索引与最终一致性)
 - [向量索引数值边界](#向量索引数值边界)
+- [客户端与协议兼容性](#客户端与协议兼容性)
 - [全文索引谓词](#全文索引谓词)
 - [DML / Upsert](#dml--upsert)
 - [视图写入](#视图写入)
@@ -241,6 +242,108 @@ SELECT id FROM docs WHERE MATCH(body) AGAINST('quantum');
 - 零/次正规查询应稳定 fail-fast，不得返回伪造 score 或部分行；
 - 正常归一化查询应验证 `LIMIT 1`、`K>1`、派生表过滤、聚合、分页和等值连接，并确认 score 有限且结果集稳定；
 - 回归不得把极端存储向量错误 score 设为“正确期望值”；该项是已知限制，不是可固化的正确结果。
+
+### VECTOR-002：向量参数来自标量子查询或自连接时不保证使用 HNSW / IVFFLAT
+
+**状态：契约限制**
+
+适用范围：距离函数的查询向量不是 literal、参数或规划阶段可直接识别的常量，而是来自标量子查询、
+派生表、CTE 或同表自连接，例如：
+
+```sql
+SELECT a.md5_id
+FROM ca_comprehensive_dataset AS a
+JOIN (
+  SELECT question_vector
+  FROM ca_comprehensive_dataset
+  WHERE md5_id = 'reference-id'
+) AS ref_vec ON 1 = 1
+ORDER BY l2_distance(a.question_vector, ref_vec.question_vector)
+LIMIT 10;
+```
+
+**MatrixOne 契约边界：**
+
+- 当前 HNSW / IVFFLAT Top-K 改写要求查询向量在索引扫描规划时可作为稳定的查询参数使用；
+- 来自标量子查询、派生表、CTE 或另一侧 Join 的向量需要先执行关系运算才能得到，当前不会改写为向量索引
+  probe，允许采用表扫描、Join 和 Sort；
+- SQL 本身仍可执行并返回关系语义结果。“查询没有使用向量索引”是本条记录的能力限制，不等同于 SQL
+  不支持或结果错误；
+- 对同一个采样集合进行向量自连接并计算 pairwise distance，同样不属于单查询向量 Top-K 索引支持面；
+- 研发确认当前使用方式需要拆成两个查询：先取得 reference vector，再把该向量作为第二条 Top-K 查询的参数。
+
+**使用建议：**
+
+1. 第一条查询按主键或其他条件读取 reference vector；
+2. 第二条查询使用已取得的 vector literal / prepared parameter 执行
+   `ORDER BY l2_distance(indexed_column, ?) LIMIT K`；
+3. 需要 pairwise、自连接或 CTE 内向量比较时，不应依赖 HNSW / IVFFLAT 自动改写，应按扫描型工作负载评估资源。
+
+**不被本条目豁免的正确性问题：**
+
+- 拆成两条查询后，满足已支持 Top-K 形态却仍未使用已就绪的向量索引；
+- 扫描回退与精确 SQL oracle 返回不同的行集、距离或排序；
+- 查询引发 panic、会话中断、数据修改、资源泄漏或错误的部分结果；
+- 产品以后公开支持 scalar-subquery / Join vector probe，但实现仍不能生成对应索引计划。
+
+**关联记录：**
+
+- [#23158：vector index didn't take effect](https://github.com/matrixorigin/matrixone/issues/23158)
+- [#23158 研发结论：当前需拆成两条查询](https://github.com/matrixorigin/matrixone/issues/23158#issuecomment-3653626620)
+- [#23158 补充验证：PostgreSQL 18.3 + pgvector 0.8.2 的相同 SQL2/SQL3 也未命中 HNSW/IVFFLAT](https://github.com/matrixorigin/matrixone/issues/23158#issuecomment-5883514940)
+
+除非产品扩展向量索引改写能力，或出现上述独立正确性问题，否则不要仅因 reference vector 来自子查询、
+派生表、CTE 或 Join 而重新把“未命中向量索引”作为 Bug 跟踪。
+
+---
+
+## 客户端与协议兼容性
+
+### JDBC-001：Connector/J server-side prepared `SELECT *` 不保证跨 DDL 刷新结果元数据
+
+**状态：契约限制（Connector/J 兼容性）**
+
+适用范围：MySQL Connector/J 开启 `useServerPrepStmts=true`，复用已经执行过的
+`PreparedStatement("SELECT * ...")`，同时由另一连接执行会改变结果列集合的 DDL，包括：
+
+- `ALTER TABLE ... ADD/DROP COLUMN`；
+- DROP 后重建同名表；
+- DROP 后重建同名 view。
+
+**已确认行为：**
+
+- Connector/J 8.3.0 会保留 prepared statement 首次执行时的结果列定义；
+- DDL 后服务端返回新的列集合时，驱动可能尝试把三列结果与缓存的两列定义合并，并抛出
+  `ArrayIndexOutOfBoundsException`；
+- 该现象在 MatrixOne 的 same-CN、cross-CN 和 Proxy 路径均可出现；
+- MySQL 8.4.11 使用相同 Connector/J 8.3.0 复现同样的 add-column、table recreation 和 view recreation
+  异常。MySQL 对应 [Bug #97924](https://bugs.mysql.com/bug.php?id=97924) 已被判定为 `Not a Bug`，原因同样是
+  Connector/J 缓存 prepared result metadata；
+- 因此该行为不作为 MatrixOne 服务端缺陷修复，也不承诺旧 server-side prepared handle 在任意 DDL 后自动
+  刷新 `SELECT *` 元数据。
+
+**使用建议：**
+
+- 不要在可能发生结果 schema 变化的生命周期中长期复用 `SELECT *` 的 server-side prepared handle；
+- DDL 后关闭并重新 prepare statement，必要时重建连接；
+- 可设置 `useServerPrepStmts=false` 使用 client-side prepared statement。已验证该模式能够在上述 DDL 生命周期
+  中重新读取列定义；
+- 对需要长期稳定复用的 statement 显式列出字段，并把 schema 变更与 statement 生命周期协调起来。
+
+**不被本条目豁免的正确性问题：**
+
+- 未发生 DDL 或结果 schema 没有变化时，server-side prepared metadata 仍然错误；
+- 新建的 prepared statement、重建连接或 client-side prepared statement 仍返回旧列定义；
+- DDL 后出现服务端 panic、连接协议损坏、数据错误或与 Connector/J metadata cache 无关的异常；
+- MatrixOne 返回的列定义包本身与实际结果列不一致。
+
+**关联记录：**
+
+- [#29180：server prepared SELECT star keeps stale result metadata after ALTER ADD COLUMN](https://github.com/matrixorigin/matrixone/issues/29180)
+- [#29180 研发结论：MySQL + Connector/J 同样复现，按客户端兼容性限制处理](https://github.com/matrixorigin/matrixone/issues/29180#issuecomment-5885370219)
+
+除非能够证明异常来自 MatrixOne 返回错误的协议元数据，而不是 Connector/J 对旧 prepared handle 的缓存，
+否则不要将该场景重新作为 MatrixOne 服务端 Bug 跟踪。
 
 ---
 
