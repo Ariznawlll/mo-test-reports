@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-10-02
+更新时间：2026-10-03
 
 ## 状态定义
 
@@ -602,6 +602,53 @@ truncation operator：
 **当前实现备注：** 官方 main `5be6cd90b501da225be591ffffe6000bf01f515e` 上，bare `*` 和
 `* apple` 连续 3 轮均返回 `ERROR 20203`，没有满足上述产品契约。该现象应作为独立实现回归处理，不能以此
 将 #29287 原先“match-all 是错误结果”的预期重新成立。
+
+### FULLTEXT-008：`MATCH ... AGAINST` 不支持位于 `OR` / `NOT` 谓词分支
+
+**状态：契约限制**
+
+适用范围：classic `FULLTEXT` 与 `FULLTEXT2` 的全文索引驱动谓词；这里的 `OR` / `NOT` 是 SQL 谓词组合，不是 `AGAINST(... IN BOOLEAN MODE)` 搜索串内部的操作符。
+
+最小 SQL（`docs.body` 已建全文索引）：
+
+```sql
+-- 支持：MATCH 是必须成立的合取条件
+SELECT id FROM docs
+WHERE MATCH(body) AGAINST('alpha') AND id > 0;
+
+-- 当前不支持：MATCH 位于析取或否定分支
+SELECT id FROM docs
+WHERE MATCH(body) AGAINST('alpha') OR id = 2;
+
+SELECT id FROM docs
+WHERE NOT MATCH(body) AGAINST('alpha');
+```
+
+**MySQL 对照：** MySQL 可按布尔表达式语义组合全文匹配与 `OR` / `NOT` 条件；例如第一条 `OR` 查询需要保留全文命中行和 `id=2` 行的并集，而否定查询需要保留不命中的底表行。MatrixOne 当前不提供这一组合能力。
+
+**MatrixOne 契约边界：**
+
+- 裸 `MATCH`、与普通条件的 `AND`、两个 `MATCH` 的 `AND`，以及已支持的 JOIN 场景可以由全文索引结果驱动；
+- `MATCH OR MATCH`、`MATCH OR <普通谓词>`、`MATCH AND NOT MATCH`、外层 `NOT MATCH` 和 `NOT (MATCH OR MATCH)` 当前均不支持，规划/执行路径会安全返回 `ERROR 20105`，而不是扫描底表求值；
+- 当前全文索引驱动流通过 `INNER JOIN` 与底表合并，只适用于每个返回行都必须满足 `MATCH` 的合取条件。`OR` 需要并集合并检索流，`NOT` 需要反连接或可计算全文谓词的全表扫描回退；这些能力目前未提供。强行把 `OR/NOT` 中的 `MATCH` 当作合取条件会丢失应返回的行，因此拒绝优于错误结果；
+- `NOT` / 顶层否定属于当前设计上不可驱动的限制。`OR` 组合若未来需要支持，应作为单独 Feature 定义并集驱动及非命中分支的分数语义，不把本条当前的 `20105` 当作原 JOIN bug 未修复。
+
+**使用建议：** 需要全文结果与其他条件的并集时，拆成独立的、各自受支持的查询，在应用侧按业务键去重合并，并单独定义分数和排序规则；需要补集时，不要假设 `NOT MATCH` 会自动回退为全表扫描，应使用经验证的业务侧处理方案。
+
+**不被本条目豁免的正确性问题：**
+
+- 单个 `MATCH` 或明确支持的 `AND` / JOIN 路径被拒绝、漏行、额外返回行或得到错误分数；
+- 拒绝路径产生部分结果、panic、会话中断、底表或索引修改；
+- 产品以后公开支持 `OR` 或 `NOT` 全文谓词组合，但实现仍拒绝或返回错误结果。
+
+**关联记录：**
+
+- [#20687：原始 JOIN 场景与后续 OR/NOT 讨论](https://github.com/matrixorigin/matrixone/issues/20687)
+- [#29069：修复原始单 MATCH / JOIN 路径](https://github.com/matrixorigin/matrixone/pull/29069)
+- [#20687 研发结论：OR/NOT 的 20105 是有意保留的安全拒绝](https://github.com/matrixorigin/matrixone/issues/20687#issuecomment-5810397837)
+- [#20687 多 MATCH 布尔组合验证](https://github.com/matrixorigin/matrixone/issues/20687#issuecomment-5724939849)
+
+**证据与后续：** 官方 `main` `529ee099e32ed8c38d2806043bf1516ab0345e45`，2026-10-03，本地单 CN 和双 CN 验证：原 issue 两个单 MATCH / JOIN 场景各连续 3 轮返回正确结果，计划包含 `fulltext_index_scan`；`MATCH OR <普通谓词>` 与 `NOT MATCH` 返回 `ERROR 20105`。此前 classic FULLTEXT / FULLTEXT2 的多 MATCH `OR/NOT` 在双 CN 上也复现同一限制。上述查询只读，拒绝路径未修改底表或索引。除非产品扩展全文谓词驱动能力，或发现独立正确性问题，否则不因这些 `OR/NOT` 写法的 20105 重新打开 #20687。
 
 ---
 
