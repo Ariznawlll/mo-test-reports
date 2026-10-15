@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-10-15
+更新时间：2026-10-03
 
 ## 状态定义
 
@@ -24,7 +24,6 @@
 - [客户端与协议兼容性](#客户端与协议兼容性)
 - [全文索引谓词](#全文索引谓词)
 - [DML / Upsert](#dml--upsert)
-- [Load / LOCAL INFILE](#load--local-infile)
 - [视图写入](#视图写入)
 - [类型转换与非严格语义](#类型转换与非严格语义)
 - [新增条目的证据要求](#新增条目的证据要求)
@@ -733,56 +732,6 @@ ON DUPLICATE KEY UPDATE <assignment-list>;
 **回归证据：**
 
 - MatrixOne BVT：[`test/distributed/cases/dml/insert/insert_duplicate.sql`](https://github.com/matrixorigin/matrixone/blob/main/test/distributed/cases/dml/insert/insert_duplicate.sql) 中“唯一键冲突但主键不冲突”场景。
-
----
-
-## Load / LOCAL INFILE
-
-### LOAD-001：`LOAD DATA LOCAL INFILE` 不承诺对既有表执行主键冲突检查
-
-**状态：契约限制**
-
-`LOAD DATA LOCAL INFILE` 向已包含主键值的表继续导入相同主键时，MatrixOne 不承诺按 MySQL 语义拒绝该行。调用方不得依赖该导入语句保证表内主键唯一性。
-
-最小复现形状：
-
-```sql
-CREATE TABLE t(id INT PRIMARY KEY, v INT);
-
--- base.csv: 1,101 / 2,102 / 3,103
-LOAD DATA LOCAL INFILE 'base.csv' INTO TABLE t
-  FIELDS TERMINATED BY ',' (id, v);
-
--- duplicate.csv: 2,202 / 4,204
-LOAD DATA LOCAL INFILE 'duplicate.csv' INTO TABLE t
-  FIELDS TERMINATED BY ',' (id, v);
-
-SELECT id, v FROM t ORDER BY id;
-```
-
-**MySQL 对照：** 第二次导入中的 `id=2` 会触发主键冲突，导入按 MySQL `LOAD DATA` 的错误/截断语义处理，不会将重复主键作为普通数据行提交。
-
-**MatrixOne 行为：**
-
-- 第二次 `LOAD DATA LOCAL INFILE` 语句返回成功；
-- 表中可同时保留 `(2,102)` 与 `(2,202)`；
-- `SHOW CREATE TABLE`、`SHOW INDEX` 和 `information_schema.STATISTICS` 仍显示 `PRIMARY KEY(id)`；
-- 同一表中后续普通 `INSERT` 对重复主键仍返回 `ERROR 1062 (23000): Duplicate entry ...`。
-
-**契约边界：**
-
-- 该限制只说明 `LOAD DATA LOCAL INFILE` 不承诺执行既有主键冲突检查，不表示主键定义会被移除，也不表示普通 `INSERT` 允许重复主键；
-- 使用该导入路径导入既有表时，应用侧或 staging 表必须先完成去重和主键冲突验证；
-- MySQL 的重复键拒绝、部分导入和 warning 语义不能外推到 MatrixOne 的该路径；
-- 本条不豁免导入过程中的失败原子性、资源泄漏、崩溃恢复或与该主键限制无关的正确性问题。
-
-**证据与后续：**
-
-- 2026-10-15，隔离单机 all-in-one 环境，SQL 版本 `8.0.30-MatrixOne-v4.2.5`，运行二进制 revision `1a44f3db3056e32975fde86ca0ab69a094996a3f`；
-- 3 个独立临时库中连续 3/3 复现：基线导入 3 行成功后，再导入 `id=2`，语句返回成功且最终行数为 5；
-- 对照显示主键元数据仍存在，普通 `INSERT` 对 `id=1` 和 `id=4` 均返回 `1062`；
-- 只读源码线索：运行时 revision 的 [`pkg/sql/plan/build_load.go`](https://github.com/matrixorigin/matrixone/blob/1a44f3db3056e32975fde86ca0ab69a094996a3f/pkg/sql/plan/build_load.go) 会进入 LOAD/INSERT 计划，[`pkg/sql/colexec/insert/insert.go`](https://github.com/matrixorigin/matrixone/blob/1a44f3db3056e32975fde86ca0ab69a094996a3f/pkg/sql/colexec/insert/insert.go) 中 LOAD 常用的 S3 写入路径与普通 `insert_table` 的 relation 写入路径不同；
-- 2026-10-15 已由本仓库维护者确认按已知限制登记，不另建新 issue；后续不应把同一场景重复作为待验证缺陷处理。
 
 ---
 
