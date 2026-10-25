@@ -1,0 +1,58 @@
+{
+  "recorded_at": "2026-07-27",
+  "system": {
+    "database": "PostgreSQL",
+    "version": "14.4",
+    "fulltext_parser": "pg_jieba:jiebacfg",
+    "deployment": "Docker container pg-fulltext-benchmark",
+    "container_cpu_limit_logical_cpus": 64,
+    "container_memory_limit_gib": 240,
+    "postgres_settings": {
+      "shared_buffers": "16GB",
+      "effective_cache_size": "48GB",
+      "work_mem": "32MB",
+      "maintenance_work_mem": "4GB",
+      "max_worker_processes": 16,
+      "max_parallel_workers": 16,
+      "max_parallel_workers_per_gather": 4,
+      "max_parallel_maintenance_workers": 4
+    }
+  },
+  "host": {
+    "name": "mo-srv-129",
+    "cpu": "2 x Intel Xeon Silver 4314 @ 2.40GHz",
+    "logical_cpus": 64,
+    "physical_cores": 32,
+    "numa_nodes": 2,
+    "memory_gib": 251,
+    "storage": "/data4 NVMe"
+  },
+  "dataset": {
+    "name": "THUIR/T2Ranking",
+    "source_documents": 2303643,
+    "benchmark_documents": 10000000,
+    "construction": "The 2,303,643 source documents were repeated deterministically to create documents_10m with IDs 0 through 9,999,999.",
+    "query_file": "queries.dev.tsv first 1000 queries",
+    "query_count": 1000,
+    "query_file_sha256": "c3a67e890e91549b79b6cc545e894f3d4c6ab87a31069af668f436692ea020e0"
+  },
+  "index": {
+    "table": "documents_10m",
+    "definition": "GIN (to_tsvector('jiebacfg', body))",
+    "index_name": "documents_10m_fts_gin",
+    "build_elapsed": "01:34:10",
+    "size_mb": 2773,
+    "valid": true,
+    "ready": true
+  },
+  "workload": {
+    "tool": "mo-load",
+    "statement_template": "SELECT id FROM documents_10m WHERE to_tsvector('jiebacfg', body) @@ plainto_tsquery('jiebacfg', '{query}') LIMIT 100;",
+    "result_limit": 100,
+    "ordering": "none",
+    "query_mode": "GIN full-text filter",
+    "resource_monitor": "docker stats sampled for the PostgreSQL container only",
+    "cpu_unit": "Percent of one logical CPU; 5000% is approximately 50 logical CPUs."
+  },
+  "result_file": "pg_t2ranking_10m_moload_20260727.tsv"
+}
