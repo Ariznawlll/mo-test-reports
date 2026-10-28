@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-10-15
+更新时间：2026-10-28
 
 ## 状态定义
 
@@ -126,6 +126,43 @@ SELECT GROUP_CONCAT(v ORDER BY id) FROM t;
 ---
 
 ## 索引与最终一致性
+
+### FULLTEXT2-003：按分数截断后，次排序键不决定哪些同分行被保留
+
+**状态：契约限制**
+
+对符合候选数下推条件的 FULLTEXT2 查询，首个排序键为 `MATCH` 分数降序，且语句包含 `LIMIT` 时，后续排序键只排序搜索阶段保留下来的候选行：
+
+```sql
+SELECT id, MATCH(body) AGAINST('needle') AS score
+FROM docs
+WHERE MATCH(body) AGAINST('needle')
+ORDER BY score DESC, id
+LIMIT 10 OFFSET 1;
+```
+
+**MatrixOne 契约边界：**
+
+- 搜索阶段最多按分数保留 `LIMIT + OFFSET` 个候选，再由外层排序应用后续键、`LIMIT` 和 `OFFSET`；
+- 截止分数相同的行，由搜索阶段选择哪些进入候选集合；`id` 等次排序键只排序已经保留的行，不保证从所有同分行中选出最小或最大的键；
+- 因此，不应依赖该查询在截止同分时提供全局次键顺序，或在同分行跨页时提供稳定且无遗漏的分页；
+- 首排序键不是分数降序、分数升序，以及存在无法安全穿透的过滤、JOIN、聚合等场景，不属于本条所描述的候选数下推。具体准入条件以实现和设计文档为准。
+
+**不被本条目豁免的正确性问题：**
+
+- 截止分数以上的行被遗漏，或保留了分数低于被丢弃行的结果；
+- 保留的候选行没有按指定排序键排序，或者 `LIMIT` / `OFFSET` 的数量处理错误；
+- 不满足下推条件的查询被错误地下推，导致结果缺失；
+- 查询出现 panic、资源泄漏或数据修改。
+
+**关联记录与证据：**
+
+- [#31486：FULLTEXT2 次排序键与候选数上限](https://github.com/matrixorigin/matrixone/issues/31486)；[研发决策与修复 #31487](https://github.com/matrixorigin/matrixone/pull/31487)，明确截止同分行由搜索阶段选择；
+- [FULLTEXT2 设计文档的决策记录](https://github.com/matrixorigin/matrixone/blob/d5d1c5c8cc30055635840874768286457ceb5b08/docs/design/20261019-fulltext2-parallel-search-and-token-filter.md#secondary-order-by-keys-order-the-bounded-rows-decision)；
+- [QA 验收记录](https://github.com/matrixorigin/matrixone/issues/31486#issuecomment-6464276579)：官方 main `d5d1c5c8cc30055635840874768286457ceb5b08`，隔离单 CN/TN/LogService，30 万文档连续 3 轮；`LIMIT 10` 的 FULLTEXT2 搜索实际输出 10 行，并检查同分、OFFSET、回表和不应下推的控制；
+- [MOTR #285](https://github.com/matrixorigin/motr/pull/285)：针对性回归 3/3 通过，PR 的离线 CI 通过；完整 MOTR suite 未在本轮运行。
+
+---
 
 ### FULLTEXT2-001：COPY ALTER 后的 FULLTEXT2 查询不提供立即一致性
 
@@ -801,6 +838,36 @@ SELECT id, v FROM t ORDER BY id;
 ---
 
 ## 类型转换与非严格语义
+
+### CONVERT-003：显式 CAST 将指定前缀的普通字符串解释为对应进制
+
+**状态：行为差异**
+
+MatrixOne 对普通字符串显式转换为整数或 DECIMAL 时，支持 `0x`、`0o` 和 `0b` 前缀，分别按十六、八、二进制解析；没有进制前缀的前导零仍按十进制处理。此行为是研发明确选择的产品语义，不要求按 MySQL 的普通字符串转换结果返回零。
+
+```sql
+SELECT CAST('0x10' AS UNSIGNED), CAST('0x10' AS SIGNED),
+       CAST('0x10' AS DECIMAL(6,0));
+-- MatrixOne: 16, 16, 16
+
+SELECT CAST('0b1010' AS UNSIGNED), CAST('0o17' AS SIGNED),
+       CAST('0123' AS SIGNED), CAST('+0x123' AS DECIMAL(6,2));
+-- MatrixOne: 10, 15, 123, 291.00
+```
+
+**契约边界：**
+
+- 本条只记录上述普通字符串的**显式 CAST**，不把相同规则自动扩展到隐式算术、比较、筛选或其他转换路径；
+- 无效数字、符号、溢出、NULL 和 DECIMAL scale 应分别遵循其自身的类型规则，不能用本条豁免错误处理、类型或数据一致性问题；
+- 不要仅因 `CAST('0x10' AS SIGNED)` 返回 `16` 而将其判定为需要按 MySQL 的零值修复。
+
+**关联记录与证据：**
+
+- [#25265：十六进制样式字符串的数值转换](https://github.com/matrixorigin/matrixone/issues/25265)；[研发修复 #25449](https://github.com/matrixorigin/matrixone/pull/25449) 明确记录支持进制前缀并与 MySQL 不同；
+- [既有 QA 记录](https://github.com/matrixorigin/matrixone/issues/25265#issuecomment-4910857774)记录上述显式转换值；其后关于早期版本曾返回零的评论与此记录及 #25449 的约定不一致，不作为修复前后结果的依据；
+- [MOTR #39](https://github.com/matrixorigin/motr/pull/39) 已合入对应回归；[nightly 用例](https://github.com/matrixorigin/mo-nightly-regression/actions/runs/40528195747/job/122603614306)中该用例 3 条语句成功。该记录是一次历史运行，不声称最新 main 已独立复验 3 次。
+
+---
 
 ### ARITH-001：有符号整数除法使用 `DOUBLE`，不承诺 MySQL 的 `DECIMAL` 精确结果
 
