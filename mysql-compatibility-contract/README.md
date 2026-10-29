@@ -4,7 +4,7 @@
 
 这不是“所有还没测过的 MySQL 语法”的列表。只有形成了产品契约、研发明确结论，或有稳定代码/回归证据的行为，才能登记为“不支持”。单次测试失败、环境问题和仍待产品决策的行为不得直接写入该分类。
 
-更新时间：2026-10-28
+更新时间：2026-10-29
 
 ## 状态定义
 
@@ -931,6 +931,22 @@ SELECT id, s / 1 FROM src ORDER BY id;
 ---
 
 ## 已确认的结果差异
+
+### SET-001：FLOAT/DOUBLE 的有符号零按数值相等参与集合运算
+
+**状态：行为差异**
+
+MatrixOne 的集合运算遵循浮点数相等语义：`-0` 和 `+0` 被视为相等。对各有一行相反符号零的两个输入，`UNION`、`INTERSECT`、`EXCEPT` 分别得到 1、1、0 行；`UNION ALL` 保留两行。输出究竟显示哪一个零取决于输入顺序，不是稳定契约。
+
+Issue 原始 MySQL 8.0.46 对照分别为 2、0、1 行；该数字引用原报告，本次未重新运行 MySQL。业务迁移时不要依赖两个浮点零在 MatrixOne 集合运算中保留为不同成员。NULL 或不同数值不属于这个零值等价规则的例外。
+
+**依据与范围：**
+
+- [#30155 研发确认](https://github.com/matrixorigin/matrixone/issues/30155#issuecomment-6410846867)：保留 MatrixOne 的相等规则，不追求该场景的 MySQL 集合成员语义。
+- [#30184](https://github.com/matrixorigin/matrixone/pull/30184) 合入的回归锁定该预期，不改变产品语义。
+- `main@641c34d259447a6b70ce1ce0615a610e9d1a108e`，本地单 CN/TN/Log，FLOAT/DOUBLE、两种输入顺序、六种集合及 ALL 变体、NULL 和不同数值对照各 3/3；不将零的显示符号当作断言。
+
+---
 
 ### FUNC-001：`TIMEDIFF()` 混合 TIME 与 DATETIME
 
